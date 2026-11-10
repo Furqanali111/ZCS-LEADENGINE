@@ -70,6 +70,15 @@ def test_normalize_individual_name_example():
     assert normalize(raw).name == "Queenie Ann Abad, MD"
 
 
+def test_location_purposes_use_spec_vocabulary():
+    for name in ("npi2_page.json", "npi1_page.json"):
+        for raw in load(name):
+            locs = normalize(raw).locations
+            assert {l["purpose"] for l in locs} <= {"location", "mailing", "practice"}
+            assert sum(l["is_primary"] for l in locs) <= 1
+            assert all(l["is_primary"] == (l["purpose"] == "location") for l in locs)
+
+
 def test_normalize_sparse_record_does_not_crash():
     lead = normalize({"number": "1234567890", "enumeration_type": "NPI-2",
                       "basic": {"organization_name": "X", "status": "A"},

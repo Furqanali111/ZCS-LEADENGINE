@@ -78,8 +78,9 @@ def normalize(raw: dict) -> NormalizedLead:
                 "zip": (digits(a.get("postal_code")) or "")[:5] or None,
                 "phone": digits(a.get("telephone_number")), "is_primary": primary}
 
-    locations = [shape(a, a.get("address_purpose") or "", a is loc) for a in addresses]
-    locations += [shape(a, "PRACTICE_LOCATION", False) for a in raw.get("practiceLocations") or []]
+    purposes = {"LOCATION": "location", "MAILING": "mailing"}  # spec vocabulary, see ck_locations_purpose
+    locations = [shape(a, purposes.get(a.get("address_purpose"), "mailing"), a is loc) for a in addresses]
+    locations += [shape(a, "practice", False) for a in raw.get("practiceLocations") or []]
     phone = digits(loc.get("telephone_number")) if loc else None
 
     if is_person:
