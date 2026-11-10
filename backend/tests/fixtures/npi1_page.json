@@ -1,0 +1,1452 @@
+{
+ "result_count": 20,
+ "results": [
+  {
+   "addresses": [
+    {
+     "address_1": "8300 FLOYD CURL DR",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "SAN ANTONIO",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "782293931",
+     "state": "TX",
+     "telephone_number": "210-450-9000"
+    },
+    {
+     "address_1": "8300 FLOYD CURL DR",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "SAN ANTONIO",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "782293931",
+     "state": "TX",
+     "telephone_number": "210-450-9000"
+    }
+   ],
+   "basic": {
+    "certification_date": "2022-04-14",
+    "credential": "M.D.",
+    "enumeration_date": "2016-05-12",
+    "first_name": "QUEENIE ANN",
+    "last_name": "ABAD",
+    "last_updated": "2022-04-14",
+    "middle_name": "ANN DEL LA CRUZ",
+    "name_prefix": "Dr.",
+    "sex": "F",
+    "sole_proprietor": "YES",
+    "status": "A"
+   },
+   "created_epoch": "1463087030000",
+   "endpoints": [],
+   "enumeration_type": "NPI-1",
+   "identifiers": [],
+   "last_updated_epoch": "1649952354000",
+   "number": "1174979785",
+   "other_names": [
+    {
+     "code": "1",
+     "first_name": "QUEENIE",
+     "last_name": "DELACRUZ ABAD",
+     "type": "Former Name"
+    }
+   ],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": "T1888",
+     "primary": true,
+     "state": "TX",
+     "taxonomy_group": ""
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "12350 PASEO NUEVO DR",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "EL PASO",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "915-533-8055",
+     "postal_code": "799285668",
+     "state": "TX",
+     "telephone_number": "915-225-4470"
+    },
+    {
+     "address_1": "PO BOX 972990",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "EL PASO",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "915-533-8055",
+     "postal_code": "799972990",
+     "state": "TX",
+     "telephone_number": "915-225-4470"
+    }
+   ],
+   "basic": {
+    "certification_date": "2024-03-13",
+    "credential": "M.D.",
+    "enumeration_date": "2006-10-10",
+    "first_name": "CAROL",
+    "last_name": "ABALIHI",
+    "last_updated": "2024-03-13",
+    "middle_name": "N",
+    "name_prefix": "Dr.",
+    "sex": "F",
+    "sole_proprietor": "YES",
+    "status": "A"
+   },
+   "created_epoch": "1160501685000",
+   "endpoints": [],
+   "enumeration_type": "NPI-1",
+   "identifiers": [],
+   "last_updated_epoch": "1710351680000",
+   "number": "1326136243",
+   "other_names": [],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": "MA64547",
+     "primary": false,
+     "state": "NJ",
+     "taxonomy_group": ""
+    },
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": "MD2011-0215",
+     "primary": false,
+     "state": "NM",
+     "taxonomy_group": ""
+    },
+    {
+     "code": "208000000X",
+     "desc": "Pediatrics",
+     "license": "MD2011-0215",
+     "primary": false,
+     "state": "NM",
+     "taxonomy_group": ""
+    },
+    {
+     "code": "208000000X",
+     "desc": "Pediatrics",
+     "license": "N1507",
+     "primary": false,
+     "state": "TX",
+     "taxonomy_group": ""
+    },
+    {
+     "code": "208000000X",
+     "desc": "Pediatrics",
+     "license": "MA64547",
+     "primary": false,
+     "state": "NJ",
+     "taxonomy_group": ""
+    },
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": "N1507",
+     "primary": true,
+     "state": "TX",
+     "taxonomy_group": ""
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "PO BOX 660599",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "DALLAS",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "752660599",
+     "state": "TX"
+    },
+    {
+     "address_1": "3310 LIVE OAK ST",
+     "address_2": "COOC FLOAT",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "DALLAS",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "214-266-1246",
+     "postal_code": "752046153",
+     "state": "TX",
+     "telephone_number": "214-266-1000"
+    }
+   ],
+   "basic": {
+    "credential": "MD",
+    "enumeration_date": "2005-11-25",
+    "first_name": "MUHAMMAD",
+    "last_name": "A. SATTAR",
+    "last_updated": "2011-04-20",
+    "middle_name": "AIJAZ",
+    "name_prefix": "--",
+    "name_suffix": "--",
+    "sex": "M",
+    "sole_proprietor": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1132935800000",
+   "endpoints": [],
+   "enumeration_type": "NPI-1",
+   "identifiers": [],
+   "last_updated_epoch": "1303310067000",
+   "number": "1760465553",
+   "other_names": [],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": "K9472",
+     "primary": true,
+     "state": "TX",
+     "taxonomy_group": ""
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "301 UNIVERSITY BLVD",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "GALVESTON",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "409-747-8579",
+     "postal_code": "775555302",
+     "state": "TX",
+     "telephone_number": "909-747-1883"
+    },
+    {
+     "address_1": "301 UNIVERSITY BLVD",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "GALVESTON",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "409-747-8579",
+     "postal_code": "775555302",
+     "state": "TX",
+     "telephone_number": "909-747-1883"
+    }
+   ],
+   "basic": {
+    "certification_date": "2026-05-22",
+    "credential": "MD",
+    "enumeration_date": "2026-05-22",
+    "first_name": "GAYATRI",
+    "last_name": "AALURI",
+    "last_updated": "2026-05-22",
+    "middle_name": "REDDY",
+    "sex": "F",
+    "sole_proprietor": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1779457503000",
+   "endpoints": [],
+   "enumeration_type": "NPI-1",
+   "identifiers": [],
+   "last_updated_epoch": "1779457503000",
+   "number": "1821928508",
+   "other_names": [],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": "BP10098459",
+     "primary": true,
+     "state": "TX",
+     "taxonomy_group": ""
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "3000 N INTERSTATE 35",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "DENTON",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "762015119",
+     "state": "TX",
+     "telephone_number": "817-820-4906"
+    },
+    {
+     "address_1": "3000 N INTERSTATE 35",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "DENTON",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "762015119",
+     "state": "TX",
+     "telephone_number": "817-820-4906"
+    }
+   ],
+   "basic": {
+    "enumeration_date": "2007-03-23",
+    "first_name": "ANUNAYA",
+    "last_name": "AASHISH",
+    "last_updated": "2013-04-23",
+    "name_prefix": "--",
+    "name_suffix": "--",
+    "sex": "M",
+    "sole_proprietor": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1174669909000",
+   "endpoints": [],
+   "enumeration_type": "NPI-1",
+   "identifiers": [],
+   "last_updated_epoch": "1366749507000",
+   "number": "1134246374",
+   "other_names": [],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": "57009919",
+     "primary": false,
+     "state": "OH",
+     "taxonomy_group": ""
+    },
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": "N1505",
+     "primary": true,
+     "state": "TX",
+     "taxonomy_group": ""
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "3615 19TH ST DEPT OF",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "LUBBOCK",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "794101209",
+     "state": "TX",
+     "telephone_number": "806-725-0000"
+    },
+    {
+     "address_1": "355 BARD AVE",
+     "address_2": "DEPARTMENT OF MEDICINE VILLA BLDG",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "STATEN ISLAND",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "103101664",
+     "state": "NY",
+     "telephone_number": "718-818-2419"
+    }
+   ],
+   "basic": {
+    "certification_date": "2023-06-15",
+    "credential": "M.D",
+    "enumeration_date": "2017-04-10",
+    "first_name": "FUAD",
+    "last_name": "ABALEKA",
+    "last_updated": "2023-06-15",
+    "middle_name": "IBRAHIM",
+    "sex": "M",
+    "sole_proprietor": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1491841646000",
+   "endpoints": [],
+   "enumeration_type": "NPI-1",
+   "identifiers": [],
+   "last_updated_epoch": "1686857205000",
+   "number": "1861925596",
+   "other_names": [],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": "s7162",
+     "primary": true,
+     "state": "TX",
+     "taxonomy_group": ""
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "PO BOX 844658",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "DALLAS",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "752844658",
+     "state": "TX",
+     "telephone_number": "254-724-2111"
+    },
+    {
+     "address_1": "120 HILLCREST MEDICAL BLVD FL 3",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "WACO",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "254-202-4019",
+     "postal_code": "767128948",
+     "state": "TX",
+     "telephone_number": "254-202-4000"
+    }
+   ],
+   "basic": {
+    "certification_date": "2025-04-14",
+    "credential": "MD",
+    "enumeration_date": "2018-04-05",
+    "first_name": "OLAEDO",
+    "last_name": "ABANA",
+    "last_updated": "2025-04-14",
+    "middle_name": "E.",
+    "sex": "F",
+    "sole_proprietor": "YES",
+    "status": "A"
+   },
+   "created_epoch": "1522938022000",
+   "endpoints": [
+    {
+     "address_1": "120 Hillcrest Medical Blvd Fl 3",
+     "address_type": "DOM",
+     "affiliation": "N",
+     "city": "Waco",
+     "contentTypeDescription": "",
+     "country_code": "US",
+     "country_name": "United States",
+     "endpoint": "oabana1397995@direct.sw.org",
+     "endpointType": "DIRECT",
+     "endpointTypeDescription": "Direct Messaging Address",
+     "postal_code": "767128948",
+     "state": "TX",
+     "use": "DIRECT",
+     "useDescription": "Direct"
+    }
+   ],
+   "enumeration_type": "NPI-1",
+   "identifiers": [],
+   "last_updated_epoch": "1744639046000",
+   "number": "1326544529",
+   "other_names": [],
+   "practiceLocations": [
+    {
+     "address_1": "1700 E SAUNDERS ST",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "LAREDO",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "780415474",
+     "state": "TX",
+     "telephone_number": "956-796-5000"
+    }
+   ],
+   "taxonomies": [
+    {
+     "code": "207RC0200X",
+     "desc": "Internal Medicine, Critical Care Medicine",
+     "license": "U5329",
+     "primary": false,
+     "state": "TX",
+     "taxonomy_group": ""
+    },
+    {
+     "code": "207RP1001X",
+     "desc": "Internal Medicine, Pulmonary Disease",
+     "license": "U5329",
+     "primary": true,
+     "state": "TX",
+     "taxonomy_group": ""
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "18400 KATY FWY",
+     "address_2": "MOB 1, SUITE 220",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "KATY",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "832-522-8624",
+     "postal_code": "77094",
+     "state": "TX",
+     "telephone_number": "832-522-8521"
+    },
+    {
+     "address_1": "18400 KATY FWY",
+     "address_2": "MEDICAL OFFICE BUILDING 1, SUITE 220",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "KATY",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "832-522-8624",
+     "postal_code": "77094",
+     "state": "TX",
+     "telephone_number": "832-522-8521"
+    }
+   ],
+   "basic": {
+    "certification_date": "2026-01-30",
+    "credential": "MD",
+    "enumeration_date": "2009-06-15",
+    "first_name": "CHINEMEREM",
+    "last_name": "ABANONU",
+    "last_updated": "2026-01-30",
+    "middle_name": "FRED",
+    "sex": "M",
+    "sole_proprietor": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1245069455000",
+   "endpoints": [],
+   "enumeration_type": "NPI-1",
+   "identifiers": [],
+   "last_updated_epoch": "1769792940000",
+   "number": "1396972659",
+   "other_names": [],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207RX0202X",
+     "desc": "Internal Medicine, Medical Oncology",
+     "license": "S8945",
+     "primary": true,
+     "state": "TX",
+     "taxonomy_group": ""
+    },
+    {
+     "code": "207RH0003X",
+     "desc": "Internal Medicine, Hematology & Oncology",
+     "license": "s8945",
+     "primary": false,
+     "state": "TX",
+     "taxonomy_group": ""
+    },
+    {
+     "code": "207RH0003X",
+     "desc": "Internal Medicine, Hematology & Oncology",
+     "license": "15981",
+     "primary": false,
+     "state": "NV",
+     "taxonomy_group": ""
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "4302 S SUGAR RD STE 101",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "EDINBURG",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "956-388-2710",
+     "postal_code": "785399140",
+     "state": "TX",
+     "telephone_number": "956-388-2700"
+    },
+    {
+     "address_1": "2101 S M ST STE A",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "MCALLEN",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "956-800-4275",
+     "postal_code": "785031590",
+     "state": "TX",
+     "telephone_number": "956-317-4044"
+    }
+   ],
+   "basic": {
+    "certification_date": "2026-07-22",
+    "credential": "M.D.",
+    "enumeration_date": "2009-01-07",
+    "first_name": "PEDRO",
+    "last_name": "ABANTO",
+    "last_updated": "2026-07-22",
+    "middle_name": "RUBEN",
+    "sex": "M",
+    "sole_proprietor": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1231304809000",
+   "endpoints": [],
+   "enumeration_type": "NPI-1",
+   "identifiers": [],
+   "last_updated_epoch": "1784756484000",
+   "number": "1982840393",
+   "other_names": [],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": "N4228",
+     "primary": false,
+     "state": "TX",
+     "taxonomy_group": ""
+    },
+    {
+     "code": "208M00000X",
+     "desc": "Hospitalist",
+     "license": "N4228",
+     "primary": false,
+     "state": "TX",
+     "taxonomy_group": ""
+    },
+    {
+     "code": "2083P0011X",
+     "desc": "Preventive Medicine, Undersea and Hyperbaric Medicine",
+     "license": "N4228",
+     "primary": true,
+     "state": "TX",
+     "taxonomy_group": ""
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "1725 N ED CAREY DR",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "HARLINGEN",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "785508203",
+     "state": "TX",
+     "telephone_number": "956-389-4382"
+    },
+    {
+     "address_1": "3600 N WESTGATE DR APT 6306",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "WESLACO",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "785990199",
+     "state": "TX",
+     "telephone_number": "830-344-6115"
+    }
+   ],
+   "basic": {
+    "certification_date": "2025-07-16",
+    "credential": "MD",
+    "enumeration_date": "2022-06-30",
+    "first_name": "OLIVERIO",
+    "last_name": "ABARCA GUZMAN",
+    "last_updated": "2025-07-16",
+    "middle_name": "JOSE",
+    "name_prefix": "Dr.",
+    "sex": "M",
+    "sole_proprietor": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1656626337000",
+   "endpoints": [
+    {
+     "address_1": "1401 E 8th St",
+     "address_type": "DOM",
+     "affiliation": "N",
+     "city": "Weslaco",
+     "contentType": "CSV",
+     "contentTypeDescription": "CSV",
+     "country_code": "US",
+     "country_name": "United States",
+     "endpoint": "EPIC",
+     "endpointType": "CONNECT",
+     "endpointTypeDescription": "CONNECT URL",
+     "postal_code": "785966640",
+     "state": "TX",
+     "use": "HIE",
+     "useDescription": "Health Information Exchange (HIE)"
+    }
+   ],
+   "enumeration_type": "NPI-1",
+   "identifiers": [],
+   "last_updated_epoch": "1752694051000",
+   "number": "1346972940",
+   "other_names": [],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": "V5952",
+     "primary": true,
+     "state": "TX",
+     "taxonomy_group": ""
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "2382 EL ARBOL",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "BROWNSVILLE",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "785209676",
+     "state": "TX",
+     "telephone_number": "956-617-8715"
+    },
+    {
+     "address_1": "301 W EXPY 83",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "MCALLEN",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "785033045",
+     "state": "TX",
+     "telephone_number": "956-632-4000"
+    }
+   ],
+   "basic": {
+    "certification_date": "2026-09-30",
+    "enumeration_date": "2023-03-24",
+    "first_name": "LEONEL",
+    "last_name": "ABARCA JR",
+    "last_updated": "2026-09-30",
+    "sex": "M",
+    "sole_proprietor": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1679681524000",
+   "endpoints": [],
+   "enumeration_type": "NPI-1",
+   "identifiers": [],
+   "last_updated_epoch": "1790791280000",
+   "number": "1447953740",
+   "other_names": [],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": "W5221",
+     "primary": false,
+     "state": "TX",
+     "taxonomy_group": ""
+    },
+    {
+     "code": "208M00000X",
+     "desc": "Hospitalist",
+     "license": "W5221",
+     "primary": true,
+     "state": "TX",
+     "taxonomy_group": ""
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "350 MATLOCK RD STE 201",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "MANSFIELD",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "817-539-9553",
+     "postal_code": "760636889",
+     "state": "TX",
+     "telephone_number": "817-583-9955"
+    },
+    {
+     "address_1": "350 MATLOCK RD STE 201",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "MANSFIELD",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "817-539-9553",
+     "postal_code": "760636889",
+     "state": "TX",
+     "telephone_number": "817-583-9955"
+    }
+   ],
+   "basic": {
+    "certification_date": "2023-10-27",
+    "credential": "M.D",
+    "enumeration_date": "2016-07-15",
+    "first_name": "OBINNA",
+    "last_name": "ABARIBE",
+    "last_updated": "2023-10-27",
+    "middle_name": "IKECHUKWU",
+    "name_prefix": "Mr.",
+    "sex": "M",
+    "sole_proprietor": "YES",
+    "status": "A"
+   },
+   "created_epoch": "1468617270000",
+   "endpoints": [],
+   "enumeration_type": "NPI-1",
+   "identifiers": [],
+   "last_updated_epoch": "1698427898000",
+   "number": "1457704355",
+   "other_names": [],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": "U6179",
+     "primary": false,
+     "state": "TX",
+     "taxonomy_group": ""
+    },
+    {
+     "code": "207RI0200X",
+     "desc": "Internal Medicine, Infectious Disease",
+     "license": "U6179",
+     "primary": false,
+     "state": "TX",
+     "taxonomy_group": ""
+    },
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": "125068730",
+     "primary": true,
+     "state": "IL",
+     "taxonomy_group": ""
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "800 E DAWSON ST",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "TYLER",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "903-525-1254",
+     "postal_code": "757012036",
+     "state": "TX",
+     "telephone_number": "903-606-7264"
+    },
+    {
+     "address_1": "W3985 COUNTY ROAD NN",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "ELKHORN",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "262-741-2199",
+     "postal_code": "531214337",
+     "state": "WI",
+     "telephone_number": "262-741-2000"
+    }
+   ],
+   "basic": {
+    "certification_date": "2024-09-05",
+    "credential": "MD",
+    "enumeration_date": "2008-07-20",
+    "first_name": "ENYINNAYA",
+    "last_name": "ABARIKWU",
+    "last_updated": "2024-09-05",
+    "middle_name": "UGOCHUKWU",
+    "name_prefix": "Dr.",
+    "sex": "M",
+    "sole_proprietor": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1216552988000",
+   "endpoints": [],
+   "enumeration_type": "NPI-1",
+   "identifiers": [],
+   "last_updated_epoch": "1725540088000",
+   "number": "1174788178",
+   "other_names": [],
+   "practiceLocations": [
+    {
+     "address_1": "W3985 COUNTY ROAD NN",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "ELKHORN",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "262-741-2199",
+     "postal_code": "531214337",
+     "state": "WI",
+     "telephone_number": "262-741-2000"
+    }
+   ],
+   "taxonomies": [
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": "P5317",
+     "primary": true,
+     "state": "TX",
+     "taxonomy_group": ""
+    },
+    {
+     "code": "208M00000X",
+     "desc": "Hospitalist",
+     "license": "68252",
+     "primary": false,
+     "state": "WI",
+     "taxonomy_group": ""
+    },
+    {
+     "code": "208M00000X",
+     "desc": "Hospitalist",
+     "license": "P5317",
+     "primary": false,
+     "state": "TX",
+     "taxonomy_group": ""
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "2955 ELDORADO PKWY",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "FRISCO",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "750337201",
+     "state": "TX",
+     "telephone_number": "214-407-8668"
+    },
+    {
+     "address_1": "822 BONNIE CT",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "MURPHY",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "750944251",
+     "state": "TX",
+     "telephone_number": "734-926-6797"
+    }
+   ],
+   "basic": {
+    "certification_date": "2023-05-18",
+    "credential": "D.O.",
+    "enumeration_date": "2008-07-29",
+    "first_name": "LAILAH",
+    "last_name": "ABAWI",
+    "last_updated": "2023-05-18",
+    "name_prefix": "Dr.",
+    "sex": "F",
+    "sole_proprietor": "YES",
+    "status": "A"
+   },
+   "created_epoch": "1217346389000",
+   "endpoints": [],
+   "enumeration_type": "NPI-1",
+   "identifiers": [],
+   "last_updated_epoch": "1684421438000",
+   "number": "1023274164",
+   "other_names": [],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207P00000X",
+     "desc": "Emergency Medicine",
+     "license": "34.009397",
+     "primary": false,
+     "state": "OH",
+     "taxonomy_group": ""
+    },
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": "P1839",
+     "primary": false,
+     "state": "TX",
+     "taxonomy_group": ""
+    },
+    {
+     "code": "207P00000X",
+     "desc": "Emergency Medicine",
+     "license": "P1839",
+     "primary": true,
+     "state": "TX",
+     "taxonomy_group": ""
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "9456 STATE HIGHWAY 121",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "FRISCO",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "972-942-0440",
+     "postal_code": "750356067",
+     "state": "TX",
+     "telephone_number": "972-942-0100"
+    },
+    {
+     "address_1": "5482 WATERVILLE SWANTON RD",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "SWANTON",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "435589121",
+     "state": "OH",
+     "telephone_number": "419-875-6342"
+    }
+   ],
+   "basic": {
+    "certification_date": "2023-11-22",
+    "credential": "D.O.",
+    "enumeration_date": "2008-06-18",
+    "first_name": "SULAIMAN",
+    "last_name": "ABAWI",
+    "last_updated": "2023-11-22",
+    "middle_name": "O",
+    "name_prefix": "Dr.",
+    "sex": "M",
+    "sole_proprietor": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1213807737000",
+   "endpoints": [],
+   "enumeration_type": "NPI-1",
+   "identifiers": [],
+   "last_updated_epoch": "1700674556000",
+   "number": "1780845255",
+   "other_names": [],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207P00000X",
+     "desc": "Emergency Medicine",
+     "license": "34.009279",
+     "primary": false,
+     "state": "OH",
+     "taxonomy_group": ""
+    },
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": "P1254",
+     "primary": true,
+     "state": "TX",
+     "taxonomy_group": ""
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "11511 SHADOW CREEK PKWY",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "PEARLAND",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "775847298",
+     "state": "TX",
+     "telephone_number": "713-442-0000"
+    },
+    {
+     "address_1": "10701 VINTAGE PRESERVE",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "HOUSTON",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "770702126",
+     "state": "TX",
+     "telephone_number": "713-442-1500"
+    }
+   ],
+   "basic": {
+    "credential": "M.D.",
+    "enumeration_date": "2006-07-08",
+    "first_name": "MAHER",
+    "last_name": "ABBARA",
+    "last_updated": "2016-12-06",
+    "name_prefix": "Dr.",
+    "name_suffix": "--",
+    "sex": "M",
+    "sole_proprietor": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1152409230000",
+   "endpoints": [],
+   "enumeration_type": "NPI-1",
+   "identifiers": [],
+   "last_updated_epoch": "1481058311000",
+   "number": "1750314217",
+   "other_names": [
+    {
+     "code": "1",
+     "credential": "MD",
+     "first_name": "MAHER",
+     "last_name": "ABBARA",
+     "middle_name": "AHMAD",
+     "prefix": "--",
+     "suffix": "--",
+     "type": "Former Name"
+    }
+   ],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": "N1244",
+     "primary": true,
+     "state": "TX",
+     "taxonomy_group": ""
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "4801 ALBERTA AVE",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "EL PASO",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "915-545-6634",
+     "postal_code": "799052707",
+     "state": "TX",
+     "telephone_number": "915-545-6618"
+    },
+    {
+     "address_1": "PO BOX 511",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "MOUNT PLEASANT",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "754560511",
+     "state": "TX",
+     "telephone_number": "903-915-5456"
+    }
+   ],
+   "basic": {
+    "certification_date": "2026-04-27",
+    "credential": "MD",
+    "enumeration_date": "2006-08-30",
+    "first_name": "AAMER",
+    "last_name": "ABBAS",
+    "last_updated": "2026-04-27",
+    "sex": "M",
+    "sole_proprietor": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1156915162000",
+   "endpoints": [],
+   "enumeration_type": "NPI-1",
+   "identifiers": [],
+   "last_updated_epoch": "1777276530000",
+   "number": "1508975772",
+   "other_names": [],
+   "practiceLocations": [
+    {
+     "address_1": "2001 N JEFFERSON AVE",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "MOUNT PLEASANT",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "754552338",
+     "state": "TX",
+     "telephone_number": "903-577-6000"
+    }
+   ],
+   "taxonomies": [
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": "L3547",
+     "primary": false,
+     "state": "TX",
+     "taxonomy_group": ""
+    },
+    {
+     "code": "207RC0000X",
+     "desc": "Internal Medicine, Cardiovascular Disease",
+     "license": "L3547",
+     "primary": false,
+     "state": "TX",
+     "taxonomy_group": ""
+    },
+    {
+     "code": "207RI0011X",
+     "desc": "Internal Medicine, Interventional Cardiology",
+     "license": "L3547",
+     "primary": true,
+     "state": "TX",
+     "taxonomy_group": ""
+    },
+    {
+     "code": "207P00000X",
+     "desc": "Emergency Medicine",
+     "license": "L3547",
+     "primary": false,
+     "state": "TX",
+     "taxonomy_group": ""
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "DEPT 960390",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "OKLAHOMA CITY",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "405-844-1794",
+     "postal_code": "731960001",
+     "state": "OK",
+     "telephone_number": "800-684-1573"
+    },
+    {
+     "address_1": "231 S COLLINS RD",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "SUNNYVALE",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "751824624",
+     "state": "TX",
+     "telephone_number": "972-892-3000"
+    }
+   ],
+   "basic": {
+    "certification_date": "2026-06-30",
+    "credential": "MD",
+    "enumeration_date": "2006-04-07",
+    "first_name": "AGHA",
+    "last_name": "ABBAS",
+    "last_updated": "2026-06-30",
+    "middle_name": "MASROOR",
+    "sex": "M",
+    "sole_proprietor": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1144405753000",
+   "endpoints": [],
+   "enumeration_type": "NPI-1",
+   "identifiers": [],
+   "last_updated_epoch": "1782848458000",
+   "number": "1326001843",
+   "other_names": [],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207P00000X",
+     "desc": "Emergency Medicine",
+     "license": "M2520",
+     "primary": false,
+     "state": "TX",
+     "taxonomy_group": ""
+    },
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": "M2520",
+     "primary": true,
+     "state": "TX",
+     "taxonomy_group": ""
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "4215 JOE RAMSEY BLVD E",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "GREENVILLE",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "903-453-2859",
+     "postal_code": "754017852",
+     "state": "TX",
+     "telephone_number": "903-453-6130"
+    },
+    {
+     "address_1": "4215 JOE RAMSEY BLVD E",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "GREENVILLE",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "903-453-2859",
+     "postal_code": "754017852",
+     "state": "TX",
+     "telephone_number": "903-453-6130"
+    }
+   ],
+   "basic": {
+    "certification_date": "2026-04-30",
+    "enumeration_date": "2026-05-13",
+    "first_name": "AGHA",
+    "last_name": "ABBAS",
+    "last_updated": "2026-05-13",
+    "middle_name": "ABID",
+    "sex": "M",
+    "sole_proprietor": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1778707803000",
+   "endpoints": [],
+   "enumeration_type": "NPI-1",
+   "identifiers": [],
+   "last_updated_epoch": "1778707803000",
+   "number": "1366371726",
+   "other_names": [],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": "826587",
+     "primary": true,
+     "state": "TX",
+     "taxonomy_group": ""
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "1 BAYLOR PLZ # BCM621",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "HOUSTON",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "713-704-3086",
+     "postal_code": "770303411",
+     "state": "TX",
+     "telephone_number": "713-798-8188"
+    },
+    {
+     "address_1": "17200 ST LUKES WAY",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "THE WOODLANDS",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "773848007",
+     "state": "TX",
+     "telephone_number": "713-798-1750"
+    }
+   ],
+   "basic": {
+    "certification_date": "2023-02-17",
+    "credential": "MD",
+    "enumeration_date": "2018-06-25",
+    "first_name": "AHMAD",
+    "last_name": "ABBAS",
+    "last_updated": "2023-02-17",
+    "middle_name": "F.",
+    "sex": "M",
+    "sole_proprietor": "YES",
+    "status": "A"
+   },
+   "created_epoch": "1529923369000",
+   "endpoints": [],
+   "enumeration_type": "NPI-1",
+   "identifiers": [],
+   "last_updated_epoch": "1676656288000",
+   "number": "1104311083",
+   "other_names": [],
+   "practiceLocations": [
+    {
+     "address_1": "18951 N MEMORIAL DR STE 103W",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "HUMBLE",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "773384217",
+     "state": "TX",
+     "telephone_number": "281-540-8409"
+    }
+   ],
+   "taxonomies": [
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": "T2092",
+     "primary": false,
+     "state": "TX",
+     "taxonomy_group": ""
+    },
+    {
+     "code": "390200000X",
+     "desc": "Student in an Organized Health Care Education/Training Program",
+     "license": null,
+     "primary": false,
+     "state": null,
+     "taxonomy_group": ""
+    },
+    {
+     "code": "208M00000X",
+     "desc": "Hospitalist",
+     "license": "T2092",
+     "primary": true,
+     "state": "TX",
+     "taxonomy_group": ""
+    }
+   ]
+  }
+ ]
+}

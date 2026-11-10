@@ -1,0 +1,1506 @@
+{
+ "result_count": 20,
+ "results": [
+  {
+   "addresses": [
+    {
+     "address_1": "1329 BROADWAY ST",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "ROCKPORT",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "361-727-9783",
+     "postal_code": "783823333",
+     "state": "TX",
+     "telephone_number": "361-727-9768"
+    },
+    {
+     "address_1": "1329 BROADWAY ST",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "ROCKPORT",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "361-727-9783",
+     "postal_code": "783823333",
+     "state": "TX",
+     "telephone_number": "361-727-9768"
+    }
+   ],
+   "basic": {
+    "authorized_official_credential": "MD",
+    "authorized_official_first_name": "ALBERT",
+    "authorized_official_last_name": "GUINN",
+    "authorized_official_middle_name": "LEE",
+    "authorized_official_name_prefix": "Dr.",
+    "authorized_official_name_suffix": "Jr.",
+    "authorized_official_telephone_number": "3612250800",
+    "authorized_official_title_or_position": "President",
+    "enumeration_date": "2007-02-12",
+    "last_updated": "2007-10-25",
+    "organization_name": "A. LEE GUINN, JR., MD PA",
+    "organizational_subpart": "YES",
+    "parent_organization_legal_business_name": "A. LEE GUINN, JR., MD PA",
+    "status": "A"
+   },
+   "created_epoch": "1171297061000",
+   "endpoints": [],
+   "enumeration_type": "NPI-2",
+   "identifiers": [],
+   "last_updated_epoch": "1193329099000",
+   "number": "1558402495",
+   "other_names": [
+    {
+     "code": "3",
+     "organization_name": "LONGEVITY & WELLNESS CENTER OF SOUTH TEXAS",
+     "type": "Doing Business As"
+    }
+   ],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207Q00000X",
+     "desc": "Family Medicine",
+     "license": "E8529",
+     "primary": false,
+     "state": "TX",
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": "E8529",
+     "primary": true,
+     "state": "TX",
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "3417 GASTON AVE STE 700",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "DALLAS",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "972-993-5001",
+     "postal_code": "752462031",
+     "state": "TX",
+     "telephone_number": "972-993-5000"
+    },
+    {
+     "address_1": "1305 W 34TH ST STE 204",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "AUSTIN",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "787051922",
+     "state": "TX",
+     "telephone_number": "737-285-3770"
+    }
+   ],
+   "basic": {
+    "authorized_official_credential": "MD",
+    "authorized_official_first_name": "RAYMON",
+    "authorized_official_last_name": "AGGARWAL",
+    "authorized_official_telephone_number": "2148234800",
+    "authorized_official_title_or_position": "Managing Partner",
+    "certification_date": "2022-07-07",
+    "enumeration_date": "2022-07-07",
+    "last_updated": "2022-07-07",
+    "organization_name": "ABKSW CENTRAL TEXAS PREFERRED HEALTH PARTNERS PLLC",
+    "organizational_subpart": "YES",
+    "parent_organization_legal_business_name": "ABKSW PREFERRED HEALTH PARTNERS, PLLC",
+    "status": "A"
+   },
+   "created_epoch": "1657203248000",
+   "endpoints": [],
+   "enumeration_type": "NPI-2",
+   "identifiers": [],
+   "last_updated_epoch": "1657203248000",
+   "number": "1679206692",
+   "other_names": [
+    {
+     "code": "3",
+     "organization_name": "CENTRAL TEXAS PREFERRED HEALTH PARTNERS",
+     "type": "Doing Business As"
+    }
+   ],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": null,
+     "primary": true,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "837 CYPRESS CREEK PKWY",
+     "address_2": "SUITE 105",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "HOUSTON",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "281-440-2020",
+     "postal_code": "770903423",
+     "state": "TX",
+     "telephone_number": "281-586-3888"
+    },
+    {
+     "address_1": "PO BOX 4356",
+     "address_2": "DEPARTMENT 667",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "HOUSTON",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "281-440-2020",
+     "postal_code": "772104356",
+     "state": "TX",
+     "telephone_number": "281-586-3888"
+    }
+   ],
+   "basic": {
+    "authorized_official_first_name": "ANA",
+    "authorized_official_last_name": "BORJA",
+    "authorized_official_name_prefix": "--",
+    "authorized_official_name_suffix": "--",
+    "authorized_official_telephone_number": "2814537017",
+    "authorized_official_title_or_position": "Credentialing Department",
+    "enumeration_date": "2006-05-26",
+    "last_updated": "2013-08-14",
+    "organization_name": "1960 FAMILY PRACTICE PA",
+    "organizational_subpart": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1148686895000",
+   "endpoints": [],
+   "enumeration_type": "NPI-2",
+   "identifiers": [],
+   "last_updated_epoch": "1376498590000",
+   "number": "1760438840",
+   "other_names": [],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": null,
+     "primary": false,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "207Q00000X",
+     "desc": "Family Medicine",
+     "license": null,
+     "primary": true,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "8850 SIX PINES DRIVE",
+     "address_2": "SUITE 190",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "THE WOODLANDS",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "281-440-2020",
+     "postal_code": "77380",
+     "state": "TX",
+     "telephone_number": "281-586-3888"
+    },
+    {
+     "address_1": "PO BOX 4356",
+     "address_2": "DEPARTMENT 667",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "HOUSTON",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "281-440-2020",
+     "postal_code": "772104356",
+     "state": "TX",
+     "telephone_number": "281-586-3888"
+    }
+   ],
+   "basic": {
+    "authorized_official_first_name": "ANA",
+    "authorized_official_last_name": "BORJA",
+    "authorized_official_name_prefix": "--",
+    "authorized_official_name_suffix": "--",
+    "authorized_official_telephone_number": "2814537224",
+    "authorized_official_title_or_position": "Credentialing Department",
+    "enumeration_date": "2007-03-26",
+    "last_updated": "2013-09-11",
+    "organization_name": "1960 FAMILY PRACTICE, PA",
+    "organizational_subpart": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1174959850000",
+   "endpoints": [],
+   "enumeration_type": "NPI-2",
+   "identifiers": [],
+   "last_updated_epoch": "1378913045000",
+   "number": "1558489773",
+   "other_names": [],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": null,
+     "primary": false,
+     "state": "TX",
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "207Q00000X",
+     "desc": "Family Medicine",
+     "license": null,
+     "primary": true,
+     "state": "TX",
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "20320 NORTHWEST FWY",
+     "address_2": "SUITE 500",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "JERSEY VILLAGE",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "281-440-2020",
+     "postal_code": "770655641",
+     "state": "TX",
+     "telephone_number": "281-586-3888"
+    },
+    {
+     "address_1": "20320 NORTHWEST FWY",
+     "address_2": "SUITE 900",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "JERSEY VILLAGE",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "281-440-2020",
+     "postal_code": "770655641",
+     "state": "TX",
+     "telephone_number": "281-586-3888"
+    }
+   ],
+   "basic": {
+    "authorized_official_credential": "M.D",
+    "authorized_official_first_name": "HUONG",
+    "authorized_official_last_name": "LE",
+    "authorized_official_name_prefix": "--",
+    "authorized_official_name_suffix": "--",
+    "authorized_official_telephone_number": "2814537224",
+    "authorized_official_title_or_position": "Owner",
+    "enumeration_date": "2015-01-22",
+    "last_updated": "2015-01-22",
+    "organization_name": "1960 FAMILY PRACTICE, PA",
+    "organizational_subpart": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1421947058000",
+   "endpoints": [],
+   "enumeration_type": "NPI-2",
+   "identifiers": [],
+   "last_updated_epoch": "1421947058000",
+   "number": "1578952941",
+   "other_names": [],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": null,
+     "primary": false,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "207Q00000X",
+     "desc": "Family Medicine",
+     "license": null,
+     "primary": true,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "20320 NORTHWEST FWY",
+     "address_2": "SUITE 900",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "JERSEY VILLAGE",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "281-440-2020",
+     "postal_code": "770655641",
+     "state": "TX",
+     "telephone_number": "281-453-7232"
+    },
+    {
+     "address_1": "3550 RAYFORD RD",
+     "address_2": "SUITE 110A",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "SPRING",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "281-440-2020",
+     "postal_code": "773864343",
+     "state": "TX",
+     "telephone_number": "281-586-3888"
+    }
+   ],
+   "basic": {
+    "authorized_official_credential": "MD",
+    "authorized_official_first_name": "HUONG",
+    "authorized_official_last_name": "LE",
+    "authorized_official_middle_name": "T",
+    "authorized_official_name_prefix": "--",
+    "authorized_official_name_suffix": "--",
+    "authorized_official_telephone_number": "2815863888",
+    "authorized_official_title_or_position": "OWNER",
+    "enumeration_date": "2016-09-30",
+    "last_updated": "2016-09-30",
+    "organization_name": "1960 FAMILY PRACTICE, PA",
+    "organizational_subpart": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1475255197000",
+   "endpoints": [],
+   "enumeration_type": "NPI-2",
+   "identifiers": [],
+   "last_updated_epoch": "1475255197000",
+   "number": "1184173221",
+   "other_names": [],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207Q00000X",
+     "desc": "Family Medicine",
+     "license": null,
+     "primary": false,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": null,
+     "primary": false,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "207V00000X",
+     "desc": "Obstetrics & Gynecology",
+     "license": null,
+     "primary": false,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "207X00000X",
+     "desc": "Orthopaedic Surgery",
+     "license": null,
+     "primary": false,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "207Y00000X",
+     "desc": "Otolaryngology",
+     "license": null,
+     "primary": false,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "208000000X",
+     "desc": "Pediatrics",
+     "license": null,
+     "primary": false,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "208100000X",
+     "desc": "Physical Medicine & Rehabilitation",
+     "license": null,
+     "primary": false,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "213E00000X",
+     "desc": "Podiatrist",
+     "license": null,
+     "primary": false,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "208D00000X",
+     "desc": "General Practice",
+     "license": null,
+     "primary": true,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "20320 NORTHWEST FWY",
+     "address_2": "SUITE 900",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "JERSEY VILLAGE",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "281-440-2020",
+     "postal_code": "770655641",
+     "state": "TX",
+     "telephone_number": "281-586-3888"
+    },
+    {
+     "address_1": "5039 FM 2920 RD",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "SPRING",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "281-440-2020",
+     "postal_code": "773883114",
+     "state": "TX",
+     "telephone_number": "281-586-3888"
+    }
+   ],
+   "basic": {
+    "authorized_official_credential": "M.D.",
+    "authorized_official_first_name": "HUONG",
+    "authorized_official_last_name": "LE",
+    "authorized_official_name_prefix": "--",
+    "authorized_official_name_suffix": "--",
+    "authorized_official_telephone_number": "2814537224",
+    "authorized_official_title_or_position": "Owner",
+    "enumeration_date": "2015-01-28",
+    "last_updated": "2015-01-28",
+    "organization_name": "1960 FAMILY PRACTICE, PA",
+    "organizational_subpart": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1422467164000",
+   "endpoints": [],
+   "enumeration_type": "NPI-2",
+   "identifiers": [],
+   "last_updated_epoch": "1422467387000",
+   "number": "1932599008",
+   "other_names": [],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": null,
+     "primary": false,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "207Q00000X",
+     "desc": "Family Medicine",
+     "license": null,
+     "primary": true,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "6225 FM 2920",
+     "address_2": "STE 100",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "SPRING",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "281-605-4563",
+     "postal_code": "77379",
+     "state": "TX",
+     "telephone_number": "281-257-0404"
+    },
+    {
+     "address_1": "6225 FM 2920",
+     "address_2": "STE 150",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "SPRING",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "281-605-4563",
+     "postal_code": "77379",
+     "state": "TX",
+     "telephone_number": "281-257-0404"
+    }
+   ],
+   "basic": {
+    "authorized_official_credential": "M.D.",
+    "authorized_official_first_name": "SUSHMA",
+    "authorized_official_last_name": "GORRELA",
+    "authorized_official_middle_name": "VEERA",
+    "authorized_official_name_prefix": "--",
+    "authorized_official_name_suffix": "--",
+    "authorized_official_telephone_number": "2812570404",
+    "authorized_official_title_or_position": "M.D.",
+    "enumeration_date": "2009-04-21",
+    "last_updated": "2014-10-09",
+    "organization_name": "2920 MEDICAL MANAGMENT GROUP, LLC",
+    "organizational_subpart": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1240330978000",
+   "endpoints": [],
+   "enumeration_type": "NPI-2",
+   "identifiers": [],
+   "last_updated_epoch": "1412866662000",
+   "number": "1679717763",
+   "other_names": [],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207P00000X",
+     "desc": "Emergency Medicine",
+     "license": null,
+     "primary": false,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": null,
+     "primary": false,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "207ZP0102X",
+     "desc": "Pathology, Anatomic Pathology & Clinical Pathology",
+     "license": null,
+     "primary": false,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "207L00000X",
+     "desc": "Anesthesiology",
+     "license": null,
+     "primary": false,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "146N00000X",
+     "desc": "Emergency Medical Technician, Basic",
+     "license": null,
+     "primary": true,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "2104 FM 2920 RD STE B",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "SPRING",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "773883677",
+     "state": "TX",
+     "telephone_number": "281-882-8844"
+    },
+    {
+     "address_1": "2104 FM 2920 RD STE B",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "SPRING",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "773883677",
+     "state": "TX",
+     "telephone_number": "281-882-8844"
+    }
+   ],
+   "basic": {
+    "authorized_official_credential": "M.D.",
+    "authorized_official_first_name": "GURNAIB",
+    "authorized_official_last_name": "SIDHU",
+    "authorized_official_middle_name": "SINGH",
+    "authorized_official_name_prefix": "Dr.",
+    "authorized_official_name_suffix": "--",
+    "authorized_official_telephone_number": "7138358818",
+    "authorized_official_title_or_position": "manager",
+    "enumeration_date": "2015-08-14",
+    "last_updated": "2015-08-14",
+    "organization_name": "2920 PRIMARY CARE LLC",
+    "organizational_subpart": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1439566578000",
+   "endpoints": [],
+   "enumeration_type": "NPI-2",
+   "identifiers": [],
+   "last_updated_epoch": "1439566578000",
+   "number": "1942676879",
+   "other_names": [],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": "j7671",
+     "primary": true,
+     "state": "TX",
+     "taxonomy_group": "193400000X - Single Specialty Group"
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "11614 BEE CAVES RD STE 130",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "AUSTIN",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "512-746-8440",
+     "postal_code": "787385551",
+     "state": "TX",
+     "telephone_number": "512-284-7025"
+    },
+    {
+     "address_1": "11614 BEE CAVES RD STE 130",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "AUSTIN",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "512-746-8440",
+     "postal_code": "787385551",
+     "state": "TX",
+     "telephone_number": "512-284-7025"
+    }
+   ],
+   "basic": {
+    "authorized_official_credential": "PA",
+    "authorized_official_first_name": "DAVID",
+    "authorized_official_last_name": "DRURY",
+    "authorized_official_name_prefix": "Mr.",
+    "authorized_official_telephone_number": "5122847025",
+    "authorized_official_title_or_position": "Owner",
+    "certification_date": "2025-04-16",
+    "enumeration_date": "2020-10-16",
+    "last_updated": "2025-04-16",
+    "organization_name": "3D REGENERATION LLC",
+    "organizational_subpart": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1602865850000",
+   "endpoints": [],
+   "enumeration_type": "NPI-2",
+   "identifiers": [],
+   "last_updated_epoch": "1744860168000",
+   "number": "1750989109",
+   "other_names": [],
+   "practiceLocations": [
+    {
+     "address_1": "11610 BEE CAVES RD STE 230",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "AUSTIN",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "512-746-8440",
+     "postal_code": "787385457",
+     "state": "TX",
+     "telephone_number": "512-284-7025"
+    }
+   ],
+   "taxonomies": [
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": null,
+     "primary": false,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "208100000X",
+     "desc": "Physical Medicine & Rehabilitation",
+     "license": null,
+     "primary": true,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "208VP0000X",
+     "desc": null,
+     "license": null,
+     "primary": false,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "1575 HERITAGE DR",
+     "address_2": "SUITE 200",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "MCKINNEY",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "750693288",
+     "state": "TX",
+     "telephone_number": "844-633-4663"
+    },
+    {
+     "address_1": "1575 HERITAGE DR",
+     "address_2": "SUITE 200",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "MCKINNEY",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "750693288",
+     "state": "TX",
+     "telephone_number": "844-633-4663"
+    }
+   ],
+   "basic": {
+    "authorized_official_first_name": "SCOTT",
+    "authorized_official_last_name": "POSTLE",
+    "authorized_official_name_prefix": "--",
+    "authorized_official_name_suffix": "--",
+    "authorized_official_telephone_number": "8446334663",
+    "authorized_official_title_or_position": "Owner/President",
+    "enumeration_date": "2016-08-18",
+    "last_updated": "2016-08-18",
+    "organization_name": "4CMHTLLC",
+    "organizational_subpart": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1471536920000",
+   "endpoints": [],
+   "enumeration_type": "NPI-2",
+   "identifiers": [],
+   "last_updated_epoch": "1471536920000",
+   "number": "1265987382",
+   "other_names": [],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": null,
+     "primary": true,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "2931 MONTANA AVE",
+     "address_2": "SUITE A",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "EL PASO",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "915-564-0667",
+     "postal_code": "799032409",
+     "state": "TX",
+     "telephone_number": "915-562-4246"
+    },
+    {
+     "address_1": "2931 MONTANA AVE",
+     "address_2": "SUITE A",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "EL PASO",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "915-564-0667",
+     "postal_code": "799032409",
+     "state": "TX",
+     "telephone_number": "915-562-4246"
+    }
+   ],
+   "basic": {
+    "authorized_official_first_name": "ISAAC",
+    "authorized_official_last_name": "BELBEL",
+    "authorized_official_name_prefix": "--",
+    "authorized_official_name_suffix": "--",
+    "authorized_official_telephone_number": "9152025757",
+    "authorized_official_title_or_position": "COO",
+    "enumeration_date": "2016-08-08",
+    "last_updated": "2016-08-08",
+    "organization_name": "5 POINTS FAMILY MEDICAL CLINIC",
+    "organizational_subpart": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1470675363000",
+   "endpoints": [],
+   "enumeration_type": "NPI-2",
+   "identifiers": [],
+   "last_updated_epoch": "1470675363000",
+   "number": "1548714561",
+   "other_names": [],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": null,
+     "primary": false,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "207Q00000X",
+     "desc": "Family Medicine",
+     "license": null,
+     "primary": true,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "1300 WEST AVE STE 201",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "SAN ANTONIO",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "210-817-8686",
+     "postal_code": "782013501",
+     "state": "TX",
+     "telephone_number": "210-708-9329"
+    },
+    {
+     "address_1": "1300 WEST AVE STE 201",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "SAN ANTONIO",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "210-817-8686",
+     "postal_code": "782013501",
+     "state": "TX",
+     "telephone_number": "210-708-9329"
+    }
+   ],
+   "basic": {
+    "authorized_official_first_name": "PATRICIA",
+    "authorized_official_last_name": "GOMEZ",
+    "authorized_official_middle_name": "V",
+    "authorized_official_telephone_number": "2107089329",
+    "authorized_official_title_or_position": "owner",
+    "certification_date": "2020-04-27",
+    "enumeration_date": "2018-06-27",
+    "last_updated": "2020-04-27",
+    "organization_name": "5 STAR INTEGRITY HEALTHCARE, LLC",
+    "organizational_subpart": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1530120434000",
+   "endpoints": [],
+   "enumeration_type": "NPI-2",
+   "identifiers": [],
+   "last_updated_epoch": "1588007853000",
+   "number": "1194210658",
+   "other_names": [],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "363AM0700X",
+     "desc": "Physician Assistant, Medical",
+     "license": null,
+     "primary": false,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "363LA2100X",
+     "desc": "Nurse Practitioner, Acute Care",
+     "license": null,
+     "primary": false,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "363LF0000X",
+     "desc": "Nurse Practitioner, Family",
+     "license": null,
+     "primary": false,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "363LW0102X",
+     "desc": "Nurse Practitioner, Women's Health",
+     "license": null,
+     "primary": false,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": null,
+     "primary": false,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "208D00000X",
+     "desc": "General Practice",
+     "license": null,
+     "primary": false,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "207Q00000X",
+     "desc": "Family Medicine",
+     "license": null,
+     "primary": true,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "3500 LITTLE YORK RD",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "HOUSTON",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "713-691-8402",
+     "postal_code": "770933658",
+     "state": "TX",
+     "telephone_number": "713-691-8400"
+    },
+    {
+     "address_1": "3500 LITTLE YORK RD",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "HOUSTON",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "713-691-8402",
+     "postal_code": "770933658",
+     "state": "TX",
+     "telephone_number": "713-691-8400"
+    }
+   ],
+   "basic": {
+    "authorized_official_first_name": "DOLORES",
+    "authorized_official_last_name": "CASTILLO",
+    "authorized_official_middle_name": "T",
+    "authorized_official_name_prefix": "--",
+    "authorized_official_name_suffix": "--",
+    "authorized_official_telephone_number": "7136918400",
+    "authorized_official_title_or_position": "President",
+    "enumeration_date": "2011-07-20",
+    "last_updated": "2011-08-16",
+    "organization_name": "59 MEDICAL CLINIC LLC",
+    "organizational_subpart": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1311189268000",
+   "endpoints": [],
+   "enumeration_type": "NPI-2",
+   "identifiers": [],
+   "last_updated_epoch": "1313495303000",
+   "number": "1265720585",
+   "other_names": [],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": "f8052",
+     "primary": false,
+     "state": "TX",
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "208D00000X",
+     "desc": "General Practice",
+     "license": "f8052",
+     "primary": false,
+     "state": "TX",
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "261Q00000X",
+     "desc": "Clinic/Center",
+     "license": "f8052",
+     "primary": true,
+     "state": "TX",
+     "taxonomy_group": ""
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "1919 NORTH LOOP W STE 299",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "HOUSTON",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "713-869-9470",
+     "postal_code": "770081368",
+     "state": "TX",
+     "telephone_number": "281-853-6653"
+    },
+    {
+     "address_1": "1919 NORTH LOOP W STE 299",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "HOUSTON",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "713-869-9470",
+     "postal_code": "770081368",
+     "state": "TX",
+     "telephone_number": "281-853-6653"
+    }
+   ],
+   "basic": {
+    "authorized_official_first_name": "T J",
+    "authorized_official_last_name": "BOYCE",
+    "authorized_official_name_prefix": "Mr.",
+    "authorized_official_name_suffix": "--",
+    "authorized_official_telephone_number": "2818536653",
+    "authorized_official_title_or_position": "MANAGER",
+    "enumeration_date": "2008-04-14",
+    "last_updated": "2008-04-14",
+    "organization_name": "610 MEDICAL CLINIC INC",
+    "organizational_subpart": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1208190291000",
+   "endpoints": [],
+   "enumeration_type": "NPI-2",
+   "identifiers": [],
+   "last_updated_epoch": "1208191277000",
+   "number": "1104090984",
+   "other_names": [],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": null,
+     "primary": true,
+     "state": null,
+     "taxonomy_group": "193400000X - Single Specialty Group"
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "720 PLEASANTON RD",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "SAN ANTONIO",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "210-921-6620",
+     "postal_code": "782141306",
+     "state": "TX",
+     "telephone_number": "210-921-3800"
+    },
+    {
+     "address_1": "720 PLEASANTON RD",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "SAN ANTONIO",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "210-921-6620",
+     "postal_code": "782141306",
+     "state": "TX",
+     "telephone_number": "210-921-3800"
+    }
+   ],
+   "basic": {
+    "authorized_official_credential": "MD",
+    "authorized_official_first_name": "WILLIAM",
+    "authorized_official_last_name": "GONZABA",
+    "authorized_official_name_prefix": "--",
+    "authorized_official_name_suffix": "Sr.",
+    "authorized_official_telephone_number": "2109213800",
+    "authorized_official_title_or_position": "President/CEO",
+    "enumeration_date": "2008-05-23",
+    "last_updated": "2008-05-23",
+    "organization_name": "720 RAD, LTD",
+    "organizational_subpart": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1211561701000",
+   "endpoints": [],
+   "enumeration_type": "NPI-2",
+   "identifiers": [],
+   "last_updated_epoch": "1211561701000",
+   "number": "1649438862",
+   "other_names": [],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": null,
+     "primary": false,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "207Q00000X",
+     "desc": "Family Medicine",
+     "license": null,
+     "primary": true,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "493 WESTPARK WAY",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "EULESS",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "817-354-7502",
+     "postal_code": "760403957",
+     "state": "TX",
+     "telephone_number": "817-354-7500"
+    },
+    {
+     "address_1": "493 WESTPARK WAY",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "EULESS",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "817-354-7502",
+     "postal_code": "760403957",
+     "state": "TX",
+     "telephone_number": "817-354-7500"
+    }
+   ],
+   "basic": {
+    "authorized_official_credential": "MD",
+    "authorized_official_first_name": "ANILA",
+    "authorized_official_last_name": "KHAN",
+    "authorized_official_middle_name": "I",
+    "authorized_official_name_prefix": "--",
+    "authorized_official_name_suffix": "--",
+    "authorized_official_telephone_number": "8173131140",
+    "authorized_official_title_or_position": "Physician",
+    "certification_date": "2019-12-16",
+    "enumeration_date": "2008-12-17",
+    "last_updated": "2019-12-16",
+    "organization_name": "786 MEDICAL PLLC",
+    "organizational_subpart": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1229520165000",
+   "endpoints": [],
+   "enumeration_type": "NPI-2",
+   "identifiers": [],
+   "last_updated_epoch": "1576526672000",
+   "number": "1841436110",
+   "other_names": [],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": null,
+     "primary": true,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "405 S. MAIN STREET",
+     "address_2": "STE 100",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "MONAHANS",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "432-943-4767",
+     "postal_code": "797564506",
+     "state": "TX",
+     "telephone_number": "432-943-7537"
+    },
+    {
+     "address_1": "405 S. MAIN STREET",
+     "address_2": "STE 100",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "MONAHANS",
+     "country_code": "US",
+     "country_name": "United States",
+     "fax_number": "432-943-4767",
+     "postal_code": "797564506",
+     "state": "TX",
+     "telephone_number": "432-943-7537"
+    }
+   ],
+   "basic": {
+    "authorized_official_credential": "MD",
+    "authorized_official_first_name": "DAVID",
+    "authorized_official_last_name": "DAVISON",
+    "authorized_official_middle_name": "WILLIAM",
+    "authorized_official_name_prefix": "Dr.",
+    "authorized_official_name_suffix": "--",
+    "authorized_official_telephone_number": "4329437537",
+    "authorized_official_title_or_position": "Director/Owner",
+    "enumeration_date": "2006-05-01",
+    "last_updated": "2013-02-07",
+    "organization_name": "A & D MEDICAL CENTER, LLC",
+    "organizational_subpart": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1146518593000",
+   "endpoints": [],
+   "enumeration_type": "NPI-2",
+   "identifiers": [],
+   "last_updated_epoch": "1360274800000",
+   "number": "1295793214",
+   "other_names": [
+    {
+     "code": "3",
+     "organization_name": "FAMILY MEDICAL CENTER OF MONAHANS",
+     "type": "Doing Business As"
+    }
+   ],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207Q00000X",
+     "desc": "Family Medicine",
+     "license": null,
+     "primary": false,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": null,
+     "primary": false,
+     "state": null,
+     "taxonomy_group": "193200000X - Multi-Specialty Group"
+    },
+    {
+     "code": "261QR1300X",
+     "desc": "Clinic/Center, Rural Health",
+     "license": null,
+     "primary": true,
+     "state": null,
+     "taxonomy_group": ""
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "1907 SHADOW BEND DR",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "SUGAR LAND",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "774796436",
+     "state": "TX",
+     "telephone_number": "281-545-8058"
+    },
+    {
+     "address_1": "131 CIRCLE WAY ST",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "LAKE JACKSON",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "775665233",
+     "state": "TX",
+     "telephone_number": "979-297-4277"
+    }
+   ],
+   "basic": {
+    "authorized_official_credential": "MD",
+    "authorized_official_first_name": "FAYYAZ",
+    "authorized_official_last_name": "AHMED",
+    "authorized_official_name_prefix": "Dr.",
+    "authorized_official_name_suffix": "--",
+    "authorized_official_telephone_number": "2815458058",
+    "authorized_official_title_or_position": "Owner",
+    "enumeration_date": "2009-03-24",
+    "last_updated": "2009-05-22",
+    "organization_name": "A & F SERVICES MD PA",
+    "organizational_subpart": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1237907031000",
+   "endpoints": [],
+   "enumeration_type": "NPI-2",
+   "identifiers": [],
+   "last_updated_epoch": "1243014732000",
+   "number": "1003058934",
+   "other_names": [
+    {
+     "code": "3",
+     "organization_name": "GULF COAST ARTHRITIS & RHEUMATISM CLINIC",
+     "type": "Doing Business As"
+    }
+   ],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207RR0500X",
+     "desc": "Internal Medicine, Rheumatology",
+     "license": null,
+     "primary": true,
+     "state": null,
+     "taxonomy_group": "193400000X - Single Specialty Group"
+    }
+   ]
+  },
+  {
+   "addresses": [
+    {
+     "address_1": "PO BOX 9753",
+     "address_purpose": "MAILING",
+     "address_type": "DOM",
+     "city": "MIDLAND",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "797089753",
+     "state": "TX"
+    },
+    {
+     "address_1": "4506 BRIARWOOD AVE",
+     "address_purpose": "LOCATION",
+     "address_type": "DOM",
+     "city": "MIDLAND",
+     "country_code": "US",
+     "country_name": "United States",
+     "postal_code": "797072642",
+     "state": "TX",
+     "telephone_number": "432-689-6900"
+    }
+   ],
+   "basic": {
+    "authorized_official_credential": "MD",
+    "authorized_official_first_name": "MOHSIN",
+    "authorized_official_last_name": "SYED",
+    "authorized_official_middle_name": "M",
+    "authorized_official_name_prefix": "Dr.",
+    "authorized_official_name_suffix": "--",
+    "authorized_official_telephone_number": "4326896900",
+    "authorized_official_title_or_position": "President",
+    "enumeration_date": "2009-06-10",
+    "last_updated": "2009-06-10",
+    "organization_name": "A & J MEDICAL ASSOCIATES",
+    "organizational_subpart": "NO",
+    "status": "A"
+   },
+   "created_epoch": "1244671902000",
+   "endpoints": [],
+   "enumeration_type": "NPI-2",
+   "identifiers": [],
+   "last_updated_epoch": "1244671902000",
+   "number": "1134355654",
+   "other_names": [
+    {
+     "code": "3",
+     "organization_name": "MEDICAL SPA OF MIDLAND",
+     "type": "Doing Business As"
+    }
+   ],
+   "practiceLocations": [],
+   "taxonomies": [
+    {
+     "code": "207R00000X",
+     "desc": "Internal Medicine",
+     "license": "K2295",
+     "primary": true,
+     "state": "TX",
+     "taxonomy_group": "193400000X - Single Specialty Group"
+    }
+   ]
+  }
+ ]
+}
