@@ -185,6 +185,6 @@ export const patchLeadStatus = (id: string, crm_status: string) =>
     body: JSON.stringify({ crm_status }),
   });
 
-export async function exportLeads(body: { ids: string[] } | LeadFilters): Promise<Blob> {
+export async function exportLeads(body: { filters?: LeadFilters; ids?: string[] }): Promise<Blob> {
   return (await request("/api/exports/excel", post(body))).blob();
 }
