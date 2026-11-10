@@ -1,0 +1,119 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { ApiError, cancelJob, listJobs, resumeJob, type Job } from "@/lib/api";
+import { JOB_STATUS_LABELS } from "@/lib/constants";
+
+const ACTIVE = ["queued", "running"];
+
+const COUNTER_LABELS: [keyof Job["counters"], string][] = [
+  ["candidates_seen", "Records checked"],
+  ["accepted_new", "New leads"],
+  ["accepted_existing", "Already known"],
+  ["skipped_excluded", "Skipped by filters"],
+  ["skipped_inactive", "Skipped, inactive"],
+  ["skipped_not_sole_proprietor", "Skipped, not sole proprietor"],
+  ["skipped_works_at_known_org", "Skipped, works at known practice"],
+  ["pages_fetched", "Pages fetched"],
+  ["source_failures", "Source failures"],
+];
+
+function summary(j: Job) {
+  const types = [j.include_practices && "practices", j.include_solo && "solo doctors"].filter(Boolean).join(" + ");
+  return `${j.specialty}, ${j.city ? j.city + ", " : ""}${j.state} (${types})`;
+}
+
+export function JobList({ refreshKey }: { refreshKey: number }) {
+  const [jobs, setJobs] = useState<Job[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      setJobs(await listJobs());
+      setError(null);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Could not load searches.");
+    }
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(load, 0); // async so state is not set synchronously in the effect
+    return () => clearTimeout(t);
+  }, [load, refreshKey]);
+
+  const anyActive = jobs?.some((j) => ACTIVE.includes(j.status)) ?? false;
+  useEffect(() => {
+    if (!anyActive) return;
+    const t = setInterval(load, 2000);
+    return () => clearInterval(t);
+  }, [anyActive, load]);
+
+  async function act(fn: (id: string) => Promise<Job>, id: string) {
+    try {
+      await fn(id);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Action failed.");
+    }
+    load();
+  }
+
+  if (jobs === null && !error) return <p className="text-sm text-muted-foreground">Loading searches...</p>;
+
+  return (
+    <div className="space-y-4">
+      {error && (
+        <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+          {error}
+        </p>
+      )}
+      <div aria-live="polite">
+        {jobs?.length === 0 && <p className="text-sm text-muted-foreground">No searches yet.</p>}
+      </div>
+      <ul className="space-y-4">
+        {jobs?.map((j) => {
+          const done = (j.counters.accepted_new ?? 0) + (j.counters.accepted_existing ?? 0);
+          const pct = Math.min(100, Math.round((done / j.target_count) * 100));
+          return (
+            <li key={j.id} className="space-y-2 rounded-lg border p-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="font-medium">{summary(j)}</span>
+                <Badge variant={j.status === "failed" ? "destructive" : "secondary"}>
+                  {JOB_STATUS_LABELS[j.status] ?? j.status}
+                </Badge>
+                <span className="ml-auto flex gap-2">
+                  {ACTIVE.includes(j.status) && (
+                    <Button variant="outline" size="sm" onClick={() => act(cancelJob, j.id)}>
+                      Cancel
+                    </Button>
+                  )}
+                  {(j.status === "paused" || j.status === "failed") && (
+                    <Button variant="outline" size="sm" onClick={() => act(resumeJob, j.id)}>
+                      Resume
+                    </Button>
+                  )}
+                </span>
+              </div>
+              <Progress value={pct} aria-label={`Progress for ${summary(j)}`} />
+              <p className="text-sm">
+                {done} of {j.target_count} leads ({pct}%)
+              </p>
+              <dl className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
+                {COUNTER_LABELS.map(([k, label]) => (
+                  <div key={k} className="flex gap-1">
+                    <dt>{label}:</dt>
+                    <dd className="tabular-nums">{j.counters[k] ?? 0}</dd>
+                  </div>
+                ))}
+              </dl>
+              {j.error && <p className="text-sm text-red-700 dark:text-red-400">Error: {j.error}</p>}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
