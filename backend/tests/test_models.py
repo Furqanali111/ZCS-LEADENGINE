@@ -50,3 +50,15 @@ def test_deleting_org_removes_children(db):
     db.commit()
     for m in (Location, Contact, LeadScore, SourceRecord):
         assert db.scalars(select(m)).all() == []
+
+
+def test_location_without_address_defaults_to_empty_and_stays_unique(db):
+    o = org()
+    o.locations.append(Location(purpose="location"))
+    db.add(o)
+    db.commit()
+    loc = o.locations[0]
+    assert (loc.address_1, loc.zip) == ("", "")
+    o.locations.append(Location(purpose="location"))
+    with pytest.raises(IntegrityError):
+        db.commit()

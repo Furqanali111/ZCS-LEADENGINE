@@ -121,7 +121,7 @@ def upgrade() -> None:
     op.create_table('locations',
     sa.Column('organization_id', sa.UUID(), nullable=False),
     sa.Column('purpose', sa.Text(), nullable=False),
-    sa.Column('address_1', sa.Text(), nullable=False),
+    sa.Column('address_1', sa.Text(), server_default='', nullable=False),
     sa.Column('address_2', sa.Text(), nullable=True),
     sa.Column('city', sa.Text(), nullable=True),
     sa.Column('state', sa.Text(), nullable=True),

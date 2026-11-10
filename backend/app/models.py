@@ -116,7 +116,7 @@ class Location(IdMixin, Base):
 
     organization_id: Mapped[uuid.UUID] = org_fk(index=True)
     purpose: Mapped[str] = mapped_column(Text)
-    address_1: Mapped[str] = mapped_column(Text)
+    address_1: Mapped[str] = mapped_column(Text, default="", server_default="")
     address_2: Mapped[str | None] = mapped_column(Text)
     city: Mapped[str | None] = mapped_column(Text)
     state: Mapped[str | None] = mapped_column(Text)
