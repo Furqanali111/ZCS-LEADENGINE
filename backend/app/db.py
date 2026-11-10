@@ -8,7 +8,7 @@ class Base(DeclarativeBase):
     pass
 
 
-# Lazy engine so importing the module does not need a database.
+# Importing this module needs DATABASE_URL set; the engine only connects on first use.
 engine = create_engine(get_settings().database_url, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 

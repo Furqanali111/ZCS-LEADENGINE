@@ -9,6 +9,8 @@ from fastapi.responses import JSONResponse
 from app.api import health
 from app.config import get_settings
 
+logger = logging.getLogger(__name__)
+
 CODES = {400: "bad_request", 404: "not_found", 405: "method_not_allowed", 409: "conflict", 422: "validation_error"}
 
 
@@ -31,6 +33,11 @@ def create_app() -> FastAPI:
     async def validation_error(_: Request, exc: RequestValidationError):
         msg = "; ".join(f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in exc.errors())
         return _error(422, msg)
+
+    @app.exception_handler(Exception)
+    async def unhandled_error(_: Request, exc: Exception):
+        logger.exception("unhandled error: %s", type(exc).__name__)
+        return _error(500, "Internal server error")
 
     app.include_router(health.router)
     return app

@@ -1,7 +1,7 @@
 [project]
 name = "zcs-leadengine-backend"
 version = "0.1.0"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
   "fastapi",
   "uvicorn",
@@ -21,3 +21,4 @@ packages = ["app", "app.api"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+filterwarnings = ["ignore:Using `httpx` with `starlette.testclient`"]
