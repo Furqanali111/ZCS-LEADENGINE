@@ -48,3 +48,22 @@ def test_up_down_up_and_no_model_drift(migrated_url):
     assert rows["npi_registry"] == "available" and rows["nppes_bulk"] == "approved_not_built"
     assert sum(s == "not_reviewed" for s in rows.values()) == 31
     assert tuple(npi) == (1.0, "2026-11-11")
+
+
+RLS_SQL = text(
+    "select c.relname, c.relrowsecurity from pg_class c join pg_namespace n on n.oid = c.relnamespace "
+    "where c.relkind = 'r' and n.nspname = 'public'"
+)
+
+
+def test_rls_enabled_on_every_table_and_removed_on_downgrade(migrated_url):
+    engine = create_engine(migrated_url)
+    alembic(migrated_url, "upgrade", "head")
+    with engine.connect() as conn:
+        rls = dict(conn.execute(RLS_SQL).all())
+    assert len(rls) == 9 and all(rls.values()), rls
+    alembic(migrated_url, "downgrade", "0002")
+    with engine.connect() as conn:
+        rls = dict(conn.execute(RLS_SQL).all())
+    engine.dispose()
+    assert len(rls) == 9 and not any(rls.values()), rls
