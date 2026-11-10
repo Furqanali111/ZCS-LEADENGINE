@@ -1,0 +1,22 @@
+# Deferred Items
+
+Things the docs or code refer to that are intentionally not built yet. If a review suggests deleting a reference to one of these, add or keep the entry here instead of removing the reference.
+
+| Item | Referenced in | Lands in | Trigger to build |
+|---|---|---|---|
+| CRM: lead detail, activity history, follow-ups, pipeline, dashboard | PRD FR-10, FR-11, FR-12 | Slice 2 | Slice 1 accepted |
+| Suppression list | PRD FR-10 | Slice 2 | Before any export is used for outreach |
+| Practice website enrichment | PRD FR-05 | Slice 3 | Slice 2 accepted |
+| Email discovery and validation states | PRD FR-06 | Slice 3 | With website enrichment |
+| Business directory connectors (30 listed) | `docs/data-sources.md` | Slice 3 | Each one only after its terms review |
+| Bulk NPPES file importer | PRD FR-03, Plan Phase 4 | After slice 1 | The 1,200-per-query API cap or missing provider counts hurts real searches |
+| Cross-source deduplication and match review | PRD FR-07 | Slice 3 | When a second source exists. Slice 1 dedupes by NPI only. |
+| Conversion probability | PRD FR-09 | Slice 4 | Enough recorded sales outcomes to calibrate |
+| Authentication and row-level security | PRD 4.2 | Later | A second user, or any non-localhost access |
+| Paid enrichment or verification APIs | PRD 4.2 | Later | Measured coverage gap and explicit approval |
+| Background queue (Redis, Celery) | PRD section 7 | Later | Measured worker bottleneck |
+| Automatic splitting of searches past the 1,200 cap | Slice 1 spec section 3 | After slice 1 | The optional city filter proves too manual |
+| Better solo-practice detection than the self-reported sole-proprietor flag | Slice 1 spec section 6 | Slice 3 | Too many solo leads turn out to be employed doctors |
+| `disqualified` priority tier | PRD FR-08 | Slice 2 | Needs explicit rules or a user action |
+| Automated frontend tests | Plan Phase 10 | Slice 2 | Slice 1 frontend is two pages, checked by hand |
+| `develop` branch | `CLAUDE.md` git rules | Before the first code PR | Repo has only an empty `main` today |
