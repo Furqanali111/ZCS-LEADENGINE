@@ -48,7 +48,7 @@ Each slice gets its own spec, plan, and build. Do not start a later slice early.
 - **Database**: Supabase-hosted PostgreSQL. The only hosted piece.
 - **Excel**: OpenPyXL
 - **Worker**: local Python, in-process to start. No Redis, no Celery, until measured load demands it.
-- **Tests**: Pytest for backend. One frontend test tool, chosen when the first frontend test is written.
+- **Tests**: Pytest for backend, against an embedded Postgres (`pgserver`). Docker is not used: it cannot run on the owner's PC. One frontend test tool, chosen when the first frontend test is written.
 - **Auth**: none in the MVP (single user, localhost only).
 
 Rejected for the MVP: paid enrichment APIs, a cloud-hosted worker, automated email sending, an ML conversion model, uploading the bulk NPPES file to Supabase.

@@ -231,7 +231,7 @@ The frontend has one variable, `NEXT_PUBLIC_API_URL`. No Supabase key is used an
 - **Export**: build a workbook from seeded rows and assert sheets, headers, and a few cell values.
 - **API**: validation, the refusal of non-available sources, and list filters.
 
-Pure-logic tests need no database. Database tests run against `TEST_DATABASE_URL` and are skipped when it is not set. The frontend is checked by type-check, lint, and a manual walkthrough of the acceptance list.
+Pure-logic tests need no database. Database tests run against an embedded PostgreSQL started by the `pgserver` package (no Docker, no hosted database), or against `TEST_DATABASE_URL` when set. Tests never touch the real database. The frontend is checked by type-check, lint, and a manual walkthrough of the acceptance list.
 
 ## 14. Acceptance criteria
 

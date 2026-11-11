@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+data/
+exports/
+*.log
+__pycache__/
+.pytest_cache/
+.venv/
+node_modules/
+.next/
+.superpowers/
+*.egg-info/

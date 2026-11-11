@@ -37,7 +37,7 @@
 ## Prerequisites (owner actions, before Task 1)
 
 - [ ] Create a Supabase project. Copy the **session pooler** connection string.
-- [ ] Provide an empty second Postgres database for tests (a second Supabase project or local Postgres). Its URL is `TEST_DATABASE_URL`. It must never be the real database.
+- [x] Test database: tests use an embedded Postgres started by the `pgserver` package (verified working on this Windows machine, PostgreSQL 16.2). No Docker and no second database needed. `TEST_DATABASE_URL` stays optional and, if set, overrides it.
 - [ ] Approve an initial commit of the current docs on `main`, create `develop` from it, and push both. Then `feature/lead-discovery` is cut from `develop`.
 - [ ] Python 3.12+ and Node 20+ installed.
 
@@ -65,7 +65,7 @@ backend/
     rescore.py                python -m app.rescore
     api/health.py, sources.py, search.py, leads.py, exports.py
   tests/
-    conftest.py               db fixture (skips without TEST_DATABASE_URL), client fixture
+    conftest.py               db fixture (embedded Postgres via pgserver, or TEST_DATABASE_URL), client fixture
     fixtures/npi2_page.json, npi1_page.json   real recorded API pages, trimmed to 20 records each
     test_npi_registry.py, test_scoring.py, test_search.py, test_api.py, test_export.py
 frontend/
@@ -93,10 +93,10 @@ README.md                     Windows setup and run commands
   - `db.SessionLocal` (sessionmaker), `db.get_session()` FastAPI dependency
   - `main.create_app() -> FastAPI`
   - `constants.US_STATES: frozenset[str]` (50 states plus DC), `CRM_STATUSES = ("new","researching","email_sent","called","follow_up_required","interested","meeting_scheduled","not_interested","converted","do_not_contact")`, `JOB_STATUSES = ("queued","running","paused","completed","cancelled","failed")`, `ORG_TYPES = ("practice","subpart","hospital","solo_provider")`, `PRIORITIES = ("critical","high","medium","low")`
-  - Test fixtures `db` (a Session on `TEST_DATABASE_URL`; creates all tables before and drops after each test; skips when unset; fails loudly if it equals `DATABASE_URL`) and `client` (TestClient with `get_session` overridden to `db`)
+  - Test fixtures `db` (a Session on the test database; creates all tables before and drops after each test) and `client` (TestClient with `get_session` overridden to `db`). The test database URL is `TEST_DATABASE_URL` when set, otherwise a session-scoped `pgserver` instance in a temp directory (`pgserver.get_server(dir, cleanup_mode="delete").get_uri()`, converted to the `postgresql+psycopg://` form). The fixture fails loudly if the URL equals `DATABASE_URL`.
   - Error shape for every non-2xx: `{"error": {"code": str, "message": str}}`
 
-- [ ] **Step 1:** Write `.gitignore` (`.env`, `data/`, `exports/`, `*.log`, `__pycache__/`, `.venv/`, `node_modules/`, `.next/`) and `backend/.env.example` with the six variables from spec section 12 plus `TEST_DATABASE_URL=`.
+- [ ] **Step 1:** Write `.gitignore` (`.env`, `data/`, `exports/`, `*.log`, `__pycache__/`, `.venv/`, `node_modules/`, `.next/`) and `backend/.env.example` with the six variables from spec section 12 plus an optional, empty `TEST_DATABASE_URL=`. Dev dependencies in `pyproject.toml` include `pgserver`.
 - [ ] **Step 2:** Write the failing tests in `tests/test_api.py`:
 
 ```python
@@ -117,7 +117,7 @@ def test_cors_allows_only_frontend_origin(client):
 
 - [ ] **Step 3:** Run `cd backend && pytest -q`. Expected: fails on import.
 - [ ] **Step 4:** Implement the files. `/health` runs `SELECT 1`; on failure it returns 503 with `{"status":"degraded","database":"error"}`. Logging never prints `database_url`.
-- [ ] **Step 5:** Run `pytest -q`. Expected: 3 passed (or skipped if `TEST_DATABASE_URL` is unset; set it).
+- [ ] **Step 5:** Run `pytest -q`. Expected: 3 passed.
 - [ ] **Step 6:** Run `uvicorn app.main:create_app --factory --port 8000` and open `http://127.0.0.1:8000/health`. Expected: `{"status":"ok","database":"ok"}` against the real Supabase database.
 - [ ] **Step 7:** Commit: `feat(backend): add fastapi skeleton with health check`
 
