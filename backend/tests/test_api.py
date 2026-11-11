@@ -25,7 +25,7 @@ def test_unhandled_error_uses_error_shape(db):
 
     from app.main import create_app
 
-    app = create_app()
+    app = create_app(testing=True)
 
     @app.get("/boom")
     def boom():

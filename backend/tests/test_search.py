@@ -314,9 +314,14 @@ def test_start_worker_runs_queued_job_in_daemon_thread(db, session_factory, monk
     monkeypatch.setattr("app.worker.run_job", lambda sf, job_id: None)
     job_id = make_job(db)
     thread = start_worker(session_factory, poll_seconds=0.05)
-    assert thread.daemon
-    for _ in range(100):
-        if job_of(db, job_id).status == "running":
-            break
-        time.sleep(0.05)
-    assert job_of(db, job_id).status == "running"  # claimed; the stubbed run_job leaves it as is
+    try:
+        assert thread.daemon
+        for _ in range(100):
+            if job_of(db, job_id).status == "running":
+                break
+            time.sleep(0.05)
+        assert job_of(db, job_id).status == "running"  # claimed; the stubbed run_job leaves it as is
+    finally:
+        thread.stop_event.set()
+        thread.join(timeout=5)
+    assert not thread.is_alive()

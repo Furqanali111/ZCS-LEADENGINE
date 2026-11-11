@@ -1,7 +1,6 @@
 """Local in-process worker: one daemon thread runs the oldest queued search job at a time."""
 import logging
 import threading
-import time
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -47,16 +46,19 @@ def run_next(session_factory) -> bool:
     return True
 
 
-def start_worker(session_factory, poll_seconds: float = 2) -> threading.Thread:
+def start_worker(session_factory, poll_seconds: float = 2, stop: threading.Event | None = None) -> threading.Thread:
+    stop = stop or threading.Event()
+
     def loop():
-        while True:
+        while not stop.is_set():
             try:
                 if run_next(session_factory):
                     continue
             except Exception as e:  # database unreachable: keep polling
                 logger.error("worker poll failed: %s", type(e).__name__)
-            time.sleep(poll_seconds)
+            stop.wait(poll_seconds)
 
     thread = threading.Thread(target=loop, name="search-worker", daemon=True)
+    thread.stop_event = stop
     thread.start()
     return thread
