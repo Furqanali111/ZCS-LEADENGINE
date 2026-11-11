@@ -90,9 +90,12 @@ export function ActivityForm({ leadId, onSaved }: { leadId: string; onSaved: () 
           value={summary}
           onChange={(e) => setSummary(e.target.value)}
           aria-invalid={fields.summary ? true : undefined}
-          aria-describedby={fields.summary ? "act-summary-err" : undefined}
+          aria-describedby={fields.summary ? "act-summary-hint act-summary-err" : "act-summary-hint"}
           className="w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive dark:bg-input/30"
         />
+        <p id="act-summary-hint" className="text-xs text-muted-foreground">
+          Business notes only. No patient information.
+        </p>
         {fields.summary && (
           <p id="act-summary-err" className="text-sm text-destructive">
             {fields.summary}

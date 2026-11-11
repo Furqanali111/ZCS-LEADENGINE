@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { ActivityForm } from "@/components/activity-form";
 import { ActivityTimeline } from "@/components/activity-timeline";
 import { Badge } from "@/components/ui/badge";
@@ -53,18 +53,22 @@ function LeadDetail() {
   const [more, setMore] = useState(false);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [followDraft, setFollowDraft] = useState<string | null>(null);
+  const refreshSeq = useRef(0);
 
   // Reload the lead and the first page of the timeline (status changes add entries).
   const refresh = useCallback(async () => {
+    const seq = ++refreshSeq.current;
     try {
       const [l, a] = await Promise.all([getLead(id), listActivities(id, 1)]);
+      if (seq !== refreshSeq.current) return; // a newer refresh is in flight; drop this stale result
       setLead(l);
       setActs(a.items);
       setTotal(a.total);
       setPage(1);
       setLoadError(null);
     } catch (e) {
-      setLoadError(msg(e));
+      if (seq === refreshSeq.current) setLoadError(msg(e));
     }
   }, [id]);
 
@@ -96,6 +100,13 @@ function LeadDetail() {
       setMessage({ text: `Not saved. ${msg(e)}`, error: true });
     }
     await refresh(); // on failure this restores the server value in the controls
+  }
+
+  // Saves a typed date only when it is empty or complete; otherwise waits for blur.
+  function saveFollow(value: string) {
+    setFollowDraft(null);
+    if (value === (lead?.next_follow_up_at?.slice(0, 10) ?? "")) return;
+    void save({ next_follow_up_at: value || null }, "Follow-up date saved.");
   }
 
   async function suppress() {
@@ -173,8 +184,17 @@ function LeadDetail() {
               id="lead-follow"
               type="date"
               className="w-auto"
-              value={lead.next_follow_up_at?.slice(0, 10) ?? ""}
-              onChange={(e) => save({ next_follow_up_at: e.target.value || null }, "Follow-up date saved.")}
+              value={followDraft ?? lead.next_follow_up_at?.slice(0, 10) ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "" || /^[12]\d{3}-\d{2}-\d{2}$/.test(v)) saveFollow(v);
+                else setFollowDraft(v);
+              }}
+              onBlur={(e) => {
+                const v = e.target.value;
+                if (followDraft !== null && (v === "" || /^[12]\d{3}-\d{2}-\d{2}$/.test(v))) saveFollow(v);
+                else setFollowDraft(null);
+              }}
             />
           </div>
           <Button variant="outline" disabled={lead.suppressed} onClick={suppress}>

@@ -121,6 +121,11 @@ export default function SuppressionPage() {
         <Button type="submit" disabled={saving}>
           {saving ? "Adding..." : "Add entry"}
         </Button>
+        {kind === "email" && (
+          <p className="text-sm text-muted-foreground sm:col-span-4">
+            Email entries are stored now and start blocking when emails are collected (a later slice).
+          </p>
+        )}
         {formError && (
           <p id="s-error" role="alert" className={`${ERROR} sm:col-span-4`}>
             {formError}

@@ -45,6 +45,8 @@ export function PipelineBoard() {
     );
     try {
       await patchLead(card.id, { crm_status: to });
+      // The card left `from`, so the next page there starts one lead earlier.
+      serverOffset.current[from] = Math.max(0, (serverOffset.current[from] ?? 0) - 1);
       setNotice(`Moved ${card.name} to ${LABELS[to]}`);
       // Refocus after React commits the card in its new column.
       setTimeout(() => document.getElementById(`move-${card.id}`)?.focus(), 0);
