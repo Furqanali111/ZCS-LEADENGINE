@@ -271,6 +271,50 @@ def test_leads_q_matches_name_city_npi(client, db):
     assert client.get("/api/leads?q=_").json()["total"] == 0
 
 
+def _follow_ups(db):
+    from datetime import date, timedelta
+
+    t = date.today()
+    return [
+        add_lead(db, "2000000001", "Past Co", next_follow_up_at=t - timedelta(days=2)),
+        add_lead(db, "2000000002", "Today Co", next_follow_up_at=t),
+        add_lead(db, "2000000003", "Future Co", next_follow_up_at=t + timedelta(days=3)),
+        add_lead(db, "2000000004", "Never Co"),
+        add_lead(db, "2000000005", "Closed Co", crm="converted", next_follow_up_at=t - timedelta(days=5)),
+    ]
+
+
+def test_follow_up_due_overdue_none_filters(client, db):
+    _follow_ups(db)
+    assert sorted(names(client.get("/api/leads?follow_up=due"))) == ["Past Co", "Today Co"]
+    assert names(client.get("/api/leads?follow_up=overdue")) == ["Past Co"]
+    assert sorted(names(client.get("/api/leads?follow_up=none"))) == ["Never Co"]
+    assert client.get("/api/leads?follow_up=bogus").status_code == 422
+
+
+def test_closed_statuses_never_due(client, db):
+    _follow_ups(db)
+    for f in ("due", "overdue"):
+        assert "Closed Co" not in names(client.get(f"/api/leads?follow_up={f}"))
+
+
+def test_sort_by_follow_up_nulls_last(client, db):
+    _follow_ups(db)
+    got = names(client.get("/api/leads?sort=follow_up&order=asc"))
+    assert got[:3] == ["Closed Co", "Past Co", "Today Co"] and got[3] == "Future Co"
+    assert set(got[4:]) == {"Never Co"}
+    # default order for this sort is still honoured when asked desc: nulls stay last
+    assert names(client.get("/api/leads?sort=follow_up&order=desc"))[-1] == "Never Co"
+
+
+def test_q_matches_contact_name(client, db):
+    seed_leads(db)
+    assert client.get("/api/leads?q=boss").json()["total"] == 6
+    assert client.get("/api/leads?q=pat lee").json()["total"] == 0  # per-field match, not full name
+    assert client.get("/api/leads?q=zzz").json()["total"] == 0
+    assert client.get("/api/leads?q=_").json()["total"] == 0
+
+
 def test_leads_filter_by_search_job(client, db):
     from app.models import SearchJobLead
 

@@ -89,6 +89,7 @@ class LeadFilters(BaseModel):
     min_score: int | None = Field(default=None, ge=0, le=100)
     crm_status: str | None = None
     search_job_id: uuid.UUID | None = None
+    follow_up: Literal["due", "overdue", "none"] | None = None
 
     @field_validator("state", mode="before")
     @classmethod

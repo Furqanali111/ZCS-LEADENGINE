@@ -16,7 +16,8 @@ from app.services.suppression import suppressed_ids
 
 router = APIRouter(prefix="/api/leads")
 
-SORTS = {"score": Organization.fit_score, "name": Organization.name, "updated": Organization.updated_at}
+SORTS = {"score": Organization.fit_score, "name": Organization.name, "updated": Organization.updated_at,
+         "follow_up": Organization.next_follow_up_at}
 LOADS = (selectinload(Organization.contacts), selectinload(Organization.locations),
          selectinload(Organization.score), selectinload(Organization.source_records).defer(SourceRecord.raw))
 PLAIN = [f for f in LeadOut.model_fields if f not in ("contact", "locations", "score", "source", "suppressed")]
@@ -38,7 +39,7 @@ def _out(org: Organization, suppressed: bool = False) -> LeadOut:
 @router.get("", response_model=LeadPage)
 def list_leads(filters: Annotated[LeadFilters, Query()], session: Session = Depends(get_session),
                page: int = Query(1, ge=1), page_size: int = Query(50, ge=1, le=200),
-               sort: Literal["score", "name", "updated"] = "score", order: Literal["asc", "desc"] = "desc"):
+               sort: Literal["score", "name", "updated", "follow_up"] = "score", order: Literal["asc", "desc"] = "desc"):
     base = lead_query(filters)
     total = session.scalar(select(func.count()).select_from(base.subquery()))
     col = SORTS[sort]

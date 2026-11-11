@@ -12,10 +12,12 @@ from sqlalchemy.orm import Session, selectinload
 from app.models import Organization, SourceRecord
 from app.schemas import LeadFilters
 from app.services.leads import lead_query
+from app.services.suppression import suppressed_ids
 
 HEADERS = ["Organization Name", "DBA Name", "Specialty", "Organization Type", "Parent Organization", "Business Phone",
            "Fax", "Contact Person", "Contact Title", "Contact Phone", "Address", "City", "State", "ZIP", "NPI",
-           "Lead Score", "Lead Priority", "Outreach Status", "Source", "Collected On"]
+           "Lead Score", "Lead Priority", "Outreach Status", "Source", "Collected On",
+           "Last Contacted", "Next Follow-up", "Suppressed"]
 CONTACT_HEADERS = ["Organization Name", "NPI", "First Name", "Last Name", "Title", "Phone", "Role"]
 SOURCE_NAMES = {"npi_registry": "CMS NPI Registry"}
 # Light fills with dark text; the label is always in the cell, so colour is never the only signal.
@@ -69,6 +71,8 @@ def build_workbook(session: Session, *, filters: LeadFilters | None, ids: list[U
     stmt = select(o).where(o.id.in_(ids)) if ids is not None else lead_query(filters or LeadFilters())
     orgs = session.scalars(stmt.options(*LOADS).order_by(o.fit_score.desc().nulls_last(), o.name, o.id)).all()
 
+    hit = suppressed_ids(session, [x.id for x in orgs])  # one bulk lookup
+
     wb = Workbook()
     leads = wb.active
     leads.title = "All Leads"
@@ -91,9 +95,12 @@ def build_workbook(session: Session, *, filters: LeadFilters | None, ids: list[U
             label(org.priority), label(org.crm_status),
             SOURCE_NAMES.get(src.source_key, src.source_key) if src else None,
             src.collected_at.replace(tzinfo=None).date() if src else None,  # UTC calendar date
+            org.last_contacted_at.astimezone().date() if org.last_contacted_at else None,  # local calendar date
+            org.next_follow_up_at, "Yes" if org.id in hit else None,
         ])
         row = leads.max_row
-        leads.cell(row, 20).number_format = "yyyy-mm-dd"
+        for col in (20, 21, 22):
+            leads.cell(row, col).number_format = "yyyy-mm-dd"
         _fill(leads.cell(row, 17), PRIORITY_FILLS)
         _fill(leads.cell(row, 18), STATUS_FILLS)
         for c in org.contacts:
