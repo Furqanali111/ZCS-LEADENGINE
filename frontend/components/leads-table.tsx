@@ -77,6 +77,7 @@ export function LeadsTable({
 
   async function changeStatus(lead: Lead, value: string) {
     const label = CRM_STATUSES.find((s) => s.value === value)?.label ?? value;
+    const previous = statusOverride[lead.id]; // last value shown, restored on failure
     setStatusOverride((o) => ({ ...o, [lead.id]: value }));
     try {
       await patchLeadStatus(lead.id, value);
@@ -85,7 +86,8 @@ export function LeadsTable({
       onMessage(`${lead.name}: status was not saved. ${e instanceof ApiError ? e.message : "Unknown error."}`, true);
       setStatusOverride((o) => {
         const next = { ...o };
-        delete next[lead.id]; // revert to the server value
+        if (previous === undefined) delete next[lead.id]; // fall back to the server value
+        else next[lead.id] = previous;
         return next;
       });
     }

@@ -38,7 +38,7 @@ def create_app(testing: bool = False) -> FastAPI:
 
     app = FastAPI(title="ZCS LeadEngine", lifespan=lifespan)
     app.state.testing = testing
-    app.add_middleware(CORSMiddleware, allow_origins=[settings.frontend_origin], allow_methods=["*"], allow_headers=["*"])
+    app.add_middleware(CORSMiddleware, allow_origins=[settings.frontend_origin], allow_methods=["*"], allow_headers=["*"], expose_headers=["Content-Disposition"])
 
     @app.exception_handler(HTTPException)
     async def http_error(_: Request, exc: HTTPException):

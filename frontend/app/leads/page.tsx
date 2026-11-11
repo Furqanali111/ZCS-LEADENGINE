@@ -6,20 +6,32 @@ import { LeadFilters } from "@/components/lead-filters";
 import { LeadsTable } from "@/components/leads-table";
 import { Button } from "@/components/ui/button";
 import { ApiError, exportLeadsFile, listLeads, type LeadFilters as Filters, type LeadPage } from "@/lib/api";
+import { CRM_STATUSES, ORG_TYPES, PRIORITIES, US_STATES } from "@/lib/constants";
 
 const PAGE_SIZE = 50;
 const FILTER_KEYS = ["q", "state", "specialty", "organization_type", "priority", "min_score", "crm_status", "search_job_id"] as const;
+const ALLOWED: Record<string, Set<string>> = {
+  state: new Set(US_STATES.map((s) => s.code)),
+  priority: new Set(PRIORITIES.map((p) => p.value)),
+  crm_status: new Set(CRM_STATUSES.map((s) => s.value)),
+  organization_type: new Set(ORG_TYPES.map((o) => o.value)),
+};
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function LeadsView() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
 
+  // Invalid URL values are ignored, never sent to the API.
   const filters = useMemo(() => {
     const f: Record<string, string | number> = {};
     for (const k of FILTER_KEYS) {
       const v = params.get(k);
-      if (v) f[k] = k === "min_score" ? Number(v) : v;
+      if (!v) continue;
+      if (k === "min_score") {
+        if (/^\d{1,3}$/.test(v) && Number(v) <= 100) f[k] = Number(v);
+      } else if (k in ALLOWED ? ALLOWED[k].has(v) : k === "search_job_id" ? UUID.test(v) : true) f[k] = v;
     }
     return f as Filters;
   }, [params]);
@@ -30,7 +42,8 @@ function LeadsView() {
   // Every filter, sort and page change goes through the URL, so a refresh keeps it. Page resets unless given.
   const update = useCallback(
     (changes: Record<string, string | undefined>) => {
-      const next = new URLSearchParams(params.toString());
+      // Read the live URL, not the render-time params, so delayed (debounced) calls never drop other filters.
+      const next = new URLSearchParams(window.location.search);
       for (const [k, v] of Object.entries(changes)) {
         if (v) next.set(k, v);
         else next.delete(k);
@@ -39,7 +52,7 @@ function LeadsView() {
       const qs = next.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     },
-    [params, pathname, router],
+    [pathname, router],
   );
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -70,7 +83,8 @@ function LeadsView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reqKey]);
   const current = result?.key === reqKey ? result : null;
-  const data = current?.data ?? null;
+  const data = current?.data ?? result?.data ?? null; // keep the previous page visible while the next one loads
+  const loading = !current;
 
   const [exporting, setExporting] = useState(false);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
@@ -85,8 +99,10 @@ function LeadsView() {
       const a = document.createElement("a");
       a.href = url;
       a.download = filename;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
       setMessage({ text: `Exported ${selected.size > 0 ? selected.size : total} leads to ${filename}.`, error: false });
     } catch (e) {
       setMessage({ text: e instanceof ApiError ? e.message : "Export failed.", error: true });
@@ -120,17 +136,19 @@ function LeadsView() {
       ) : !data ? (
         <p className="text-sm text-muted-foreground">Loading leads...</p>
       ) : (
-        <LeadsTable
-          data={data}
-          sort={sort}
-          order={order}
-          pageSize={PAGE_SIZE}
-          selected={selected}
-          onSelect={setSelected}
-          onSort={(col) => update({ sort: col, order: col === sort ? (order === "asc" ? "desc" : "asc") : col === "name" ? "asc" : "desc" })}
-          onPage={(p) => update({ page: p > 1 ? String(p) : undefined })}
-          onMessage={(text, error) => setMessage({ text, error })}
-        />
+        <div aria-busy={loading}>
+          <LeadsTable
+            data={data}
+            sort={sort}
+            order={order}
+            pageSize={PAGE_SIZE}
+            selected={selected}
+            onSelect={setSelected}
+            onSort={(col) => update({ sort: col, order: col === sort ? (order === "asc" ? "desc" : "asc") : col === "name" ? "asc" : "desc" })}
+            onPage={(p) => update({ page: p > 1 ? String(p) : undefined })}
+            onMessage={(text, error) => setMessage({ text, error })}
+          />
+        </div>
       )}
     </div>
   );

@@ -20,6 +20,11 @@ def test_cors_allows_frontend_origin(client):
     assert r.headers["access-control-allow-origin"] == "http://localhost:3000"
 
 
+def test_cors_exposes_content_disposition(client):
+    r = client.get("/health", headers={"Origin": "http://localhost:3000"})
+    assert "Content-Disposition" in r.headers["access-control-expose-headers"]
+
+
 def test_unhandled_error_uses_error_shape(db):
     from fastapi.testclient import TestClient
 

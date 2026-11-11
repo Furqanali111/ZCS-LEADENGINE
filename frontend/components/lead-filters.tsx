@@ -27,14 +27,30 @@ export function LeadFilters({
   const [q, setQ] = useState(filters.q ?? "");
   const [specialty, setSpecialty] = useState(filters.specialty ?? "");
   const [minScore, setMinScore] = useState(filters.min_score !== undefined ? String(filters.min_score) : "");
+  // Follow the URL on back/forward: when the URL value changes to something other than what is typed, adopt it.
+  const urlQ = filters.q ?? "";
+  const urlSpecialty = filters.specialty ?? "";
+  const urlMin = filters.min_score !== undefined ? String(filters.min_score) : "";
+  const [seen, setSeen] = useState({ urlQ, urlSpecialty, urlMin });
+  if (seen.urlQ !== urlQ || seen.urlSpecialty !== urlSpecialty || seen.urlMin !== urlMin) {
+    setSeen({ urlQ, urlSpecialty, urlMin });
+    if (q.trim() !== urlQ) setQ(urlQ);
+    if (specialty.trim() !== urlSpecialty) setSpecialty(urlSpecialty);
+    if (minScore.trim() !== urlMin) setMinScore(urlMin);
+  }
+
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  });
   useEffect(() => {
     const t = timers.current;
     return () => Object.values(t).forEach(clearTimeout);
   }, []);
   const debounced = (key: string, value: string) => {
     clearTimeout(timers.current[key]);
-    timers.current[key] = setTimeout(() => onChange({ [key]: value.trim() || undefined }), 300);
+    timers.current[key] = setTimeout(() => onChangeRef.current({ [key]: value.trim() || undefined }), 300);
   };
 
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -124,13 +140,18 @@ export function LeadFilters({
         {jobsError && <p className="mt-1 text-xs text-muted-foreground">Search jobs could not be loaded.</p>}
       </div>
       <div className="sm:col-span-2 lg:col-span-4">
-        <Button type="button" variant="outline" size="sm" onClick={() => {
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => {
             Object.values(timers.current).forEach(clearTimeout);
             setQ("");
             setSpecialty("");
             setMinScore("");
             onClear();
-          }}>
+          }}
+        >
           Clear filters
         </Button>
       </div>
