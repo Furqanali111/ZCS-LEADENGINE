@@ -2,7 +2,8 @@ import copy
 import json
 from pathlib import Path
 
-from sqlalchemy import func, select
+import pytest
+from sqlalchemy import event, func, select
 
 from app.models import Contact, LeadScore, Location, Organization, SearchJob, SearchJobLead, SourceRecord
 from app.services.search import run_job
@@ -325,3 +326,96 @@ def test_start_worker_runs_queued_job_in_daemon_thread(db, session_factory, monk
         thread.stop_event.set()
         thread.join(timeout=5)
     assert not thread.is_alive()
+
+
+# ---- batched page writes -------------------------------------------------------------------------------------------
+
+
+@pytest.fixture
+def slow_path_calls(monkeypatch):
+    """Records every NPI that goes through the per-record fallback (_save_lead)."""
+    from app.services import search
+
+    calls, original = [], search._save_lead
+
+    def spy(session, job, lead, config):
+        calls.append(lead.npi)
+        return original(session, job, lead, config)
+
+    monkeypatch.setattr(search, "_save_lead", spy)
+    return calls
+
+
+def statements_for_one_page(db, db_engine, session_factory, n: int, start: int) -> int:
+    statements = []
+
+    def listener(conn, cursor, statement, *a):
+        statements.append(statement)
+
+    event.listen(db_engine, "before_cursor_execute", listener)
+    try:
+        run(session_factory, make_job(db, include_solo=False, include_subparts=True), fake({"NPI-2": [many(n, start)]}))
+    finally:
+        event.remove(db_engine, "before_cursor_execute", listener)
+    return len(statements)
+
+
+def test_page_round_trips_are_few_and_flat(db, db_engine, session_factory, slow_path_calls):
+    # Round-trip proxy: the whole run (claim, page, checkpoint, commits, SAVEPOINT/RELEASE included) for one page.
+    # The old per-record code needed about 2000 statements for 200 records. Bound 40 leaves headroom over the batched count.
+    small = statements_for_one_page(db, db_engine, session_factory, 50, 1900000000)
+    big = statements_for_one_page(db, db_engine, session_factory, 200, 1910000000)
+    print("statements: 50 records =", small, "200 records =", big)
+    assert big < 40
+    assert big - small <= 12  # only the 100-record chunking may add a few statements, never one per record
+    assert slow_path_calls == []
+    assert count(db, Organization) == 250
+
+
+def test_one_bad_record_falls_back_and_saves_the_rest(db, session_factory, slow_path_calls):
+    page = many(30)
+    page[7]["basic"]["organization_name"] = "Bad\x00Name"  # Postgres rejects NUL bytes, so the batched insert fails
+    job_id = make_job(db, include_solo=False, include_subparts=True)
+    run(session_factory, job_id, fake({"NPI-2": [page]}))
+    job = job_of(db, job_id)
+    assert job.status == "completed"
+    assert job.counters["source_failures"] == 1 and job.counters["accepted_new"] == 29
+    assert count(db, Organization) == 29 and count(db, LeadScore) == 29
+    assert len(slow_path_calls) == 30  # the accepted set was retried one by one
+
+
+def test_batched_rerun_keeps_crm_status_and_creates_no_duplicates(db, session_factory, slow_path_calls):
+    fetch = fake({"NPI-2": [many(30)]})
+    run(session_factory, make_job(db, include_solo=False, include_subparts=True), fetch)
+    org = db.scalars(select(Organization)).first()
+    org.crm_status, org.name = "called", "Edited Locally"
+    db.commit()
+    models = (Organization, Location, Contact, LeadScore, SourceRecord)
+    sizes = [count(db, m) for m in models]
+    second = make_job(db, include_solo=False, include_subparts=True)
+    run(session_factory, second, fetch)
+    db.expire_all()
+    assert [count(db, m) for m in models] == sizes
+    assert db.get(Organization, org.id).crm_status == "called" and db.get(Organization, org.id).name != "Edited Locally"
+    job = job_of(db, second)
+    assert job.counters["accepted_existing"] == 30 and job.counters["accepted_new"] == 0
+    assert count(db, SearchJobLead, SearchJobLead.search_job_id == second, SearchJobLead.was_new.is_(False)) == 30
+    for o in db.scalars(select(Organization)):
+        assert o.fit_score == o.score.total and o.priority == o.score.priority
+    assert slow_path_calls == []
+
+
+def test_repeated_addresses_within_and_across_leads_in_one_batch(db, session_factory, slow_path_calls):
+    page = many(5)
+    loc = next(a for a in page[0]["addresses"] if a["address_purpose"] == "LOCATION")
+    page[0]["addresses"].append(copy.deepcopy(loc))  # repeated inside one lead
+    for r in page[1:]:
+        r["addresses"] = copy.deepcopy(page[0]["addresses"])  # same addresses on other leads in the page
+    page.append(copy.deepcopy(page[2]))  # the same NPI twice in a page
+    job_id = make_job(db, include_solo=False, include_subparts=True)
+    run(session_factory, job_id, fake({"NPI-2": [page]}))
+    job = job_of(db, job_id)
+    assert job.status == "completed" and job.counters["source_failures"] == 0
+    assert job.counters["accepted_new"] == 5 and job.counters["candidates_seen"] == 6
+    assert count(db, Organization) == 5 and count(db, SearchJobLead) == 5
+    assert slow_path_calls == []
