@@ -1,6 +1,9 @@
 """Runs one search job: page through the NPI Registry, upsert, score, link, checkpoint. Resumable and idempotent."""
 import logging
 import time
+from collections.abc import Callable
+from contextlib import ExitStack
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -12,17 +15,23 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.constants import US_STATES
 from app.models import Contact, LeadScore, Location, Organization, SearchJob, SearchJobLead, SourceConfig, SourceRecord
+from app.services.enrich import COUNTERS as ENRICH_COUNTERS, enrich_job_leads
 from app.services.leads import save_score
 from app.services.scoring import load_config, score
 from app.services.suppression import enforce
+from app.sources import brave
 from app.sources.npi_registry import MAX_SKIP, PAGE_SIZE, NormalizedLead, SourceError, fetch_page, normalize
+from app.sources.web import Page, PoliteFetcher
 
 logger = logging.getLogger(__name__)
 
 SOURCE_KEY = "npi_registry"
 BATCH = 100  # leads per multi-row statement, keeps bind parameters far below the driver limit
 COUNTERS = ("candidates_seen", "accepted_new", "accepted_existing", "skipped_excluded", "skipped_inactive",
-            "skipped_not_sole_proprietor", "skipped_works_at_known_org", "pages_fetched", "source_failures")
+            "skipped_not_sole_proprietor", "skipped_works_at_known_org", "pages_fetched", "source_failures",
+            *(k for k in ENRICH_COUNTERS if k != "pages_fetched"))  # web pages add into pages_fetched too, see enrich.py
+ENRICH_SOURCES = ("brave_search", "practice_websites")
+ENRICH_STATUS = {"done": "completed", "cancelled": "cancelled", "paused": "paused"}
 PHASES = (("practices", "NPI-2", "include_practices"), ("solo", "NPI-1", "include_solo"))
 ORG_FIELDS = ("name", "dba_name", "organization_type", "parent_organization_name", "primary_taxonomy_code",
               "primary_taxonomy_desc", "phone", "fax", "state", "city")
@@ -234,7 +243,32 @@ def _finish(session: Session, job: SearchJob, status: str, error: str | None = N
     session.commit()
 
 
-def run_job(session_factory, job_id: UUID, *, fetch=fetch_page, sleep=time.sleep) -> None:
+@dataclass
+class EnrichDeps:
+    search: Callable[[str], list[str]]
+    fetch: Callable[[str], Page | None]
+    fetch_stats: dict
+
+
+def _complete(session: Session, job: SearchJob, counters: dict, session_factory, enrich_deps, sleep, settings) -> None:
+    if not job.enrich:
+        return _finish(session, job, "completed")
+    job.counters, job.checkpoint = dict(counters), {"phase": "enrich"}
+    session.commit()
+    with ExitStack() as stack:
+        deps = enrich_deps
+        if deps is None:  # read the key at run time, never log it
+            client = stack.enter_context(httpx.Client(timeout=30))
+            fetcher = PoliteFetcher(client, min_interval=settings.enrich_page_delay_seconds)
+            deps = EnrichDeps(lambda q: brave.search(client, settings.brave_api_key, q), fetcher.get, fetcher.stats)
+        status = enrich_job_leads(session_factory, job.id, search=deps.search, fetch=deps.fetch,
+                                  fetch_stats=deps.fetch_stats, sleep=sleep)
+    session.refresh(job)  # enrichment wrote counters and any pause message from its own sessions
+    _finish(session, job, ENRICH_STATUS[status], job.error if status == "paused" else None)
+
+
+def run_job(session_factory, job_id: UUID, *, fetch=fetch_page, sleep=time.sleep,
+            enrich_deps: EnrichDeps | None = None) -> None:
     settings = get_settings()
     config = load_config()
     with session_factory() as session, httpx.Client(timeout=30) as client:
@@ -242,6 +276,12 @@ def run_job(session_factory, job_id: UUID, *, fetch=fetch_page, sleep=time.sleep
         source = session.scalar(select(SourceConfig.status).where(SourceConfig.key == SOURCE_KEY))
         if source != "available":
             return _finish(session, job, "failed", "Source npi_registry is not available")
+        if job.enrich:
+            off = [k for k in ENRICH_SOURCES if session.scalar(select(SourceConfig.status).where(SourceConfig.key == k)) != "available"]
+            if off:
+                return _finish(session, job, "failed", f"Source {', '.join(off)} is not available")
+            if enrich_deps is None and not settings.brave_api_key:
+                return _finish(session, job, "failed", "BRAVE_API_KEY is not set")
         if job.cancel_requested:
             return _finish(session, job, "cancelled")
         job.status, job.error, job.finished_at = "running", None, None
@@ -252,6 +292,9 @@ def run_job(session_factory, job_id: UUID, *, fetch=fetch_page, sleep=time.sleep
         phases = [(name, enum) for name, enum, toggle in PHASES if getattr(job, toggle)]
         names = [name for name, _ in phases]
         checkpoint = job.checkpoint or {}
+        done = lambda: _complete(session, job, counters, session_factory, enrich_deps, sleep, settings)
+        if job.enrich and checkpoint.get("phase") == "enrich":
+            return done()
         resumed = checkpoint.get("phase") in names
         i = names.index(checkpoint["phase"]) if resumed else 0
         skip = checkpoint.get("skip", 0) if resumed else 0
@@ -278,10 +321,10 @@ def run_job(session_factory, job_id: UUID, *, fetch=fetch_page, sleep=time.sleep
 
             # one commit per page: rows, counters, checkpoint and any final status together
             if reached or (not cancelled and i == len(phases)):
-                return _finish(session, job, "completed")
+                return done()
             if cancelled:
                 return _finish(session, job, "cancelled")
             session.commit()
             sleep(settings.npi_page_delay_seconds)
 
-        _finish(session, job, "completed")
+        done()

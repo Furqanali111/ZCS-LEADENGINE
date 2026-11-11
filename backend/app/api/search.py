@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.db import get_session
 from app.errors import AppError
 from app.models import SearchJob, SourceConfig
@@ -32,9 +33,11 @@ def _save(session: Session, job: SearchJob) -> SearchJob:
 @router.post("", response_model=JobOut, status_code=201)
 def create_search(body: SearchCreate, session: Session = Depends(get_session)):
     available = set(session.scalars(select(SourceConfig.key).where(SourceConfig.status == "available")))
-    bad = [k for k in body.sources if k not in available]
+    bad = [k for k in [*body.sources, *(("brave_search", "practice_websites") if body.enrich else ())] if k not in available]
     if bad:
         raise AppError(422, "source_not_available", f"Source not available: {', '.join(bad)}")
+    if body.enrich and not get_settings().brave_api_key:
+        raise AppError(422, "missing_api_key", "BRAVE_API_KEY is not set in the backend .env")
     job = SearchJob(**body.model_dump())
     session.add(job)
     return _save(session, job)

@@ -26,6 +26,7 @@ class SearchCreate(BaseModel):
     include_subparts: bool = True
     include_hospitals: bool = False
     sources: list[str] = Field(min_length=1)
+    enrich: bool = False
 
     @field_validator("specialty", mode="before")
     @classmethod
@@ -72,6 +73,7 @@ class JobOut(BaseModel):
     include_subparts: bool
     include_hospitals: bool
     sources: list[str]
+    enrich: bool
     status: str
     counters: dict
     error: str | None

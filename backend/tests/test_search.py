@@ -446,3 +446,89 @@ def test_job_fails_when_source_not_available(db, session_factory):
     run(session_factory, job_id, fake({"NPI-2": [NPI2]}))
     assert job_of(db, job_id).status == "failed"
     assert count(db, Organization) == 0
+
+
+# ---- enrichment phase ----
+
+@pytest.fixture
+def enrich_sources(db):
+    db.add_all([SourceConfig(key=k, name=k, status="available") for k in ("brave_search", "practice_websites")])
+    db.commit()
+
+
+def deps(search=None):
+    from app.services.search import EnrichDeps
+    return EnrichDeps(search=search or (lambda q: []), fetch=lambda url: None, fetch_stats={})
+
+
+def run_enrich(session_factory, job_id, fetch, enrich_deps):
+    run_job(session_factory, job_id, fetch=fetch, sleep=lambda s: None, enrich_deps=enrich_deps)
+
+
+def test_enrich_job_runs_npi_then_enriches_linked_leads(db, session_factory, enrich_sources):
+    job_id = make_job(db, include_solo=False, enrich=True)
+    run_enrich(session_factory, job_id, fake({"NPI-2": [NPI2]}), deps())
+    job = job_of(db, job_id)
+    assert job.status == "completed" and job.error is None
+    n = count(db, Organization, Organization.enrichment_status == "no_website_found")  # suppressed leads are not enriched
+    assert n > 0 and job.counters["accepted_new"] == n and job.counters["pages_fetched"] == 1
+    assert job.counters["enrich_attempted"] == job.counters["no_website_found"] == n
+
+
+def test_enrich_false_never_touches_enrichment(db, session_factory):
+    job_id = make_job(db, include_solo=False)
+    run_enrich(session_factory, job_id, fake({"NPI-2": [NPI2]}), deps(lambda q: 1 / 0))
+    job = job_of(db, job_id)
+    assert job.status == "completed" and job.counters["enrich_attempted"] == 0
+    assert count(db, Organization, Organization.enrichment_status != "not_run") == 0
+
+
+def test_resumed_enrich_phase_makes_no_npi_calls_and_skips_done_leads(db, session_factory, enrich_sources):
+    job_id = make_job(db, include_solo=False, enrich=True)
+    run_enrich(session_factory, job_id, fake({"NPI-2": [NPI2]}), deps())
+    n = job_of(db, job_id).counters["enrich_attempted"]
+    db.scalars(select(Organization).where(Organization.enrichment_status == "no_website_found").limit(1)).first().enrichment_status = "not_run"
+    db.execute(update(SearchJob).where(SearchJob.id == job_id).values(status="queued", checkpoint={"phase": "enrich"}))
+    db.commit()
+    calls = []
+    run_enrich(session_factory, job_id, fake({"NPI-2": [NPI2]}, calls), deps())
+    job = job_of(db, job_id)
+    assert calls == [] and job.status == "completed"
+    assert job.counters["enrich_attempted"] == n + 1
+
+
+def test_enrich_auth_error_pauses_job_with_message(db, session_factory, enrich_sources):
+    from app.sources.brave import SearchError
+
+    def bad(q):
+        raise SearchError("auth")
+
+    job_id = make_job(db, include_solo=False, enrich=True)
+    run_enrich(session_factory, job_id, fake({"NPI-2": [NPI2]}), deps(bad))
+    job = job_of(db, job_id)
+    assert job.status == "paused" and "BRAVE_API_KEY" in job.error
+    assert job.checkpoint == {"phase": "enrich"}
+
+
+def test_cancel_during_enrichment_ends_cancelled(db, session_factory, enrich_sources):
+    job_id = make_job(db, include_solo=False, enrich=True)
+
+    def cancel(q):
+        with session_factory() as s:
+            s.execute(update(SearchJob).where(SearchJob.id == job_id).values(cancel_requested=True))
+            s.commit()
+        return []
+
+    run_enrich(session_factory, job_id, fake({"NPI-2": [NPI2]}), deps(cancel))
+    job = job_of(db, job_id)
+    assert job.status == "cancelled" and job.counters["enrich_attempted"] == 1
+
+
+def test_enrich_job_fails_when_enrich_source_not_available(db, session_factory, enrich_sources):
+    db.execute(update(SourceConfig).where(SourceConfig.key == "brave_search").values(status="not_reviewed"))
+    db.commit()
+    job_id = make_job(db, enrich=True)
+    run_enrich(session_factory, job_id, fake({"NPI-2": [NPI2]}), deps())
+    job = job_of(db, job_id)
+    assert job.status == "failed" and "brave_search" in job.error
+    assert count(db, Organization) == 0

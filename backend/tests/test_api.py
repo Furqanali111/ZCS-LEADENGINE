@@ -516,3 +516,25 @@ def test_has_website_and_has_email_filters(client, db):
     db.commit()
     assert names(client.get("/api/leads?has_website=true")) == ["Alpha"]
     assert names(client.get("/api/leads?has_email=true")) == ["Bravo"]
+
+
+def test_create_search_enrich_needs_sources_and_key(client, db, monkeypatch):
+    from app.config import get_settings
+
+    add_source(db)
+    body = {**BODY, "enrich": True}
+    monkeypatch.setattr(get_settings(), "brave_api_key", "k")
+    r = client.post("/api/search", json=body)
+    assert r.status_code == 422 and r.json()["error"]["code"] == "source_not_available"
+    add_source(db, "brave_search", "Brave")
+    add_source(db, "practice_websites", "Sites", "not_reviewed")
+    assert client.post("/api/search", json=body).status_code == 422
+    db.execute(__import__("sqlalchemy").text("UPDATE source_configs SET status='available' WHERE key='practice_websites'"))
+    db.commit()
+    monkeypatch.setattr(get_settings(), "brave_api_key", None)
+    r = client.post("/api/search", json=body)
+    assert r.status_code == 422 and r.json()["error"]["code"] == "missing_api_key"
+    monkeypatch.setattr(get_settings(), "brave_api_key", "k")
+    r = client.post("/api/search", json=body)
+    assert r.status_code == 201 and r.json()["enrich"] is True
+    assert client.post("/api/search", json=BODY).json()["enrich"] is False
