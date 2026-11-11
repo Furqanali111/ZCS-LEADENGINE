@@ -61,9 +61,29 @@ def test_rls_enabled_on_every_table_and_removed_on_downgrade(migrated_url):
     alembic(migrated_url, "upgrade", "head")
     with engine.connect() as conn:
         rls = dict(conn.execute(RLS_SQL).all())
-    assert len(rls) == 9 and all(rls.values()), rls
+    assert len(rls) == 11 and all(rls.values()), rls
     alembic(migrated_url, "downgrade", "0002")
     with engine.connect() as conn:
         rls = dict(conn.execute(RLS_SQL).all())
     engine.dispose()
     assert len(rls) == 9 and not any(rls.values()), rls
+
+
+def test_0004_adds_columns_and_rls(migrated_url):
+    cols = text("select table_name, column_name from information_schema.columns where table_schema = 'public' "
+                "and (table_name in ('lead_activities', 'suppression_list') or column_name in ('last_contacted_at', 'next_follow_up_at'))")
+    engine = create_engine(migrated_url)
+    alembic(migrated_url, "upgrade", "head")
+    with engine.connect() as conn:
+        rls = dict(conn.execute(RLS_SQL).all())
+        found = {tuple(r) for r in conn.execute(cols).all()}
+    assert rls["lead_activities"] and rls["suppression_list"]
+    assert {("organizations", "last_contacted_at"), ("organizations", "next_follow_up_at"),
+            ("lead_activities", "from_status"), ("suppression_list", "kind")} <= found
+    alembic(migrated_url, "downgrade", "0003")
+    with engine.connect() as conn:
+        rls = dict(conn.execute(RLS_SQL).all())
+        found = conn.execute(cols).all()
+        fn = conn.execute(text("select count(*) from pg_proc where proname = 'lead_activities_append_only'")).scalar()
+    engine.dispose()
+    assert len(rls) == 9 and found == [] and fn == 0
