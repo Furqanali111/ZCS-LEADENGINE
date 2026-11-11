@@ -1,9 +1,9 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime, timezone
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.constants import CRM_STATUSES, ORG_TYPES, PRIORITIES, US_STATES
+from app.constants import ACTIVITY_TYPES, CRM_STATUSES, ORG_TYPES, OUTCOMES, PRIORITIES, US_STATES
 
 
 class SourceOut(BaseModel):
@@ -110,14 +110,72 @@ class LeadFilters(BaseModel):
 class LeadPatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    crm_status: str
+    crm_status: str | None = None
+    next_follow_up_at: date | None = None  # explicit null clears it; told apart from missing via model_fields_set
 
     @field_validator("crm_status")
     @classmethod
     def known_status(cls, v):
-        if v not in CRM_STATUSES:
+        if v not in CRM_STATUSES:  # also rejects an explicit null
             raise ValueError(f"must be one of {', '.join(CRM_STATUSES)}")
         return v
+
+    @model_validator(mode="after")
+    def need_a_field(self):
+        if not self.model_fields_set:
+            raise ValueError("send crm_status and/or next_follow_up_at")
+        return self
+
+
+class ActivityIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    type: str
+    occurred_at: datetime | None = None
+    summary: str = Field(min_length=1, max_length=2000)
+    outcome: str | None = None
+    next_follow_up_at: date | None = None
+
+    @field_validator("type")
+    @classmethod
+    def known_type(cls, v):
+        # status_change is written only by status updates, never posted directly
+        allowed = [t for t in ACTIVITY_TYPES if t != "status_change"]
+        if v not in allowed:
+            raise ValueError(f"must be one of {', '.join(allowed)}")
+        return v
+
+    @field_validator("outcome")
+    @classmethod
+    def known_outcome(cls, v):
+        if v is not None and v not in OUTCOMES:
+            raise ValueError(f"must be one of {', '.join(OUTCOMES)}")
+        return v
+
+    @field_validator("occurred_at")
+    @classmethod
+    def assume_utc(cls, v):
+        return v.replace(tzinfo=timezone.utc) if v is not None and v.tzinfo is None else v
+
+
+class ActivityOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    type: str
+    occurred_at: datetime
+    summary: str | None
+    outcome: str | None
+    from_status: str | None
+    to_status: str | None
+    created_at: datetime
+
+
+class ActivityPage(BaseModel):
+    items: list[ActivityOut]
+    total: int
+    page: int
+    page_size: int
 
 
 class ContactOut(BaseModel):
@@ -172,6 +230,9 @@ class LeadOut(BaseModel):
     priority: str | None
     crm_status: str
     updated_at: datetime
+    last_contacted_at: datetime | None
+    next_follow_up_at: date | None
+    suppressed: bool = False  # filled from the suppression list by the suppression task
     contact: ContactOut | None
     locations: list[LocationOut]
     score: ScoreOut | None
