@@ -127,7 +127,7 @@ def test_general_mailbox_flag():
 
 def test_person_with_suffixes():
     text = "Smith, John A., M.D., P.A. is our Medical Director."
-    assert v.extract_people(text) == [v.PersonHit("John", "Smith", "medical director")]
+    assert v.extract_people(text) == [v.PersonHit("John", "Smith", "MD")]
     p = v.extract_people(v.page_text(fx("practice_team.html")))
     names = {(x.first_name, x.last_name): x.title for x in p}
     assert names[("Jane", "Doe")].lower() == "practice manager"
@@ -138,3 +138,38 @@ def test_title_without_name_yields_nothing():
     assert v.extract_people("Our Friendly Office Manager is here to help") == []
     assert v.extract_people("Family Medicine Center Owner") == []
     assert v.extract_people("Practice Manager") == []
+
+
+def test_business_names_are_not_people():
+    assert v.extract_people("Palm Beach Cardiology, P.A.") == []
+    assert v.extract_people("Located in Harrisburg PA 17101. Jane Roe") == []
+    assert v.extract_people("Sunrise Care Associates PLLC, Owner") == []
+
+
+def test_abbreviation_title_only_directly_after_name():
+    assert v.extract_people("Dr. John Smith, MD") == [v.PersonHit("John", "Smith", "MD")]
+    assert v.extract_people("John Smith NP sees patients") == [v.PersonHit("John", "Smith", "NP")]
+    assert v.extract_people("MD visits are booked. Jane Roe") == []
+
+
+def test_title_must_be_adjacent_to_the_name():
+    text = "Jane Doe, Practice Manager. Call Bob Ray today for owner"
+    assert v.extract_people(text) == [v.PersonHit("Jane", "Doe", "practice manager")]
+    assert v.extract_people("Owner: Bob Ray") == [v.PersonHit("Bob", "Ray", "owner")]
+    assert v.extract_people("Bob Ray - Owner") == [v.PersonHit("Bob", "Ray", "owner")]
+    assert v.extract_people("Bob Ray\nCEO") == [v.PersonHit("Bob", "Ray", "ceo")]
+    assert v.extract_people("Bob Ray. Owner of nothing") == []
+
+
+def test_email_rejects_instead_of_repairing():
+    for bad in ["_a@b.com", "8135550142info@b.com", ".a@b.com", "a@b.c", "a@b.c1", "a@-b.com"]:
+        assert v.extract_emails("", f"mail {bad} now", site_domain="b.com", phone_verified=True) == [], bad
+    assert [h.email for h in v.extract_emails("", "(info@b.com)", site_domain="b.com", phone_verified=False)] == ["info@b.com"]
+
+
+def test_non_string_items_are_skipped():
+    assert v.candidate_roots([None, 5, "https://ok.com/x"]) == ["https://ok.com/"]
+    text = "Call 813-555-0142"
+    assert v.verify_website(text, phones=[None, 8135550142, "8135550142"], name="Zzz", city=None) == "phone"
+    assert v.verify_website(text, phones=[None, 8135550142], name=None, city=5) is None
+    assert v.verify_website(None, phones=None, name="Abc", city="Def") is None
