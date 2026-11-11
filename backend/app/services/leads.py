@@ -32,7 +32,8 @@ def lead_query(filters: LeadFilters) -> Select:
     if filters.q and filters.q.strip():
         q = filters.q.strip()
         by_contact = exists().where(Contact.organization_id == o.id,
-                                    or_(_contains(Contact.first_name, q), _contains(Contact.last_name, q)))
+                                    or_(_contains(Contact.first_name, q), _contains(Contact.last_name, q),
+                                           _contains(Contact.first_name + " " + Contact.last_name, q)))
         stmt = stmt.where(or_(*(_contains(c, q) for c in (o.name, o.dba_name, o.city, o.npi)), by_contact))
     if filters.specialty and filters.specialty.strip():
         stmt = stmt.where(_contains(o.primary_taxonomy_desc, filters.specialty.strip()))

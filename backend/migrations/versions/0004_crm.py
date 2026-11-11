@@ -43,7 +43,7 @@ def upgrade() -> None:
     )
     op.create_index("ix_lead_activities_org_occurred", "lead_activities", ["organization_id", sa.text("occurred_at DESC")])
     op.execute(
-        "CREATE FUNCTION lead_activities_append_only() RETURNS trigger LANGUAGE plpgsql AS "
+        "CREATE FUNCTION lead_activities_append_only() RETURNS trigger LANGUAGE plpgsql SET search_path = '' AS "
         "$$ BEGIN RAISE EXCEPTION 'lead_activities is append-only'; END $$"
     )
     op.execute(

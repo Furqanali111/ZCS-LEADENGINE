@@ -54,7 +54,7 @@ def test_export_has_new_columns_and_marks_suppressed(db):
 
     a = seed(db, "A Clinic", "1111111111")
     seed(db, "B Clinic", "2222222222")
-    a.last_contacted_at = datetime(2026, 11, 9, 15, 0, tzinfo=timezone.utc)
+    a.last_contacted_at = datetime(2026, 11, 9, 12, 0, tzinfo=timezone.utc)
     a.next_follow_up_at = date(2026, 11, 20)
     db.add(SuppressionEntry(kind="npi", value="1111111111"))
     db.commit()

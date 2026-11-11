@@ -211,7 +211,7 @@ class LeadActivity(Base):
 
 # Mirrors migration 0004 so create_all (used by the test fixtures) gets the same trigger.
 event.listen(LeadActivity.__table__, "after_create", DDL(
-    "CREATE FUNCTION lead_activities_append_only() RETURNS trigger LANGUAGE plpgsql AS "
+    "CREATE FUNCTION lead_activities_append_only() RETURNS trigger LANGUAGE plpgsql SET search_path = '' AS "
     "$$ BEGIN RAISE EXCEPTION 'lead_activities is append-only'; END $$"
 ))
 event.listen(LeadActivity.__table__, "after_create", DDL(

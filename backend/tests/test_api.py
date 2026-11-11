@@ -310,7 +310,7 @@ def test_sort_by_follow_up_nulls_last(client, db):
 def test_q_matches_contact_name(client, db):
     seed_leads(db)
     assert client.get("/api/leads?q=boss").json()["total"] == 6
-    assert client.get("/api/leads?q=pat lee").json()["total"] == 0  # per-field match, not full name
+    assert client.get("/api/leads?q=pat lee").json()["total"] == 6  # full name matches too
     assert client.get("/api/leads?q=zzz").json()["total"] == 0
     assert client.get("/api/leads?q=_").json()["total"] == 0
 
@@ -408,3 +408,13 @@ def test_rescore_updates_all(db, session_factory, tmp_path):
     assert rescore_all(session_factory, str(p)) == 1
     db.refresh(org)
     assert (org.fit_score, org.priority, org.score.config_version) == (85, "high", "2")
+
+
+def test_patch_suppressed_lead_cannot_leave_do_not_contact(client, db):
+    org = add_lead(db, "1000000009", "Sup Co")
+    client.post("/api/suppression", json={"kind": "npi", "value": "1000000009"})
+    r = client.patch(f"/api/leads/{org.id}", json={"crm_status": "new"})
+    assert r.status_code == 409 and r.json()["error"]["code"] == "lead_suppressed"
+    assert client.get(f"/api/leads/{org.id}").json()["crm_status"] == "do_not_contact"
+    assert client.patch(f"/api/leads/{org.id}", json={"next_follow_up_at": "2026-12-01"}).status_code == 200
+    assert client.patch(f"/api/leads/{org.id}", json={"crm_status": "do_not_contact"}).status_code == 200

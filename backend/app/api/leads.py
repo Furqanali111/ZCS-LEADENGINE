@@ -70,6 +70,8 @@ def get_lead(lead_id: str, session: Session = Depends(get_session)):
 def patch_lead(lead_id: str, body: LeadPatch, session: Session = Depends(get_session)):
     org = _load(session, lead_id, LOADS)
     if body.crm_status is not None:
+        if body.crm_status != "do_not_contact" and suppressed_ids(session, [org.id]):
+            raise AppError(409, "lead_suppressed", "Remove the suppression entry before changing this lead's status")
         change_status(session, org, body.crm_status)
     if "next_follow_up_at" in body.model_fields_set:
         org.next_follow_up_at = body.next_follow_up_at

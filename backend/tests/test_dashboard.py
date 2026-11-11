@@ -100,3 +100,12 @@ def test_dashboard_top_10_ordered_by_count_then_key(client, db):
     by_state = stats(client).json()["by_state"]
     assert [(i["key"], i["count"]) for i in by_state] == [("TX", 3), ("AZ", 2), ("FL", 2)] + [(k, 1) for k in
         ("AK", "AL", "AR", "CO", "CT", "DE", "GA")]
+
+
+def test_dashboard_conversion_requires_contact_in_range(client, db):
+    a, b = org(db, 1), org(db, 2)
+    act(db, a, "status_change", 2, "converted")  # converted, never contacted
+    act(db, b, "call", 5)
+    act(db, b, "status_change", 2, "converted")
+    db.commit()
+    assert stats(client).json()["conversion"] == {"converted": 1, "contacted": 1, "rate": 1.0}

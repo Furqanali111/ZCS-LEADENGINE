@@ -99,7 +99,7 @@ No endpoint updates or deletes an activity.
 - Follow-ups due: non-closed leads with `next_follow_up_at <= today`.
 - Meetings scheduled: `crm_status = meeting_scheduled`.
 - Converted: `crm_status = converted`.
-- Conversion rate: leads that reached `converted` within the date range divided by leads with a logged call, email or meeting within the same range. The API returns numerator, denominator, `from` and `to`. If the denominator is 0 the rate is null and the UI shows "No contacts yet". Default range: last 90 days, with a date range selector.
+- Conversion rate: leads that reached `converted` within the date range and also have a logged call, email or meeting within the same range, divided by leads with a logged call, email or meeting within the range (so the rate never exceeds 100%). The API returns numerator, denominator, `from` and `to`. If the denominator is 0 the rate is null and the UI shows "No contacts yet". Default range: last 90 days, with a date range selector.
 - Never shown as a probability or a prediction.
 
 ## 9. Out of scope
