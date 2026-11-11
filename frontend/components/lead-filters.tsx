@@ -10,6 +10,12 @@ import { CRM_STATUSES, ORG_TYPES, PRIORITIES, SPECIALTIES, US_STATES } from "@/l
 const SELECT =
   "mt-1 h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
 
+const FOLLOW_UP_OPTIONS = [
+  { value: "due", label: "Due (today or earlier)" },
+  { value: "overdue", label: "Overdue (before today)" },
+  { value: "none", label: "No follow-up date" },
+];
+
 function jobLabel(j: Job) {
   return `${j.specialty}, ${j.city ? j.city + ", " : ""}${j.state} (${new Date(j.created_at).toLocaleDateString()})`;
 }
@@ -127,6 +133,7 @@ export function LeadFilters({
         />
       </div>
       {select("f-status", "Sales status", "crm_status", CRM_STATUSES)}
+      {select("f-follow", "Follow-up", "follow_up", FOLLOW_UP_OPTIONS)}
       <div>
         <Label htmlFor="f-job">Search job</Label>
         <select id="f-job" className={SELECT} value={filters.search_job_id ?? ""} onChange={(e) => onChange({ search_job_id: e.target.value || undefined })}>

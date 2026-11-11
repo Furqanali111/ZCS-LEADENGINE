@@ -9,12 +9,13 @@ import { ApiError, exportLeadsFile, listLeads, type LeadFilters as Filters, type
 import { CRM_STATUSES, ORG_TYPES, PRIORITIES, US_STATES } from "@/lib/constants";
 
 const PAGE_SIZE = 50;
-const FILTER_KEYS = ["q", "state", "specialty", "organization_type", "priority", "min_score", "crm_status", "search_job_id"] as const;
+const FILTER_KEYS = ["q", "state", "specialty", "organization_type", "priority", "min_score", "crm_status", "search_job_id", "follow_up"] as const;
 const ALLOWED: Record<string, Set<string>> = {
   state: new Set(US_STATES.map((s) => s.code)),
   priority: new Set(PRIORITIES.map((p) => p.value)),
   crm_status: new Set(CRM_STATUSES.map((s) => s.value)),
   organization_type: new Set(ORG_TYPES.map((o) => o.value)),
+  follow_up: new Set(["due", "overdue", "none"]),
 };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -36,7 +37,8 @@ function LeadsView() {
     return f as Filters;
   }, [params]);
   const page = Math.max(1, Number(params.get("page")) || 1);
-  const sort = params.get("sort") === "name" ? "name" : "score";
+  const sortParam = params.get("sort");
+  const sort = sortParam === "name" || sortParam === "follow_up" ? sortParam : "score";
   const order = params.get("order") === "asc" ? "asc" : "desc";
 
   // Every filter, sort and page change goes through the URL, so a refresh keeps it. Page resets unless given.
@@ -144,7 +146,7 @@ function LeadsView() {
             pageSize={PAGE_SIZE}
             selected={selected}
             onSelect={setSelected}
-            onSort={(col) => update({ sort: col, order: col === sort ? (order === "asc" ? "desc" : "asc") : col === "name" ? "asc" : "desc" })}
+            onSort={(col) => update({ sort: col, order: col === sort ? (order === "asc" ? "desc" : "asc") : col === "name" || col === "follow_up" ? "asc" : "desc" })}
             onPage={(p) => update({ page: p > 1 ? String(p) : undefined })}
             onMessage={(text, error) => setMessage({ text, error })}
           />
