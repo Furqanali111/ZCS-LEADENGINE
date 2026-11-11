@@ -1,9 +1,10 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime, timedelta, timezone
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.constants import CRM_STATUSES, ORG_TYPES, PRIORITIES, US_STATES
+from app.constants import ACTIVITY_TYPES, CRM_STATUSES, ORG_TYPES, OUTCOMES, PRIORITIES, US_STATES
 
 
 class SourceOut(BaseModel):
@@ -88,6 +89,7 @@ class LeadFilters(BaseModel):
     min_score: int | None = Field(default=None, ge=0, le=100)
     crm_status: str | None = None
     search_job_id: uuid.UUID | None = None
+    follow_up: Literal["due", "overdue", "none"] | None = None
 
     @field_validator("state", mode="before")
     @classmethod
@@ -110,14 +112,84 @@ class LeadFilters(BaseModel):
 class LeadPatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    crm_status: str
+    crm_status: str | None = None
+    next_follow_up_at: date | None = None  # explicit null clears it; told apart from missing via model_fields_set
 
     @field_validator("crm_status")
     @classmethod
     def known_status(cls, v):
-        if v not in CRM_STATUSES:
+        if v not in CRM_STATUSES:  # also rejects an explicit null
             raise ValueError(f"must be one of {', '.join(CRM_STATUSES)}")
         return v
+
+    @model_validator(mode="after")
+    def need_a_field(self):
+        if not self.model_fields_set:
+            raise ValueError("send crm_status and/or next_follow_up_at")
+        return self
+
+
+class ActivityIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    type: str
+    occurred_at: datetime | None = None
+    summary: str = Field(min_length=1, max_length=2000)
+    outcome: str | None = None
+    next_follow_up_at: date | None = None
+
+    @field_validator("summary")
+    @classmethod
+    def strip_summary(cls, v):
+        v = v.strip()
+        if not v:
+            raise ValueError("must not be blank")
+        return v
+
+    @field_validator("type")
+    @classmethod
+    def known_type(cls, v):
+        # status_change is written only by status updates, never posted directly
+        allowed = [t for t in ACTIVITY_TYPES if t != "status_change"]
+        if v not in allowed:
+            raise ValueError(f"must be one of {', '.join(allowed)}")
+        return v
+
+    @field_validator("outcome")
+    @classmethod
+    def known_outcome(cls, v):
+        if v is not None and v not in OUTCOMES:
+            raise ValueError(f"must be one of {', '.join(OUTCOMES)}")
+        return v
+
+    @field_validator("occurred_at")
+    @classmethod
+    def assume_utc(cls, v):
+        if v is not None and v.tzinfo is None:
+            v = v.replace(tzinfo=timezone.utc)
+        if v is not None and v > datetime.now(timezone.utc) + timedelta(days=1):
+            raise ValueError("must not be more than 1 day in the future")
+        return v
+
+
+class ActivityOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    type: str
+    occurred_at: datetime
+    summary: str | None
+    outcome: str | None
+    from_status: str | None
+    to_status: str | None
+    created_at: datetime
+
+
+class ActivityPage(BaseModel):
+    items: list[ActivityOut]
+    total: int
+    page: int
+    page_size: int
 
 
 class ContactOut(BaseModel):
@@ -172,6 +244,9 @@ class LeadOut(BaseModel):
     priority: str | None
     crm_status: str
     updated_at: datetime
+    last_contacted_at: datetime | None
+    next_follow_up_at: date | None
+    suppressed: bool = False
     contact: ContactOut | None
     locations: list[LocationOut]
     score: ScoreOut | None
@@ -190,3 +265,78 @@ class ExportRequest(BaseModel):
 
     filters: LeadFilters | None = None
     ids: list[uuid.UUID] | None = Field(default=None, max_length=5000)
+
+
+class PipelineCard(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    city: str | None
+    state: str | None
+    organization_type: str
+    fit_score: int | None
+    priority: str | None
+    next_follow_up_at: date | None
+    last_contacted_at: datetime | None
+
+
+class PipelineColumn(BaseModel):
+    status: str
+    count: int
+    leads: list[PipelineCard]
+
+
+class PipelineBoard(BaseModel):
+    columns: list[PipelineColumn]
+
+
+class DateRange(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    from_: date = Field(alias="from")
+    to: date
+
+
+class CountItem(BaseModel):
+    key: str
+    count: int
+
+
+class Conversion(BaseModel):
+    """Recorded outcomes only: never a prediction."""
+
+    converted: int
+    contacted: int
+    rate: float | None
+
+
+class DashboardStats(BaseModel):
+    range: DateRange
+    total: int
+    new_leads: int
+    critical_high: int
+    follow_ups_due: int
+    meetings_scheduled: int
+    converted: int
+    by_state: list[CountItem]
+    by_specialty: list[CountItem]
+    by_status: list[CountItem]
+    recent_jobs: list[JobOut]
+    conversion: Conversion
+
+
+class SuppressionIn(BaseModel):
+    kind: Literal["npi", "phone", "email"]
+    value: str
+    reason: str | None = Field(default=None, max_length=500)
+
+
+class SuppressionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    kind: str
+    value: str
+    reason: str | None
+    created_at: datetime

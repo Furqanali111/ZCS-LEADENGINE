@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Fragment, useState } from "react";
 import { LeadRowDetail } from "@/components/lead-row-detail";
 import { Badge } from "@/components/ui/badge";
@@ -7,13 +8,21 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ApiError, patchLeadStatus, type Lead, type LeadPage } from "@/lib/api";
-import { CRM_STATUSES, PRIORITIES } from "@/lib/constants";
+import { CLOSED_STATUSES, CRM_STATUSES, PRIORITIES } from "@/lib/constants";
+import { isOverdue } from "@/lib/dates";
 import { formatPhone } from "@/lib/format";
 
 const SELECT =
   "h-7 rounded-lg border border-input bg-transparent px-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
 
-type SortCol = "score" | "name";
+const closed = new Set(CLOSED_STATUSES.map((s) => s.value));
+// Date-only strings parse as UTC, so format the parts directly.
+const formatDay = (d: string) => {
+  const [y, m, day] = d.split("-");
+  return `${m}/${day}/${y}`;
+};
+
+type SortCol = "score" | "name" | "follow_up";
 
 function SortHead({ col, label, sort, order, onSort }: { col: SortCol; label: string; sort: string; order: string; onSort: (c: SortCol) => void }) {
   const active = sort === col;
@@ -114,6 +123,8 @@ export function LeadsTable({
             <SortHead col="score" label="Score" sort={sort} order={order} onSort={onSort} />
             <TableHead>Priority</TableHead>
             <TableHead>Sales status</TableHead>
+            <SortHead col="follow_up" label="Follow-up" sort={sort} order={order} onSort={onSort} />
+            <TableHead>Suppression</TableHead>
             <TableHead>Updated</TableHead>
           </TableRow>
         </TableHeader>
@@ -129,7 +140,7 @@ export function LeadsTable({
                   className="cursor-pointer"
                   data-state={selected.has(l.id) ? "selected" : undefined}
                   onClick={(e) => {
-                    if ((e.target as HTMLElement).closest("button,select,input,[role=checkbox],label")) return;
+                    if ((e.target as HTMLElement).closest("a,button,select,input,[role=checkbox],label")) return;
                     setExpanded(open ? null : l.id);
                   }}
                 >
@@ -141,13 +152,15 @@ export function LeadsTable({
                       type="button"
                       aria-expanded={open}
                       aria-controls={detailId}
+                      aria-label={`${open ? "Hide" : "Show"} details for ${l.name}`}
                       onClick={() => setExpanded(open ? null : l.id)}
-                      className="rounded text-left font-medium outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
+                      className="mr-1 rounded outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                     >
-                      <span aria-hidden="true">{open ? "▾ " : "▸ "}</span>
-                      {l.name}
-                      <span className="sr-only">{open ? ", hide details" : ", show details"}</span>
+                      <span aria-hidden="true">{open ? "▾" : "▸"}</span>
                     </button>
+                    <Link href={`/leads/${l.id}`} className="rounded font-medium outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50">
+                      {l.name}
+                    </Link>
                     {l.organization_type === "solo_provider" && (
                       <Badge variant="outline" className="ml-2">
                         Solo
@@ -183,11 +196,26 @@ export function LeadsTable({
                       ))}
                     </select>
                   </TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    {l.next_follow_up_at ? (
+                      <>
+                        {formatDay(l.next_follow_up_at)}
+                        {isOverdue(l.next_follow_up_at) && !closed.has(l.crm_status) && (
+                          <Badge variant="destructive" className="ml-2">
+                            Overdue
+                          </Badge>
+                        )}
+                      </>
+                    ) : (
+                      "-"
+                    )}
+                  </TableCell>
+                  <TableCell>{l.suppressed ? <Badge variant="outline">Suppressed</Badge> : "-"}</TableCell>
                   <TableCell className="whitespace-nowrap">{new Date(l.updated_at).toLocaleDateString()}</TableCell>
                 </TableRow>
                 {open && (
                   <TableRow id={detailId} className="bg-muted/30 hover:bg-muted/30">
-                    <TableCell colSpan={10} className="whitespace-normal p-0">
+                    <TableCell colSpan={12} className="whitespace-normal p-0">
                       <LeadRowDetail lead={l} />
                     </TableCell>
                   </TableRow>

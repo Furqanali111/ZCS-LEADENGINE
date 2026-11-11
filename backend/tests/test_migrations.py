@@ -1,4 +1,5 @@
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -10,6 +11,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
 
 from app import models  # noqa: F401
+from app.constants import ACTIVITY_TYPES, OUTCOMES, SUPPRESSION_KINDS
 from app.db import Base
 
 BACKEND = Path(__file__).resolve().parent.parent
@@ -61,9 +63,56 @@ def test_rls_enabled_on_every_table_and_removed_on_downgrade(migrated_url):
     alembic(migrated_url, "upgrade", "head")
     with engine.connect() as conn:
         rls = dict(conn.execute(RLS_SQL).all())
-    assert len(rls) == 9 and all(rls.values()), rls
+    assert len(rls) == 11 and all(rls.values()), rls
     alembic(migrated_url, "downgrade", "0002")
     with engine.connect() as conn:
         rls = dict(conn.execute(RLS_SQL).all())
     engine.dispose()
     assert len(rls) == 9 and not any(rls.values()), rls
+
+
+def test_0004_adds_columns_and_rls(migrated_url):
+    cols = text("select table_name, column_name from information_schema.columns where table_schema = 'public' "
+                "and (table_name in ('lead_activities', 'suppression_list') or column_name in ('last_contacted_at', 'next_follow_up_at'))")
+    engine = create_engine(migrated_url)
+    alembic(migrated_url, "upgrade", "head")
+    with engine.connect() as conn:
+        rls = dict(conn.execute(RLS_SQL).all())
+        found = {tuple(r) for r in conn.execute(cols).all()}
+    assert rls["lead_activities"] and rls["suppression_list"]
+    assert {("organizations", "last_contacted_at"), ("organizations", "next_follow_up_at"),
+            ("lead_activities", "from_status"), ("suppression_list", "kind")} <= found
+    alembic(migrated_url, "downgrade", "0003")
+    with engine.connect() as conn:
+        rls = dict(conn.execute(RLS_SQL).all())
+        found = conn.execute(cols).all()
+        fn = conn.execute(text("select count(*) from pg_proc where proname = 'lead_activities_append_only'")).scalar()
+    engine.dispose()
+    assert len(rls) == 9 and found == [] and fn == 0
+
+
+def test_0004_trigger_is_append_only(migrated_url):
+    alembic(migrated_url, "upgrade", "head")
+    engine = create_engine(migrated_url)
+    with engine.begin() as conn:
+        oid = conn.execute(text("insert into organizations (npi, name, organization_type, state) values ('9', 'A', 'practice', 'TX') returning id")).scalar()
+        conn.execute(text("insert into lead_activities (organization_id, type, summary) values (:o, 'note', 'hi')"), {"o": oid})
+    for sql in ("update lead_activities set summary = 'x'", "delete from lead_activities"):
+        with pytest.raises(Exception, match="append-only"):
+            with engine.begin() as conn:
+                conn.execute(text(sql))
+    engine.dispose()
+    alembic(migrated_url, "downgrade", "0003")
+
+
+def test_0004_check_constraints_match_constants(migrated_url):
+    alembic(migrated_url, "upgrade", "head")
+    engine = create_engine(migrated_url)
+    with engine.connect() as conn:
+        defs = dict(conn.execute(text(
+            "select conname, pg_get_constraintdef(oid) from pg_constraint where conname in "
+            "('ck_lead_activities_type', 'ck_lead_activities_outcome', 'ck_suppression_list_kind')"
+        )).all())
+    engine.dispose()
+    for name, values in (("ck_lead_activities_type", ACTIVITY_TYPES), ("ck_lead_activities_outcome", OUTCOMES), ("ck_suppression_list_kind", SUPPRESSION_KINDS)):
+        assert set(re.findall(r"'([a-z_]+)'::text", defs[name])) == set(values), name

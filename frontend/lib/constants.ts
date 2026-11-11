@@ -34,6 +34,38 @@ export const CRM_STATUSES: { value: string; label: string }[] = [
   { value: "do_not_contact", label: "Do not contact" },
 ];
 
+export const ACTIVITY_TYPES: { value: string; label: string }[] = [
+  { value: "call", label: "Call" },
+  { value: "email", label: "Email" },
+  { value: "meeting", label: "Meeting" },
+  { value: "note", label: "Note" },
+  { value: "status_change", label: "Status change" },
+  { value: "outcome", label: "Outcome" },
+];
+
+export const OUTCOMES: { value: string; label: string }[] = [
+  { value: "no_answer", label: "No answer" },
+  { value: "spoke", label: "Spoke" },
+  { value: "interested", label: "Interested" },
+  { value: "not_interested", label: "Not interested" },
+  { value: "meeting_booked", label: "Meeting booked" },
+  { value: "converted", label: "Converted" },
+  { value: "other", label: "Other" },
+];
+
+export const SUPPRESSION_KINDS: { value: string; label: string }[] = [
+  { value: "npi", label: "NPI" },
+  { value: "phone", label: "Phone" },
+  { value: "email", label: "Email" },
+];
+
+// Closed leads never count as follow-ups due.
+export const CLOSED_STATUSES: { value: string; label: string }[] = [
+  { value: "converted", label: "Converted" },
+  { value: "not_interested", label: "Not interested" },
+  { value: "do_not_contact", label: "Do not contact" },
+];
+
 export const PRIORITIES: { value: string; label: string }[] = [
   { value: "critical", label: "Critical" },
   { value: "high", label: "High" },

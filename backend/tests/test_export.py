@@ -39,11 +39,33 @@ def test_workbook_has_three_sheets(db):
     assert export(db).sheetnames == ["All Leads", "Contacts", "Summary"]
 
 
-def test_all_leads_headers_match_spec(db):
+def test_export_headers_match_spec_list(db):
     assert [c.value for c in export(db)["All Leads"][1]] == [
         "Organization Name", "DBA Name", "Specialty", "Organization Type", "Parent Organization", "Business Phone",
         "Fax", "Contact Person", "Contact Title", "Contact Phone", "Address", "City", "State", "ZIP", "NPI",
-        "Lead Score", "Lead Priority", "Outreach Status", "Source", "Collected On"]
+        "Lead Score", "Lead Priority", "Outreach Status", "Source", "Collected On",
+        "Last Contacted", "Next Follow-up", "Suppressed"]
+
+
+def test_export_has_new_columns_and_marks_suppressed(db):
+    from datetime import date
+
+    from app.models import SuppressionEntry
+
+    a = seed(db, "A Clinic", "1111111111")
+    seed(db, "B Clinic", "2222222222")
+    a.last_contacted_at = datetime(2026, 11, 9, 12, 0, tzinfo=timezone.utc)
+    a.next_follow_up_at = date(2026, 11, 20)
+    db.add(SuppressionEntry(kind="npi", value="1111111111"))
+    db.commit()
+    ws = export(db, ids=None)["All Leads"]
+    rows = {r[0].value: {h.value: c.value for h, c in zip(ws[1], r)} for r in ws.iter_rows(min_row=2)}
+    assert rows["A Clinic"]["Suppressed"] == "Yes"
+    assert rows["A Clinic"]["Next Follow-up"].strftime("%Y-%m-%d") == "2026-11-20"
+    assert rows["A Clinic"]["Last Contacted"].strftime("%Y-%m-%d") == "2026-11-09"
+    assert rows["B Clinic"]["Suppressed"] in (None, "")
+    assert rows["B Clinic"]["Last Contacted"] is None and rows["B Clinic"]["Next Follow-up"] is None
+    assert ws["U2"].number_format == "yyyy-mm-dd" and ws["V2"].number_format == "yyyy-mm-dd"
 
 
 def test_row_values(db):
@@ -91,7 +113,7 @@ def test_header_frozen_and_filtered(db):
     seed(db, "A Clinic", "1111111111")
     ws = export(db)["All Leads"]
     assert ws.freeze_panes == "A2"
-    assert ws.auto_filter.ref == "A1:T2"
+    assert ws.auto_filter.ref == "A1:W2"
     assert ws["A1"].font.bold
 
 

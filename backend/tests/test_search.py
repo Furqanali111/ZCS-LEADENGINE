@@ -10,6 +10,7 @@ from app.services.search import run_job
 from app.sources.npi_registry import SourceError, digits
 from app.worker import claim_next, pause_running_jobs, run_next
 
+pytestmark = pytest.mark.usefixtures("npi_source")
 FIXTURES = Path(__file__).parent / "fixtures"
 NPI2 = json.loads((FIXTURES / "npi2_page.json").read_text(encoding="utf-8"))["results"]
 NPI1 = json.loads((FIXTURES / "npi1_page.json").read_text(encoding="utf-8"))["results"]
@@ -33,12 +34,6 @@ def fake(pages: dict[str, list[list[dict]]], calls: list | None = None):
         i = skip // 200
         return copy.deepcopy(type_pages[i]) if i < len(type_pages) else []
     return fetch
-
-
-@pytest.fixture(autouse=True)
-def npi_source(db):
-    db.add(SourceConfig(key="npi_registry", name="NPI Registry", status="available"))
-    db.commit()
 
 
 def make_job(db, **kw) -> object:
@@ -373,7 +368,8 @@ def test_page_round_trips_are_few_and_flat(db, db_engine, session_factory, slow_
     big = statements_for_one_page(db, db_engine, session_factory, 200, 1910000000)
     print("statements: 50 records =", small, "200 records =", big)
     assert big < 40
-    assert big - small <= 12  # only the 100-record chunking may add a few statements, never one per record
+    # The extra 100-lead chunk costs exactly 13 statements: SAVEPOINT/RELEASE, the batched upserts, and the suppression enforce select.
+    assert big - small == 13
     assert slow_path_calls == []
     assert count(db, Organization) == 250
 

@@ -6,3 +6,7 @@ CRM_STATUSES = ("new", "researching", "email_sent", "called", "follow_up_require
 JOB_STATUSES = ("queued", "running", "paused", "completed", "cancelled", "failed")
 ORG_TYPES = ("practice", "subpart", "hospital", "solo_provider")
 PRIORITIES = ("critical", "high", "medium", "low")
+CLOSED_STATUSES = ("converted", "not_interested", "do_not_contact")
+ACTIVITY_TYPES = ("call", "email", "meeting", "note", "status_change", "outcome")
+OUTCOMES = ("no_answer", "spoke", "interested", "not_interested", "meeting_booked", "converted", "other")
+SUPPRESSION_KINDS = ("npi", "phone", "email")

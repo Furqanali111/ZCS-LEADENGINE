@@ -2,12 +2,14 @@ import uuid
 from datetime import date, datetime
 
 from sqlalchemy import (
-    ARRAY, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, Text, UniqueConstraint, func, text,
+    ARRAY, DDL, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, Text, UniqueConstraint, event, func, text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.constants import CRM_STATUSES, JOB_STATUSES, ORG_TYPES, PRIORITIES, US_STATES
+from app.constants import (
+    ACTIVITY_TYPES, CRM_STATUSES, JOB_STATUSES, ORG_TYPES, OUTCOMES, PRIORITIES, SUPPRESSION_KINDS, US_STATES,
+)
 from app.db import Base
 
 SOURCE_STATUSES = ("available", "approved_not_built", "not_reviewed", "rejected")
@@ -78,6 +80,7 @@ class Organization(IdMixin, Base):
         Index("ix_organizations_priority", "priority"),
         Index("ix_organizations_fit_score", "fit_score"),
         Index("ix_organizations_crm_status", "crm_status"),
+        Index("ix_organizations_next_follow_up_at", "next_follow_up_at"),
     )
 
     # The unique constraint on npi already creates the npi index the spec lists.
@@ -96,6 +99,8 @@ class Organization(IdMixin, Base):
     priority: Mapped[str | None] = mapped_column(Text)
     crm_status: Mapped[str] = mapped_column(Text, default="new", server_default="new")
     status_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_contacted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    next_follow_up_at: Mapped[date | None] = mapped_column(Date)
 
     locations: Mapped[list["Location"]] = relationship(back_populates="organization", cascade="all, delete-orphan", passive_deletes=True)
     contacts: Mapped[list["Contact"]] = relationship(back_populates="organization", cascade="all, delete-orphan", passive_deletes=True)
@@ -179,3 +184,54 @@ class LeadScore(IdMixin, Base):
     calculated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     organization: Mapped[Organization] = relationship(back_populates="score")
+
+
+class LeadActivity(Base):
+    """Insert-only: a database trigger rejects UPDATE and DELETE."""
+
+    __tablename__ = "lead_activities"
+    __table_args__ = (
+        CheckConstraint(in_list("type", ACTIVITY_TYPES), name="ck_lead_activities_type"),
+        CheckConstraint(f"outcome IS NULL OR {in_list('outcome', OUTCOMES)}", name="ck_lead_activities_outcome"),
+        CheckConstraint("char_length(summary) <= 2000", name="ck_lead_activities_summary_length"),
+        CheckConstraint("type = 'status_change' OR summary IS NOT NULL", name="ck_lead_activities_summary_required"),
+        Index("ix_lead_activities_org_occurred", "organization_id", text("occurred_at DESC")),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"), default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="RESTRICT"))
+    type: Mapped[str] = mapped_column(Text)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    summary: Mapped[str | None] = mapped_column(Text)
+    outcome: Mapped[str | None] = mapped_column(Text)
+    from_status: Mapped[str | None] = mapped_column(Text)
+    to_status: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# Mirrors migration 0004 so create_all (used by the test fixtures) gets the same trigger.
+event.listen(LeadActivity.__table__, "after_create", DDL(
+    "CREATE FUNCTION lead_activities_append_only() RETURNS trigger LANGUAGE plpgsql SET search_path = '' AS "
+    "$$ BEGIN RAISE EXCEPTION 'lead_activities is append-only'; END $$"
+))
+event.listen(LeadActivity.__table__, "after_create", DDL(
+    "CREATE TRIGGER lead_activities_append_only BEFORE UPDATE OR DELETE ON lead_activities "
+    "FOR EACH ROW EXECUTE FUNCTION lead_activities_append_only()"
+))
+event.listen(LeadActivity.__table__, "after_drop", DDL("DROP FUNCTION IF EXISTS lead_activities_append_only()"))
+
+
+class SuppressionEntry(Base):
+    """No foreign key to organizations on purpose: opt-outs outlive leads."""
+
+    __tablename__ = "suppression_list"
+    __table_args__ = (
+        UniqueConstraint("kind", "value", name="uq_suppression_list_kind_value"),
+        CheckConstraint(in_list("kind", SUPPRESSION_KINDS), name="ck_suppression_list_kind"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"), default=uuid.uuid4)
+    kind: Mapped[str] = mapped_column(Text)
+    value: Mapped[str] = mapped_column(Text)
+    reason: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

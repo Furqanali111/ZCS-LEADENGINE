@@ -7,7 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import exports, health, leads, search, sources
+from app.api import dashboard, exports, health, leads, pipeline, search, sources, suppression
 from app.config import get_settings
 from app.errors import AppError
 
@@ -63,4 +63,7 @@ def create_app(testing: bool = False) -> FastAPI:
     app.include_router(search.router)
     app.include_router(leads.router)
     app.include_router(exports.router)
+    app.include_router(pipeline.router)
+    app.include_router(dashboard.router)
+    app.include_router(suppression.router)
     return app

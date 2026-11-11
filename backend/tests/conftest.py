@@ -9,6 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from app.config import get_settings
 from app import models  # noqa: F401  registers all tables on Base.metadata
 from app.db import Base, get_session
+from app.models import SourceConfig
 from app.main import create_app
 
 
@@ -60,3 +61,9 @@ def client(db):
     app = create_app(testing=True)
     app.dependency_overrides[get_session] = lambda: db
     return TestClient(app)
+
+
+@pytest.fixture
+def npi_source(db):
+    db.add(SourceConfig(key="npi_registry", name="NPI Registry", status="available"))
+    db.commit()
