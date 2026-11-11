@@ -12,6 +12,7 @@ from app.models import LeadActivity, Organization, SourceRecord
 from app.schemas import ActivityIn, ActivityOut, ActivityPage, LeadFilters, LeadOut, LeadPage, LeadPatch
 from app.services.activities import add_activity, change_status
 from app.services.leads import lead_query
+from app.services.suppression import suppressed_ids
 
 router = APIRouter(prefix="/api/leads")
 
@@ -21,7 +22,7 @@ LOADS = (selectinload(Organization.contacts), selectinload(Organization.location
 PLAIN = [f for f in LeadOut.model_fields if f not in ("contact", "locations", "score", "source", "suppressed")]
 
 
-def _out(org: Organization) -> LeadOut:
+def _out(org: Organization, suppressed: bool = False) -> LeadOut:
     by_role = {c.role: c for c in org.contacts}
     src = max(org.source_records, key=lambda s: s.collected_at, default=None)
     return LeadOut.model_validate({
@@ -29,6 +30,7 @@ def _out(org: Organization) -> LeadOut:
         "contact": by_role.get("authorized_official") or by_role.get("provider"),
         "locations": org.locations,
         "score": org.score,
+        "suppressed": suppressed,
         "source": {"source_key": src.source_key, "collected_at": src.collected_at} if src else None,
     }, from_attributes=True)
 
@@ -42,7 +44,9 @@ def list_leads(filters: Annotated[LeadFilters, Query()], session: Session = Depe
     col = SORTS[sort]
     col = col.asc().nulls_last() if order == "asc" else col.desc().nulls_last()
     stmt = base.options(*LOADS).order_by(col, Organization.id).limit(page_size).offset((page - 1) * page_size)
-    return LeadPage(items=[_out(o) for o in session.scalars(stmt)], total=total, page=page, page_size=page_size)
+    orgs = session.scalars(stmt).all()
+    hit = suppressed_ids(session, [o.id for o in orgs])
+    return LeadPage(items=[_out(o, o.id in hit) for o in orgs], total=total, page=page, page_size=page_size)
 
 
 def _load(session: Session, lead_id: str, options=()) -> Organization:
@@ -57,7 +61,8 @@ def _load(session: Session, lead_id: str, options=()) -> Organization:
 
 @router.get("/{lead_id}", response_model=LeadOut)
 def get_lead(lead_id: str, session: Session = Depends(get_session)):
-    return _out(_load(session, lead_id, LOADS))
+    org = _load(session, lead_id, LOADS)
+    return _out(org, bool(suppressed_ids(session, [org.id])))
 
 
 @router.patch("/{lead_id}", response_model=LeadOut)
@@ -69,7 +74,7 @@ def patch_lead(lead_id: str, body: LeadPatch, session: Session = Depends(get_ses
         org.next_follow_up_at = body.next_follow_up_at
     session.commit()
     session.refresh(org)  # reload server-side updated_at
-    return _out(org)
+    return _out(org, bool(suppressed_ids(session, [org.id])))
 
 
 @router.get("/{lead_id}/activities", response_model=ActivityPage)

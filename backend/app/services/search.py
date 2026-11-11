@@ -14,6 +14,7 @@ from app.constants import US_STATES
 from app.models import Contact, LeadScore, Location, Organization, SearchJob, SearchJobLead, SourceConfig, SourceRecord
 from app.services.leads import save_score
 from app.services.scoring import load_config, score
+from app.services.suppression import enforce
 from app.sources.npi_registry import MAX_SKIP, PAGE_SIZE, NormalizedLead, SourceError, fetch_page, normalize
 
 logger = logging.getLogger(__name__)
@@ -162,20 +163,24 @@ def _save_batch(session: Session, job: SearchJob, leads: list[NormalizedLead], c
     linked = set(session.scalars(insert(SearchJobLead).values(
         [{"search_job_id": job.id, "organization_id": org_id[l.npi], "was_new": was_new[l.npi]} for l in leads])
         .on_conflict_do_nothing().returning(SearchJobLead.organization_id)))
+    enforce(session, org_id.values())
     return [None if org_id[l.npi] not in linked else "accepted_new" if was_new[l.npi] else "accepted_existing"
             for l in leads]
 
 
 def _save_each(session: Session, job: SearchJob, leads: list[NormalizedLead], config: dict, counters: dict) -> list[str | None]:
     """Fallback: one savepoint per lead, so a bad record costs one source failure and nothing else."""
-    outcomes = []
+    outcomes, saved = [], []
     for lead in leads:
         try:
             with session.begin_nested():
                 outcomes.append(_save_lead(session, job, lead, config))
+            saved.append(lead.npi)
         except Exception as e:
             logger.warning("search job %s: record NPI %s failed: %s", job.id, lead.npi, type(e).__name__)
             counters["source_failures"] += 1
+    with session.begin_nested():  # once per page, like the batched path
+        enforce(session, session.scalars(select(Organization.id).where(Organization.npi.in_(saved))).all())
     return outcomes
 
 

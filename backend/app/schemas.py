@@ -1,5 +1,6 @@
 import uuid
 from datetime import date, datetime, timezone
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -232,7 +233,7 @@ class LeadOut(BaseModel):
     updated_at: datetime
     last_contacted_at: datetime | None
     next_follow_up_at: date | None
-    suppressed: bool = False  # filled from the suppression list by the suppression task
+    suppressed: bool = False
     contact: ContactOut | None
     locations: list[LocationOut]
     score: ScoreOut | None
@@ -310,3 +311,19 @@ class DashboardStats(BaseModel):
     by_status: list[CountItem]
     recent_jobs: list[JobOut]
     conversion: Conversion
+
+
+class SuppressionIn(BaseModel):
+    kind: Literal["npi", "phone", "email"]
+    value: str
+    reason: str | None = Field(default=None, max_length=500)
+
+
+class SuppressionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    kind: str
+    value: str
+    reason: str | None
+    created_at: datetime

@@ -373,7 +373,7 @@ def test_page_round_trips_are_few_and_flat(db, db_engine, session_factory, slow_
     big = statements_for_one_page(db, db_engine, session_factory, 200, 1910000000)
     print("statements: 50 records =", small, "200 records =", big)
     assert big < 40
-    assert big - small <= 12  # only the 100-record chunking may add a few statements, never one per record
+    assert big - small <= 13  # only the 100-record chunking (now incl. one suppression check per chunk) may add a few statements, never one per record
     assert slow_path_calls == []
     assert count(db, Organization) == 250
 
