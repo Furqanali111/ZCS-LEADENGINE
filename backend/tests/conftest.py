@@ -33,19 +33,30 @@ def test_database_url():
 
 
 @pytest.fixture
-def db(test_database_url):
+def db_engine(test_database_url):
     if same_database(test_database_url, get_settings().database_url):
         raise RuntimeError("TEST_DATABASE_URL equals DATABASE_URL, refusing to run")
     engine = create_engine(test_database_url)
     Base.metadata.create_all(engine)
-    with sessionmaker(bind=engine, expire_on_commit=False)() as session:
-        yield session
+    yield engine
     Base.metadata.drop_all(engine)
     engine.dispose()
 
 
 @pytest.fixture
+def session_factory(db_engine):
+    """Opens new sessions on the same test database as `db`, for code that manages its own transactions."""
+    return sessionmaker(bind=db_engine, expire_on_commit=False)
+
+
+@pytest.fixture
+def db(session_factory):
+    with session_factory() as session:
+        yield session
+
+
+@pytest.fixture
 def client(db):
-    app = create_app()
+    app = create_app(testing=True)
     app.dependency_overrides[get_session] = lambda: db
     return TestClient(app)

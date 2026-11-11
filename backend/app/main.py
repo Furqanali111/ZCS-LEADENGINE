@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from starlette.exceptions import HTTPException
@@ -19,10 +20,23 @@ def _error(status: int, message: str, code: str | None = None) -> JSONResponse:
     return JSONResponse({"error": {"code": code, "message": message}}, status_code=status)
 
 
-def create_app() -> FastAPI:
+def create_app(testing: bool = False) -> FastAPI:
     settings = get_settings()
     logging.basicConfig(level=settings.log_level)
-    app = FastAPI(title="ZCS LeadEngine")
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI):
+        if not testing:
+            from app.db import SessionLocal
+            from app.worker import pause_running_jobs, start_worker
+
+            with SessionLocal() as session:
+                pause_running_jobs(session)
+            start_worker(SessionLocal)
+        yield
+
+    app = FastAPI(title="ZCS LeadEngine", lifespan=lifespan)
+    app.state.testing = testing
     app.add_middleware(CORSMiddleware, allow_origins=[settings.frontend_origin], allow_methods=["*"], allow_headers=["*"])
 
     @app.exception_handler(HTTPException)
