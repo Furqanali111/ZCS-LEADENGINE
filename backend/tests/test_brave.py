@@ -31,7 +31,18 @@ def test_sends_token_and_params_and_returns_urls_only():
     assert req.headers["Cache-Control"] == "no-cache"
 
 
-@pytest.mark.parametrize("body", [{}, {"web": {}}, {"web": {"results": []}}])
+def test_default_count_is_5():
+    seen = {}
+
+    def handler(req):
+        seen["count"] = req.url.params["count"]
+        return httpx.Response(200, json={})
+
+    search(_client(handler), KEY, "q")
+    assert seen["count"] == "5"
+
+
+@pytest.mark.parametrize("body", [{}, {"web": None}, {"web": {}}, {"web": {"results": []}}])
 def test_empty_or_missing_web_returns_empty(body):
     assert search(_client(_json(body)), KEY, "q") == []
 
@@ -41,7 +52,8 @@ def test_drops_non_string_and_empty_urls():
     assert search(_client(_json(body)), KEY, "q") == ["https://a.com"]
 
 
-@pytest.mark.parametrize("status,kind", [(401, "auth"), (403, "auth"), (429, "rate_limited"),
+@pytest.mark.parametrize("status,kind", [(401, "auth"), (402, "auth"), (403, "auth"),
+                                         (429, "rate_limited"), (301, "failed"), (302, "failed"),
                                          (500, "failed"), (503, "failed")])
 def test_status_maps_to_kind(status, kind):
     with pytest.raises(SearchError) as e:

@@ -20,15 +20,15 @@ def search(client: httpx.Client, api_key: str, query: str, count: int = 5) -> li
                                    "Cache-Control": "no-cache"})
     except httpx.HTTPError:
         raise SearchError("failed") from None  # httpx messages can echo request details
-    if resp.status_code in (401, 403):
+    if resp.status_code in (401, 402, 403):  # 402: quota or plan exhausted, pause the job
         raise SearchError("auth")
     if resp.status_code == 429:
         raise SearchError("rate_limited")
     if resp.status_code != 200:
         raise SearchError("failed")
     try:
-        web = resp.json().get("web", {})
-        results = web.get("results", [])
+        web = resp.json().get("web")
+        results = web.get("results", []) if web is not None else []
     except (ValueError, AttributeError):
         raise SearchError("failed") from None
     if not isinstance(results, list):
