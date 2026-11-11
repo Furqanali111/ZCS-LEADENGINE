@@ -25,24 +25,11 @@ SOURCE_KEY = "practice_website"
 SKIP = ("enriched", "rejected_by_user")
 COUNTERS = ("enrich_attempted", "websites_found", "no_website_found", "emails_found", "people_found",
             "pages_fetched", "blocked_by_robots", "enrich_failures")
-NEAR = 200  # an email this close to a person's name in the page text belongs to that person
 AUTH_MESSAGE = "Brave Search rejected the API key. Check BRAVE_API_KEY and resume the job."
 
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
-
-
-def _near(text: str, first: str, last: str, email: str) -> bool:
-    low = text.lower()
-    at = low.find(email)
-    if at < 0:
-        return False
-
-    def close(word: str) -> bool:
-        return any(abs(m.start() - at) <= NEAR for m in re.finditer(re.escape(word.lower()), low))
-
-    return close(first) and close(last)
 
 
 def enrich_lead(session: Session, org: Organization, *, search: Callable[[str], list[str]],
@@ -90,34 +77,41 @@ def enrich_lead(session: Session, org: Organization, *, search: Callable[[str], 
     return org.enrichment_status
 
 
+def _token_match(email: str, first: str, last: str) -> bool:
+    tokens = set(re.split(r"[._\-+\d]+", email.partition("@")[0].lower()))
+    return any(len(w) >= 3 and w.lower() in tokens for w in (first, last))
+
+
 def _store_contacts(session: Session, org: Organization, pages: list[Page], site: str, phones: list[str],
                     stamp: datetime, counters: dict) -> None:
-    rows: dict[tuple[str, str, str], dict] = {}  # keyed like the unique constraint, first page wins
+    people: dict[tuple[str, str], dict] = {}  # first page wins
+    found: dict[str, dict] = {}  # one row per address per lead, first page wins
     for page in pages:
         text = page_text(page.html)
         verified = verify_website(text, phones=phones, name=org.name, city=org.city) == "phone"
         hits = extract_emails(page.html, text, site_domain=site, phone_verified=verified)
         blocked = suppressed_emails(session, {h.email for h in hits})
-        hits = [h for h in hits if h.email not in blocked]
         base = {"organization_id": org.id, "source_key": SOURCE_KEY, "source_url": page.url, "collected_at": stamp}
-        used: set[str] = set()
         for p in extract_people(text):
-            row = {**base, "role": "staff", "first_name": p.first_name, "last_name": p.last_name, "title": p.title}
-            for h in hits:
-                if not h.general and h.email not in used and _near(text, p.first_name, p.last_name, h.email):
-                    row.update(email=h.email, email_status="found_on_page")
-                    used.add(h.email)
-                    break
-            rows.setdefault(("staff", p.first_name, p.last_name), row)
+            people.setdefault((p.first_name, p.last_name), {**base, "role": "staff", "first_name": p.first_name,
+                                                            "last_name": p.last_name, "title": p.title})
         for h in hits:
-            if h.email not in used:
-                rows.setdefault(("general", "", h.email),
-                                {**base, "role": "general", "first_name": "", "last_name": h.email,
-                                 "email": h.email, "email_status": "found_on_page"})
-    session.add_all(Contact(**r) for r in rows.values())
+            if h.email not in blocked:
+                found.setdefault(h.email, base)
+    rows = list(people.values())
+    for email, base in found.items():
+        # an address is attached only when its local part names the person; otherwise it is a general contact
+        owner = next((r for r in rows if r["role"] == "staff" and "email" not in r
+                      and _token_match(email, r["first_name"], r["last_name"])), None)
+        if owner:
+            owner.update(email=email, email_status="found_on_page")
+        else:
+            rows.append({**base, "role": "general", "first_name": "", "last_name": email, "title": None,
+                         "email": email, "email_status": "found_on_page"})
+    session.add_all(Contact(**r) for r in rows)
     session.flush()
-    counters["emails_found"] += sum(1 for r in rows.values() if r.get("email"))
-    counters["people_found"] += sum(1 for r in rows.values() if r["role"] == "staff")
+    counters["emails_found"] += sum(1 for r in rows if r.get("email"))
+    counters["people_found"] += len(people)
 
 
 def _rescore(session: Session, org: Organization) -> None:
@@ -132,6 +126,42 @@ def _rescore(session: Session, org: Organization) -> None:
     save_score(session, org, score(normalize(rec.raw), load_config(), staff_with_title=staff))
 
 
+def _try_lead(session: Session, org: Organization, search, fetch, sleep) -> tuple[dict, str | None]:
+    """Returns (counters, failure kind). Raises only SearchError(auth)."""
+    for retry in (False, True):
+        attempt: dict = {}
+        try:
+            enrich_lead(session, org, search=search, fetch=fetch, counters=attempt)
+            return attempt, None
+        except SearchError as e:
+            session.rollback()
+            if e.kind == "auth":
+                raise
+            if e.kind == "rate_limited" and not retry:
+                sleep(5)
+                continue
+            return {}, e.kind
+        except FetchFailed:
+            session.rollback()
+            return {}, "fetch"
+        except Exception as e:  # noqa: BLE001 - one bad lead must not stall the job; type only, message may hold data
+            session.rollback()
+            return {}, type(e).__name__
+    return {}, "rate_limited"
+
+
+def _save_counters(session: Session, job_id: UUID, attempt: dict, fetch_stats: dict, seen: dict) -> None:
+    job = session.get(SearchJob, job_id, populate_existing=True)
+    counters = {k: 0 for k in COUNTERS} | dict(job.counters or {})
+    for k, v in attempt.items():
+        counters[k] += v
+    for k, was in seen.items():
+        counters[k] += fetch_stats.get(k, 0) - was
+        seen[k] = fetch_stats.get(k, 0)
+    job.counters = counters
+    session.commit()
+
+
 def enrich_job_leads(session_factory, job_id: UUID, *, search: Callable[[str], list[str]],
                      fetch: Callable[[str], Page | None], fetch_stats: dict, sleep: Callable[[float], None]) -> str:
     with session_factory() as session:
@@ -144,40 +174,15 @@ def enrich_job_leads(session_factory, job_id: UUID, *, search: Callable[[str], l
             if session.get(SearchJob, job_id, populate_existing=True).cancel_requested:
                 return "cancelled"
             org = session.get(Organization, org_id, populate_existing=True)
-            attempt: dict = {}
-            failure = None
-            for retry in (False, True):
-                attempt = {}
-                try:
-                    enrich_lead(session, org, search=search, fetch=fetch, counters=attempt)
-                    failure = None
-                    break
-                except SearchError as e:
-                    session.rollback()
-                    if e.kind == "auth":
-                        session.get(SearchJob, job_id, populate_existing=True).error = AUTH_MESSAGE
-                        session.commit()
-                        return "paused"
-                    failure = e.kind
-                    if e.kind == "rate_limited" and not retry:
-                        sleep(5)
-                        continue
-                    break
-                except FetchFailed:
-                    session.rollback()
-                    failure = "fetch"
-                    break
+            try:
+                attempt, failure = _try_lead(session, org, search, fetch, sleep)
+            except SearchError:
+                session.get(SearchJob, job_id, populate_existing=True).error = AUTH_MESSAGE
+                _save_counters(session, job_id, {}, fetch_stats, seen)
+                return "paused"
             if failure:
                 logger.warning("enrich job %s: lead failed (%s)", job_id, failure)
                 session.get(Organization, org_id, populate_existing=True).enrichment_status = "failed"
                 attempt = {"enrich_attempted": 1, "enrich_failures": 1}
-            job = session.get(SearchJob, job_id, populate_existing=True)
-            counters = {k: 0 for k in COUNTERS} | dict(job.counters or {})
-            for k, v in attempt.items():
-                counters[k] += v
-            for k, was in seen.items():
-                counters[k] += fetch_stats.get(k, 0) - was
-                seen[k] = fetch_stats.get(k, 0)
-            job.counters = counters
-            session.commit()
+            _save_counters(session, job_id, attempt, fetch_stats, seen)
     return "done"

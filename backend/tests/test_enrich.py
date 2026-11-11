@@ -157,7 +157,7 @@ def test_no_source_record_skips_rescore(db):
 def link(db, job_id, *orgs):
     for o in orgs:
         db.add(SearchJobLead(search_job_id=job_id, organization_id=o.id, was_new=True))
-    db.commit()
+        db.commit()  # separate transactions so created_at orders the leads
 
 
 def run(session_factory, job_id, search, fetch=None, sleeps=None, stats=None):
@@ -200,21 +200,28 @@ def test_fetch_failed_marks_failed_and_next_run_retries(db, session_factory):
     assert job(db, jid).counters["enrich_failures"] == 1
     assert run(session_factory, jid, lambda q: ["https://lonestar.example/"]) == "done"
     db.expire_all()
-    db.expire_all()
     assert db.get(Organization, org.id).enrichment_status == "enriched"
 
 
-def test_auth_error_pauses_without_leaking_key(db, session_factory):
+def test_auth_error_pauses_without_leaking_key(db, session_factory, caplog):
     org = lead(db)
     jid = make_job(db, enrich=True)
     link(db, jid, org)
 
     def search(q):
-        raise SearchError("auth")
+        raise _leaky(SECRET)
     assert run(session_factory, jid, search) == "paused"
     j = job(db, jid)
     assert j.error and SECRET not in j.error
+    assert SECRET not in str(j.counters) and SECRET not in caplog.text
+    db.expire_all()
     assert db.get(Organization, org.id).enrichment_status == "not_run"
+
+
+def _leaky(key):
+    e = SearchError("auth")
+    e.args = (f"rejected key {key}",)  # a message carrying the key must still never reach job.error or logs
+    return e
 
 
 def test_rate_limit_sleeps_and_retries_once(db, session_factory):
@@ -267,7 +274,6 @@ def test_cancel_between_leads_and_resume_skips_enriched(db, session_factory):
     assert run(session_factory, jid, search) == "cancelled"
     assert len(seen) == 1
     db.expire_all()
-    db.expire_all()
     assert db.get(Organization, a.id).enrichment_status == "enriched"
     assert db.get(Organization, b.id).enrichment_status == "not_run"
 
@@ -295,3 +301,86 @@ def test_stored_data_has_no_search_snippets(db):
     db.refresh(org)
     assert set(org.website_evidence) == {"page_url", "check", "checked_at"}
     assert "Best" not in str(org.website_evidence) and "utm" not in org.website
+
+
+def contacts_by(db, org):
+    return {(c.role, c.first_name, c.last_name): c for c in web_contacts(db, org)}
+
+
+def test_email_goes_only_to_person_it_names(db):
+    org = lead(db)
+    team = "<p>Jane Doe, Practice Manager. John Roe, Owner, john@lonestar.example. jane@lonestar.example</p>"
+    enrich(db, org, pages={**GOOD, "https://lonestar.example/team": team})
+    rows = contacts_by(db, org)
+    assert rows[("staff", "Jane", "Doe")].email == "jane@lonestar.example"
+    assert rows[("staff", "John", "Roe")].email == "john@lonestar.example"
+    emails = [c.email for c in web_contacts(db, org) if c.email]
+    assert len(emails) == len(set(emails))
+
+
+def test_unrelated_address_is_general_and_whole_token_only(db):
+    org = lead(db)
+    team = "<p>Ann Lee, Owner</p><p>mail leeds@lonestar.example</p><p>lee.ann@lonestar.example</p>"
+    enrich(db, org, pages={**GOOD, "https://lonestar.example/team": team})
+    rows = contacts_by(db, org)
+    assert rows[("staff", "Ann", "Lee")].email == "lee.ann@lonestar.example"
+    assert rows[("general", "", "leeds@lonestar.example")].email == "leeds@lonestar.example"
+
+
+def test_address_not_stored_twice_across_pages(db):
+    org = lead(db)
+    contact = "<p>jane@lonestar.example</p>"
+    enrich(db, org, pages={**GOOD, "https://lonestar.example/contact": contact})
+    emails = [c.email for c in web_contacts(db, org) if c.email]
+    assert emails.count("jane@lonestar.example") == 1
+
+
+def test_name_city_site_rejects_free_and_foreign_mail(db):
+    org = lead(db)
+    home = "<p>Lone Star Family Care in Austin. info@lonestar.example other@gmail.com x@elsewhere.org</p>"
+    enrich(db, org, pages={"https://lonestar.example/": home})
+    db.refresh(org)
+    assert org.website_evidence["check"] == "name_city"
+    assert {c.email for c in web_contacts(db, org)} == {"info@lonestar.example"}
+
+
+def test_mid_lead_fetch_failure_rolls_back_that_lead_only(db, session_factory):
+    a = lead(db)
+    b = add_lead(db, "1000000002", "Other Clinic", 40, "low")
+    db.query(SourceRecord).filter_by(organization_id=b.id).update({"raw": NPI2[0]})
+    db.commit()
+    jid = make_job(db, enrich=True)
+    link(db, jid, a, b)
+    pages = {**GOOD, "https://other.example/": "<p>Other Clinic Austin</p><a href='/team'>Team</a>"}
+    ok = site(pages)
+
+    def fetch(url):
+        if url == "https://other.example/team":
+            raise FetchFailed("down")
+        return ok(url)
+    searches = iter([["https://lonestar.example/"], ["https://other.example/"]])
+    assert run(session_factory, jid, lambda q: next(searches), fetch) == "done"
+    db.expire_all()
+    assert db.get(Organization, a.id).enrichment_status == "enriched" and web_contacts(db, a)
+    assert db.get(Organization, b.id).enrichment_status == "failed"
+    assert web_contacts(db, b) == [] and db.get(Organization, b.id).website is None
+
+
+def test_unexpected_error_fails_only_that_lead(db, session_factory, caplog):
+    a = lead(db)
+    b = add_lead(db, "1000000002", "Other Clinic", 40, "low")
+    jid = make_job(db, enrich=True)
+    link(db, jid, a, b)
+    n = []
+
+    def search(q):
+        n.append(q)
+        if len(n) == 1:
+            raise RuntimeError("secret detail")
+        return []
+    assert run(session_factory, jid, search) == "done"
+    db.expire_all()
+    assert db.get(Organization, a.id).enrichment_status == "failed"
+    assert db.get(Organization, b.id).enrichment_status == "no_website_found"
+    assert job(db, jid).counters["enrich_failures"] == 1
+    assert "secret detail" not in caplog.text and "RuntimeError" in caplog.text
