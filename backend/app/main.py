@@ -7,8 +7,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import health
+from app.api import health, search, sources
 from app.config import get_settings
+from app.errors import AppError
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,10 @@ def create_app(testing: bool = False) -> FastAPI:
     async def http_error(_: Request, exc: HTTPException):
         return _error(exc.status_code, str(exc.detail))
 
+    @app.exception_handler(AppError)
+    async def app_error(_: Request, exc: AppError):
+        return _error(exc.status, exc.message, exc.code)
+
     @app.exception_handler(RequestValidationError)
     async def validation_error(_: Request, exc: RequestValidationError):
         msg = "; ".join(f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in exc.errors())
@@ -54,4 +59,6 @@ def create_app(testing: bool = False) -> FastAPI:
         return _error(500, "Internal server error")
 
     app.include_router(health.router)
+    app.include_router(sources.router)
+    app.include_router(search.router)
     return app
