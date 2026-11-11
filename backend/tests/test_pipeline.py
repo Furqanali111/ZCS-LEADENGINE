@@ -49,3 +49,12 @@ def test_unknown_status_is_422(client):
     r = client.get("/api/pipeline/bogus")
     assert r.status_code == 422
     assert set(r.json()["error"]) == {"code", "message"}
+
+
+def test_pipeline_same_score_same_name_ties_break_by_id(client, db):
+    ids = [org(db, i, score=50, name="Same") for i in range(5)]
+    db.commit()
+    expected = [str(i) for i in sorted(o.id for o in ids)]
+    new = client.get("/api/pipeline").json()["columns"][0]
+    assert [c["id"] for c in new["leads"]] == expected
+    assert [c["id"] for c in client.get("/api/pipeline/new").json()["leads"]] == expected

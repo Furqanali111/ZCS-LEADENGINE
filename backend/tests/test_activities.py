@@ -128,7 +128,16 @@ def test_activities_listed_newest_first_and_paginated(client, db):
     assert client.get(f"/api/leads/{org.id}/activities?page=0").status_code == 422
 
 
-def test_no_put_or_delete_routes_for_activities(client, db):
+def test_only_get_and_post_routes_under_activities(client):
+    # this FastAPI nests routers inside app.routes, so read the flattened route table from the OpenAPI schema
+    methods = set()
+    for path, ops in client.app.openapi()["paths"].items():
+        if "/activities" in path:
+            methods |= {m.upper() for m in ops}
+    assert methods == {"GET", "POST"}
+
+
+def test_no_put_or_delete_on_activities_urls(client, db):
     org = add_lead(db, "1000000001", "Alpha")
     add_activity(db, org, type="note", summary="x")
     db.commit()
@@ -136,3 +145,27 @@ def test_no_put_or_delete_routes_for_activities(client, db):
     for url in (f"/api/leads/{org.id}/activities/{aid}", f"/api/leads/{org.id}/activities"):
         for method in ("put", "patch", "delete"):
             assert getattr(client, method)(url).status_code in (404, 405), (method, url)
+
+
+def test_summary_is_stripped_and_blank_is_422(client, db):
+    org = add_lead(db, "1000000001", "Alpha")
+    url = f"/api/leads/{org.id}/activities"
+    assert client.post(url, json={"type": "note", "summary": "   "}).status_code == 422
+    r = client.post(url, json={"type": "note", "summary": "  hello \t "})
+    assert r.status_code == 201
+    assert [a.summary for a in acts(db, org)] == ["hello"]
+
+
+def test_occurred_at_far_future_is_422_but_near_future_ok(client, db):
+    org = add_lead(db, "1000000001", "Alpha")
+    url = f"/api/leads/{org.id}/activities"
+    now = datetime.now(timezone.utc)
+    assert client.post(url, json={"type": "note", "summary": "x", "occurred_at": (now + timedelta(days=2)).isoformat()}).status_code == 422
+    assert client.post(url, json={"type": "note", "summary": "x", "occurred_at": (now + timedelta(hours=1)).isoformat()}).status_code == 201
+
+
+def test_add_activity_treats_naive_occurred_at_as_utc(db):
+    org = add_lead(db, "1000000001", "Alpha")
+    act = add_activity(db, org, type="call", occurred_at=datetime(2026, 11, 1, 12), summary="x")
+    assert act.occurred_at == T0 and org.last_contacted_at == T0
+    add_activity(db, org, type="call", occurred_at=T0 - timedelta(days=1), summary="old")  # no naive/aware compare error

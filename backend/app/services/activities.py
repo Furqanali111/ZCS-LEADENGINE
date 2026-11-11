@@ -12,6 +12,8 @@ def add_activity(session: Session, org: Organization, *, type: str, occurred_at:
                  from_status: str | None = None, to_status: str | None = None) -> LeadActivity:
     """Adds without committing, so the caller keeps activity and snapshot in one transaction."""
     occurred_at = occurred_at or datetime.now(timezone.utc)
+    if occurred_at.tzinfo is None:
+        occurred_at = occurred_at.replace(tzinfo=timezone.utc)
     act = LeadActivity(organization_id=org.id, type=type, occurred_at=occurred_at, summary=summary,
                        outcome=outcome, from_status=from_status, to_status=to_status)
     session.add(act)

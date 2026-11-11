@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -138,6 +138,14 @@ class ActivityIn(BaseModel):
     outcome: str | None = None
     next_follow_up_at: date | None = None
 
+    @field_validator("summary")
+    @classmethod
+    def strip_summary(cls, v):
+        v = v.strip()
+        if not v:
+            raise ValueError("must not be blank")
+        return v
+
     @field_validator("type")
     @classmethod
     def known_type(cls, v):
@@ -157,7 +165,11 @@ class ActivityIn(BaseModel):
     @field_validator("occurred_at")
     @classmethod
     def assume_utc(cls, v):
-        return v.replace(tzinfo=timezone.utc) if v is not None and v.tzinfo is None else v
+        if v is not None and v.tzinfo is None:
+            v = v.replace(tzinfo=timezone.utc)
+        if v is not None and v > datetime.now(timezone.utc) + timedelta(days=1):
+            raise ValueError("must not be more than 1 day in the future")
+        return v
 
 
 class ActivityOut(BaseModel):
