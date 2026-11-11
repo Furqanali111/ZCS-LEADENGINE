@@ -30,7 +30,7 @@ def sparse():
 
 def test_core_independent_practice_full_contact():
     r = score(lead(), CONFIG)
-    assert (r.total, r.priority, r.config_version) == (90, "critical", "1")
+    assert (r.total, r.priority, r.config_version) == (90, "critical", "2")
 
 
 def test_subspecialty_subpart():
@@ -88,3 +88,25 @@ def test_name_only_official_gets_five():
 
 def test_max_points_sum_to_100():
     assert sum(CONFIG["max"].values()) == 100
+
+
+def test_staff_with_title_counts_as_decision_maker():
+    base = lead()
+    l = lead(contact={**base.contact, "first_name": None, "last_name": None, "title": None})
+    assert score(l, CONFIG).components["decision_maker"]["points"] == 0
+    dm = score(l, CONFIG, staff_with_title=True).components["decision_maker"]
+    assert dm["points"] == 10
+    assert dm["reason"] == "named staff member with title found on practice website"
+
+
+def test_staff_flag_does_not_override_official_or_solo():
+    assert score(lead(), CONFIG, staff_with_title=True).components["decision_maker"]["reason"] == "authorized official with name and title"
+    base = lead()
+    name_only = lead(contact={**base.contact, "title": None})
+    assert score(name_only, CONFIG, staff_with_title=True).components["decision_maker"]["points"] == 10
+    solo = lead(organization_type="solo_provider", contact={"first_name": "J", "last_name": "S", "title": "MD", "phone": "1", "role": "provider"})
+    assert score(solo, CONFIG, staff_with_title=True).components["decision_maker"]["reason"].startswith("solo")
+
+
+def test_config_version_is_2():
+    assert CONFIG["version"] == "2"

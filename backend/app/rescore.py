@@ -1,7 +1,7 @@
 """Recompute every lead's fit score from its stored raw source record: python -m app.rescore"""
 from sqlalchemy import select
 
-from app.models import Organization, SourceRecord
+from app.models import Contact, Organization, SourceRecord
 from app.services.leads import save_score
 from app.services.scoring import load_config, score
 from app.sources.npi_registry import normalize
@@ -21,7 +21,10 @@ def rescore_all(session_factory, config_path: str | None = None) -> int:
                 if rec is None:
                     skipped += 1
                     continue
-                save_score(session, org, score(normalize(rec.raw), config))
+                staff = session.scalars(select(Contact.id).where(
+                    Contact.organization_id == org.id, Contact.role == "staff",
+                    Contact.title.is_not(None), Contact.title != "").limit(1)).first() is not None
+                save_score(session, org, score(normalize(rec.raw), config, staff_with_title=staff))
                 done += 1
             session.commit()
     if skipped:

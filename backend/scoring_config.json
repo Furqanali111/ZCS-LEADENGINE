@@ -1,5 +1,5 @@
 {
-  "version": "1",
+  "version": "2",
   "core_taxonomy_codes": ["207R00000X", "207Q00000X", "207QG0300X", "207RG0300X", "208D00000X"],
   "subspecialty_prefixes": ["207R", "207Q"],
   "hospital_prefix": "28",
@@ -8,7 +8,7 @@
     "independence": {"practice": 20, "solo_provider": 16, "subpart": 8, "hospital": 4},
     "service_fit": {"core": 20, "other": 12, "hospital": 5},
     "contactability": {"phone": 10, "direct_phone": 5},
-    "decision_maker": {"name_and_title": 10, "name_only": 5, "solo_provider": 10},
+    "decision_maker": {"name_and_title": 10, "name_only": 5, "solo_provider": 10, "staff_with_title": 10},
     "multi_location": {"multiple": 10}
   },
   "max": {"specialty": 25, "independence": 20, "service_fit": 20, "contactability": 15, "decision_maker": 10, "multi_location": 10},

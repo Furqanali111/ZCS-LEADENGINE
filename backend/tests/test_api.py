@@ -418,3 +418,22 @@ def test_patch_suppressed_lead_cannot_leave_do_not_contact(client, db):
     assert client.get(f"/api/leads/{org.id}").json()["crm_status"] == "do_not_contact"
     assert client.patch(f"/api/leads/{org.id}", json={"next_follow_up_at": "2026-12-01"}).status_code == 200
     assert client.patch(f"/api/leads/{org.id}", json={"crm_status": "do_not_contact"}).status_code == 200
+
+
+def test_rescore_passes_staff_with_title(db, session_factory):
+    from app.models import Contact, Organization, SourceRecord
+    from app.rescore import rescore_all
+
+    raw = {"number": "3333333333", "enumeration_type": "NPI-2", "basic": {"organization_name": "Staff Co"},
+           "taxonomies": [{"code": "207Q00000X", "desc": "Family Medicine", "primary": True}],
+           "addresses": [{"address_purpose": "LOCATION", "city": "Austin", "state": "TX"}]}
+    org = Organization(npi="3333333333", name="Staff Co", organization_type="practice", state="TX")
+    db.add(org)
+    db.flush()
+    db.add(SourceRecord(organization_id=org.id, source_key="npi_registry", external_id="3333333333", raw=raw))
+    db.add(Contact(organization_id=org.id, first_name="Ann", last_name="Lee", title="Practice Manager",
+                   role="staff", source_key="website"))
+    db.commit()
+    rescore_all(session_factory)
+    db.refresh(org)
+    assert org.score.components["decision_maker"]["points"] == 10
