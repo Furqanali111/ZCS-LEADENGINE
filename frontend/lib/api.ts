@@ -63,7 +63,7 @@ export type SearchInput = {
   include_subparts: boolean;
   include_hospitals: boolean;
   sources: string[];
-  enrich: boolean;
+  enrich?: boolean;
 };
 
 export type Contact = {

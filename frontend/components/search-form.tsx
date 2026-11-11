@@ -88,7 +88,7 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
         include_subparts: subparts,
         include_hospitals: hospitals,
         sources: selected,
-        enrich,
+        ...(enrich && { enrich: true }),
       });
       onCreated();
     } catch (err) {
@@ -230,7 +230,7 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
         <legend className="mb-1 text-sm font-medium">Enrichment</legend>
         <CheckRow label="Also find websites and emails" checked={enrich} onChange={setEnrich} describedBy="enrich-hint" />
         <p id="enrich-hint" className="text-sm text-muted-foreground">
-          Uses your Brave key, one query per lead
+          Uses your search API key, one query per lead
           {targetValid ? `, so about ${targetNum} ${targetNum === 1 ? "query" : "queries"} for this search` : ""}.
         </p>
       </fieldset>

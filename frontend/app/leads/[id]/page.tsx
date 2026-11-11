@@ -63,6 +63,7 @@ function LeadDetail() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [followDraft, setFollowDraft] = useState<string | null>(null);
   const refreshSeq = useRef(0);
+  const webHeading = useRef<HTMLHeadingElement>(null);
 
   // Reload the lead and the first page of the timeline (status changes add entries).
   const refresh = useCallback(async () => {
@@ -121,6 +122,7 @@ function LeadDetail() {
     if (!lead?.website) return;
     if (!window.confirm(`Remove ${hostOf(lead.website)} as the website for ${lead.name}? Its emails and people found there will be removed too.`)) return;
     await save({ reject_website: true }, "Website removed.");
+    webHeading.current?.focus(); // the button is gone after refresh; keep focus in this section
   }
 
   async function suppress() {
@@ -276,7 +278,7 @@ function LeadDetail() {
             <p className="tabular-nums">Fax {formatPhone(lead.fax)}</p>
           </section>
           <section aria-labelledby="web-h">
-            <h2 id="web-h" className="mb-2 font-semibold">
+            <h2 id="web-h" ref={webHeading} tabIndex={-1} className="mb-2 font-semibold outline-none">
               Website and emails
             </h2>
             {lead.website ? (
@@ -292,7 +294,7 @@ function LeadDetail() {
                   )}
                 </p>
                 {evidence && <p className="text-muted-foreground">{evidence}</p>}
-                <Button variant="outline" size="sm" className="mt-2" onClick={rejectWebsite}>
+                <Button variant="outline" size="sm" className="mt-2" aria-label={`Not this website: ${hostOf(lead.website)}`} onClick={rejectWebsite}>
                   Not this website
                 </Button>
               </>
@@ -309,8 +311,8 @@ function LeadDetail() {
                   const address = c.email ?? (c.role === "general" ? c.last_name : null);
                   return (
                     <li key={i}>
-                      <span className="font-medium">{who}</span>
-                      {c.title && <span className="text-muted-foreground">, {c.title}</span>}
+                      {who && <span className="font-medium">{who}</span>}
+                      {c.title && <span className="text-muted-foreground">{who ? ", " : ""}{c.title}</span>}
                       {address && <p className="break-all">{address}</p>}
                       <p className="text-muted-foreground">
                         {c.email && <>Found on page{" | "}</>}
