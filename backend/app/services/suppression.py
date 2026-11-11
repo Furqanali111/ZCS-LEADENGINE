@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.errors import AppError
-from app.models import Organization, SuppressionEntry
+from app.models import Contact, Organization, SuppressionEntry
 from app.services.activities import change_status
 
 DNC = "do_not_contact"
@@ -41,7 +41,15 @@ def _matches():
     return or_(
         exists().where(entry.kind == "npi", entry.value == Organization.npi),
         exists().where(entry.kind == "phone", entry.value.in_([_digits(Organization.phone), _digits(Organization.fax)])),
-    )  # email entries match no lead until slice 3 stores emails
+        exists().where(entry.kind == "email", Contact.organization_id == Organization.id, func.lower(Contact.email) == entry.value),
+    )
+
+
+def suppressed_emails(session: Session, emails: Collection[str]) -> set[str]:
+    lowered = {e.strip().lower() for e in emails}
+    if not lowered:
+        return set()
+    return set(session.scalars(select(SuppressionEntry.value).where(SuppressionEntry.kind == "email", SuppressionEntry.value.in_(lowered))))
 
 
 def suppressed_ids(session: Session, org_ids: Collection[UUID]) -> set[UUID]:
@@ -77,5 +85,7 @@ def add_entry(session: Session, kind: str, value: str, reason: str | None = None
         _mark(session, Organization.npi == value)
     elif kind == "phone":
         _mark(session, or_(_digits(Organization.phone) == value, _digits(Organization.fax) == value))
+    elif kind == "email":
+        _mark(session, Organization.id.in_(select(Contact.organization_id).where(func.lower(Contact.email) == value)))
     session.commit()
     return entry
