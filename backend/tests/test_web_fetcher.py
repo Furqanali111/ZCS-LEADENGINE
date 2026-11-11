@@ -57,15 +57,6 @@ def test_disallowed_by_robots_not_requested():
     assert "https://a.com/private" not in log
 
 
-def test_crawl_delay_spaces_requests():
-    f, _, clock = make({"/robots.txt": httpx.Response(200, text="User-agent: *\nCrawl-delay: 3"),
-                        "/a": ok(), "/b": ok()})
-    f.get("https://a.com/a")
-    f.get("https://a.com/b")
-    assert clock.sleeps and all(s >= 1.0 for s in clock.sleeps)
-    assert max(clock.sleeps) >= 3 or sum(clock.sleeps) >= 3
-
-
 def test_second_page_waits_full_crawl_delay():
     f, _, clock = make({"/robots.txt": httpx.Response(200, text="User-agent: *\nCrawl-delay: 3"),
                         "/a": ok(), "/b": ok()})
@@ -78,8 +69,8 @@ def test_second_page_waits_full_crawl_delay():
 def test_different_domains_do_not_wait():
     f, _, clock = make({"/": ok()})
     f.get("https://a.com/")
-    f.get("https://b.com/")
-    assert clock.sleeps == []
+    f.get("https://B.com/")
+    assert clock.sleeps == [1.0, 1.0]  # one wait per domain (page after robots), none across domains
 
 
 @pytest.mark.parametrize("resp", [
@@ -144,3 +135,68 @@ def test_too_many_redirects_skipped():
     f, _, _ = make({"/": httpx.Response(302, headers={"location": "/"})})
     assert f.get("https://a.com/") is None
     assert f.stats["skipped"] == 1
+
+
+def test_robots_redirect_is_followed_and_honored():
+    f, _, _ = make({"/robots.txt": httpx.Response(301, headers={"location": "/rules.txt"}),
+                    "/rules.txt": httpx.Response(200, text="User-agent: *\nDisallow: /"), "/x": ok()})
+    assert f.get("https://a.com/x") is None
+    assert f.stats["blocked_by_robots"] == 1
+
+
+def test_robots_redirect_loop_blocks():
+    f, _, _ = make({"/robots.txt": httpx.Response(301, headers={"location": "/robots.txt"}), "/x": ok()})
+    assert f.get("https://a.com/x") is None
+    assert f.stats["blocked_by_robots"] == 1
+
+
+@pytest.mark.parametrize("status", [401, 403])
+def test_robots_auth_wall_blocks(status):
+    f, _, _ = make({"/robots.txt": httpx.Response(status), "/x": ok()})
+    assert f.get("https://a.com/x") is None
+    assert f.stats["blocked_by_robots"] == 1
+
+
+def test_robots_404_allows():
+    f, _, _ = make({"/x": ok()})  # unknown paths, robots.txt included, are 404
+    assert f.get("https://a.com/x") is not None
+
+
+def test_robots_over_cap_blocks():
+    f, _, _ = make({"/robots.txt": httpx.Response(200, content=b"#" * 600_000), "/x": ok()})
+    assert f.get("https://a.com/x") is None
+    assert f.stats["blocked_by_robots"] == 1
+
+
+def test_oversized_stream_stops_early():
+    sent = []
+
+    def body():
+        for _ in range(10):
+            sent.append(1)
+            yield b"x" * 400_000
+
+    f, _, _ = make({"/x": httpx.Response(200, headers=HTML, content=body())})
+    assert f.get("https://a.com/x") is None
+    assert f.stats["skipped"] == 1
+    assert len(sent) <= 4
+
+
+def test_three_hop_redirect_succeeds():
+    f, _, _ = make({"/a": httpx.Response(301, headers={"location": "/b"}),
+                    "/b": httpx.Response(301, headers={"location": "/c"}),
+                    "/c": httpx.Response(301, headers={"location": "/d"}), "/d": ok()})
+    assert f.get("https://a.com/a").url == "https://a.com/d"
+
+
+def test_connection_error_raises():
+    f, _, _ = make({"/x": httpx.ConnectError("refused")})
+    with pytest.raises(FetchFailed):
+        f.get("https://a.com/x")
+
+
+def test_non_http_redirect_target_skipped_not_blocked():
+    f, _, _ = make({"/x": httpx.Response(302, headers={"location": "ftp://a.com/file"})})
+    assert f.get("https://a.com/x") is None
+    assert f.stats["skipped"] == 1
+    assert f.stats["blocked_by_robots"] == 0
