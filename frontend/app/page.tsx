@@ -18,6 +18,7 @@ export default function DashboardPage() {
   const [applied, setApplied] = useState<{ from?: string; to?: string }>({});
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -26,8 +27,15 @@ export default function DashboardPage() {
         if (!live) return;
         setStats(s);
         setError(null);
+        setLoading(false);
+        setFrom((f) => f || s.range.from);
+        setTo((t) => t || s.range.to);
       })
-      .catch((e) => live && setError(e instanceof ApiError ? e.message : "Could not load the dashboard."));
+      .catch((e) => {
+        if (!live) return;
+        setError(e instanceof ApiError ? e.message : "Could not load the dashboard.");
+        setLoading(false);
+      });
     return () => {
       live = false;
     };
@@ -36,13 +44,14 @@ export default function DashboardPage() {
   const rangeInvalid = !!from && !!to && from > to;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" aria-busy={loading}>
       <h1 className="text-xl font-semibold">Dashboard</h1>
       {error && (
         <p role="alert" className="text-sm text-red-700 dark:text-red-400">
           {error}
         </p>
       )}
+      {loading && <p className="text-sm text-muted-foreground">Updating...</p>}
       {!stats && !error && <p className="text-sm text-muted-foreground">Loading dashboard...</p>}
       {stats && (
         <>
@@ -72,7 +81,9 @@ export default function DashboardPage() {
               className="flex flex-wrap items-end gap-3"
               onSubmit={(e) => {
                 e.preventDefault();
-                if (!rangeInvalid) setApplied({ from: from || undefined, to: to || undefined });
+                if (rangeInvalid) return;
+                setLoading(true);
+                setApplied({ from: from || undefined, to: to || undefined });
               }}
             >
               <div className="space-y-1">

@@ -1,3 +1,4 @@
+import { useId } from "react";
 import type { CountItem } from "@/lib/api";
 
 // One series, so one hue (dataviz slot 1). The count is always printed as text, so color carries nothing alone.
@@ -10,10 +11,11 @@ export function BarList({
   items: CountItem[];
   labels?: Record<string, string>;
 }) {
+  const id = useId();
   const max = Math.max(1, ...items.map((i) => i.count));
   return (
-    <section aria-label={title} className="rounded-lg border p-4">
-      <h2 className="mb-3 text-base font-semibold">{title}</h2>
+    <section aria-labelledby={id} className="rounded-lg border p-4">
+      <h2 id={id} className="mb-3 text-base font-semibold">{title}</h2>
       {items.length === 0 ? (
         <p className="text-sm text-muted-foreground">No data yet.</p>
       ) : (

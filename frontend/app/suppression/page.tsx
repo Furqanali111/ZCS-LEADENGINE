@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +23,19 @@ export default function SuppressionPage() {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
 
+  const h1Ref = useRef<HTMLHeadingElement>(null);
+  const confirmBtn = useRef<HTMLButtonElement>(null);
+  const removeBtns = useRef(new Map<string, HTMLButtonElement>());
+  const restoreId = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (confirmId) confirmBtn.current?.focus();
+    else if (restoreId.current) {
+      removeBtns.current.get(restoreId.current)?.focus();
+      restoreId.current = null;
+    }
+  }, [confirmId]);
+
   const load = useCallback(() => {
     listSuppression()
       .then((d) => {
@@ -44,6 +57,7 @@ export default function SuppressionPage() {
     }
     setSaving(true);
     setFormError(null);
+    setMessage(null);
     try {
       await addSuppression({ kind, value: value.trim(), reason: reason.trim() || undefined });
       setValue("");
@@ -61,6 +75,7 @@ export default function SuppressionPage() {
     try {
       await removeSuppression(entry.id);
       setMessage({ text: `Removed ${entry.value}.`, error: false });
+      h1Ref.current?.focus();
       load();
     } catch (err) {
       setMessage({ text: err instanceof ApiError ? err.message : "Could not remove the entry.", error: true });
@@ -71,7 +86,7 @@ export default function SuppressionPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Suppression list</h1>
+      <h1 ref={h1Ref} tabIndex={-1} className="text-xl font-semibold outline-none">Suppression list</h1>
       <p className="text-sm text-muted-foreground">
         Suppressed NPIs and phone numbers are marked on matching leads and never reset by a new search. Email entries are stored now and take effect
         when emails are collected.
@@ -146,15 +161,31 @@ export default function SuppressionPage() {
                 <TableCell>
                   {confirmId === en.id ? (
                     <span className="flex items-center gap-2">
-                      <Button variant="destructive" size="sm" onClick={() => remove(en)}>
+                      <Button ref={confirmBtn} variant="destructive" size="sm" onClick={() => remove(en)}>
                         Confirm remove
+                        <span className="sr-only"> {en.value}</span>
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => setConfirmId(null)}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          restoreId.current = en.id;
+                          setConfirmId(null);
+                        }}
+                      >
                         Cancel
                       </Button>
                     </span>
                   ) : (
-                    <Button variant="outline" size="sm" onClick={() => setConfirmId(en.id)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      ref={(el) => {
+                        if (el) removeBtns.current.set(en.id, el);
+                        else removeBtns.current.delete(en.id);
+                      }}
+                      onClick={() => setConfirmId(en.id)}
+                    >
                       Remove
                       <span className="sr-only"> {en.value}</span>
                     </Button>
