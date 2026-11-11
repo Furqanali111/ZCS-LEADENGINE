@@ -1,6 +1,6 @@
 # ZCS LeadEngine
 
-Internal, single-user, local-first tool for Zenith Care Solutions. It finds U.S. healthcare practices through the CMS NPI Registry, scores and prioritizes them, tracks a simple sales status, and exports to Excel. Slice 1 (lead discovery) only. Read `CLAUDE.md` and the PRD before changing anything.
+Internal, single-user, local-first tool for Zenith Care Solutions. It finds U.S. healthcare practices through the CMS NPI Registry, scores and prioritizes them, tracks leads through a sales pipeline, and exports to Excel. Slices 1 (lead discovery) and 2 (CRM). Read `CLAUDE.md` and the PRD before changing anything.
 
 ## Prerequisites
 
@@ -17,7 +17,7 @@ pip install -e .[dev]
 copy .env.example .env
 ```
 
-Edit `backend/.env`: set `DATABASE_URL` (percent-encode special characters in the password, `@` = `%40`, `#` = `%23`). Never commit `.env`. Then create the tables:
+Edit `backend/.env`: set `DATABASE_URL` (percent-encode special characters in the password, `@` = `%40`, `#` = `%23`). Never commit `.env`. Then create the tables (`alembic upgrade head` applies all migrations, including 0004 for activities and the suppression list):
 
 ```powershell
 alembic upgrade head
@@ -43,7 +43,28 @@ cd backend; .venv\Scripts\activate; uvicorn app.main:app --factory --port 8000
 cd frontend; npm run dev
 ```
 
-Open http://localhost:3000. Search page starts a job, Leads page lists, filters and exports.
+Open http://localhost:3000.
+
+| Page | Path | Purpose |
+|---|---|---|
+| Dashboard | `/` | Tiles, breakdowns, conversion as converted / contacted |
+| Search | `/search` | Start and watch discovery jobs |
+| Leads | `/leads` | List, filter, sort, export |
+| Lead detail | `/leads/[id]` | Status, follow-up, activity log, score, contacts |
+| Pipeline | `/pipeline` | Kanban board by status |
+| Suppression | `/suppression` | Do-not-contact list |
+
+New API routes (slice 2):
+
+| Route | Purpose |
+|---|---|
+| `GET/PATCH /api/leads/{id}` | Lead detail, change status or follow-up date |
+| `GET/POST /api/leads/{id}/activities` | Activity timeline, log a call, email, meeting or note |
+| `GET /api/pipeline`, `GET /api/pipeline/{status}` | Board columns and paged cards |
+| `GET /api/dashboard/stats` | Dashboard figures for a date range |
+| `GET/POST /api/suppression`, `DELETE /api/suppression/{id}` | Suppression list |
+
+Suppression email entries are stored now but only start blocking in slice 3, when emails are collected.
 
 ## Tests
 
