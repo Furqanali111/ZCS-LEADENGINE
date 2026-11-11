@@ -41,6 +41,22 @@ export const PRIORITIES: { value: string; label: string }[] = [
   { value: "low", label: "Low" },
 ];
 
+export const ORG_TYPES: { value: string; label: string }[] = [
+  { value: "practice", label: "Practice" },
+  { value: "solo_provider", label: "Solo provider" },
+  { value: "subpart", label: "Hospital or system subpart" },
+  { value: "hospital", label: "Hospital" },
+];
+
+export const SCORE_FACTORS: { key: string; label: string }[] = [
+  { key: "specialty", label: "Specialty" },
+  { key: "independence", label: "Independence" },
+  { key: "service_fit", label: "Service fit" },
+  { key: "contactability", label: "Contactability" },
+  { key: "decision_maker", label: "Decision-maker" },
+  { key: "multi_location", label: "Multiple locations" },
+];
+
 export const SOURCE_STATUS_LABELS: Record<string, string> = {
   approved_not_built: "Approved, not built yet",
   not_reviewed: "Not reviewed yet",

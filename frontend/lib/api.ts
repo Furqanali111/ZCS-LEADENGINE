@@ -188,3 +188,10 @@ export const patchLeadStatus = (id: string, crm_status: string) =>
 export async function exportLeads(body: { filters?: LeadFilters; ids?: string[] }): Promise<Blob> {
   return (await request("/api/exports/excel", post(body))).blob();
 }
+
+// Same call as exportLeads, but also returns the filename from Content-Disposition.
+export async function exportLeadsFile(body: { filters?: LeadFilters; ids?: string[] }) {
+  const res = await request("/api/exports/excel", post(body));
+  const m = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(res.headers.get("Content-Disposition") ?? "");
+  return { blob: await res.blob(), filename: m ? decodeURIComponent(m[1]) : "zcs-leads.xlsx" };
+}
