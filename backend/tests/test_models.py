@@ -125,6 +125,7 @@ def test_suppression_unique_per_kind_value(db):
     db.add(SuppressionEntry(kind="fax", value="1"))
     with pytest.raises(IntegrityError):
         db.commit()
+    db.rollback()
 
 
 def test_suppression_survives_organization_delete(db):
