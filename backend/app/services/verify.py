@@ -1,5 +1,6 @@
 """Pure website verification and contact extraction. No I/O, never raises on any input."""
 
+import ipaddress
 import re
 from dataclasses import dataclass
 from html.parser import HTMLParser
@@ -17,10 +18,6 @@ BLOCKED_DOMAINS = frozenset(
 
 MAX_CHARS = 2_000_000  # shortcut: longer inputs are truncated, not a real practice page
 LINK_WORDS = ("contact", "about", "team", "staff", "provider", "doctor", "physician", "our-team", "leadership")
-GENERAL_LOCALS = frozenset(
-    {"info", "office", "contact", "admin", "frontdesk", "appointments", "billing", "hello", "reception",
-     "scheduling", "mail", "support"}
-)
 BAD_EMAIL_ENDINGS = (".png", ".jpg", ".gif", ".svg", ".webp", ".pdf")
 NAME_SUFFIXES = {"pllc", "llc", "inc", "pc", "dds"}
 SKIP_TAGS = {"script", "style", "noscript", "template", "head"}
@@ -34,9 +31,21 @@ def registrable_domain(host: str) -> str:
     return ".".join(h.split(".")[-2:])
 
 
-def _blocked(host: str) -> bool:
+def blocked_host(host: str) -> bool:
     d = registrable_domain(host)
     return d in BLOCKED_DOMAINS or d.endswith(".gov")
+
+
+def is_public_host(host: str) -> bool:
+    # shortcut: names that resolve to private IPs are not caught, add resolution checks if this ever runs on a server
+    h = (host or "").strip().lower().rstrip(".")
+    try:
+        ip = ipaddress.ip_address(h)
+    except ValueError:
+        return "." in h and h != "localhost" and not h.endswith((".localhost", ".local", ".internal"))
+    ip = getattr(ip, "ipv4_mapped", None) or ip
+    return not (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_reserved
+                or ip.is_unspecified)
 
 
 def candidate_roots(urls: list[str], limit: int = 3) -> list[str]:
@@ -50,7 +59,7 @@ def candidate_roots(urls: list[str], limit: int = 3) -> list[str]:
             host = (parts.hostname or "").lower()
         except ValueError:
             continue
-        if parts.scheme not in ("http", "https") or not host or _blocked(host):
+        if parts.scheme not in ("http", "https") or not host or blocked_host(host) or not is_public_host(host):
             continue
         dom = registrable_domain(host)
         if dom in seen:
@@ -190,10 +199,27 @@ def verify_website(text: str, *, phones: list[str], name: str, city: str | None)
 @dataclass
 class EmailHit:
     email: str
-    general: bool
 
 
-_EMAIL = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(?:\.[A-Za-z0-9\-]+)+")
+EMAIL_SCAN_CHARS = 200_000
+_LOCAL_CHARS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._%+-")
+_DOMAIN = re.compile(r"[A-Za-z0-9\-]+(?:\.[A-Za-z0-9\-]+)+")
+
+
+def _find_emails(s: str) -> list[str]:
+    """Candidates around each '@', local part at most 64 chars back, domain at most 255 forward: linear in len(s)."""
+    out, at = [], s.find("@")
+    while at != -1:
+        lo = at
+        while lo > 0 and at - lo < 64 and s[lo - 1] in _LOCAL_CHARS:
+            lo -= 1
+        m = _DOMAIN.match(s, at + 1, at + 256)
+        if lo < at and m:
+            out.append(f"{s[lo:at]}@{m.group()}")
+        at = s.find("@", at + 1)
+    return out
+
+
 # Strict shape: junk before the local part or glued digits make the candidate wrong, so it is rejected, not repaired.
 _EMAIL_OK = re.compile(r"[a-z0-9](?:[a-z0-9._%+\-]*[a-z0-9])?@(?:[a-z0-9](?:[a-z0-9\-]*[a-z0-9])?\.)+[a-z]{2,}")
 _GLUED_DIGITS = re.compile(r"\d{7,}[a-z]")
@@ -201,9 +227,9 @@ _MAILTO = re.compile(r"mailto:([^\"'<>\s]*)", re.I)
 
 
 def extract_emails(html: str, text: str, *, site_domain: str, phone_verified: bool) -> list[EmailHit]:
-    html, text = (html or "")[:MAX_CHARS], (text or "")[:MAX_CHARS]
-    found = [m for h in _MAILTO.findall(html) for m in _EMAIL.findall(h.split("?")[0])]
-    found += _EMAIL.findall(text)
+    html, text = (html or "")[:EMAIL_SCAN_CHARS], (text or "")[:EMAIL_SCAN_CHARS]
+    found = [m for h in _MAILTO.findall(html) for m in _find_emails(h.split("?")[0])]
+    found += _find_emails(text)
     out: list[EmailHit] = []
     seen: set[str] = set()
     for raw in found:
@@ -216,7 +242,7 @@ def extract_emails(html: str, text: str, *, site_domain: str, phone_verified: bo
         if not (phone_verified or registrable_domain(domain) == site_domain):
             continue
         seen.add(email)
-        out.append(EmailHit(email, local in GENERAL_LOCALS))
+        out.append(EmailHit(email))
     return out
 
 

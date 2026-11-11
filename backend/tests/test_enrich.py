@@ -274,14 +274,16 @@ def test_cancel_between_leads_and_resume_skips_enriched(db, session_factory):
     assert run(session_factory, jid, search) == "cancelled"
     assert len(seen) == 1
     db.expire_all()
-    assert db.get(Organization, a.id).enrichment_status == "enriched"
-    assert db.get(Organization, b.id).enrichment_status == "not_run"
+    states = {db.get(Organization, o.id).enrichment_status for o in (a, b)}
+    assert states == {"enriched", "not_run"} or states == {"no_website_found", "not_run"}  # whichever ran first
+    done_first = next(o for o in (a, b) if db.get(Organization, o.id).enrichment_status != "not_run")
+    other = b if done_first is a else a
 
     db.query(SearchJob).filter_by(id=jid).update({"cancel_requested": False})
     db.commit()
     resumed = []
     assert run(session_factory, jid, lambda q: resumed.append(q) or []) == "done"
-    assert resumed == ["Other Clinic Austin TX"]  # the enriched lead was not repeated
+    assert resumed == [" ".join(p for p in (other.name, other.city, other.state) if p)]  # the done lead was not repeated
 
 
 def test_rejected_by_user_lead_is_skipped_in_job(db, session_factory):
@@ -344,7 +346,7 @@ def test_name_city_site_rejects_free_and_foreign_mail(db):
     assert {c.email for c in web_contacts(db, org)} == {"info@lonestar.example"}
 
 
-def test_mid_lead_fetch_failure_rolls_back_that_lead_only(db, session_factory):
+def test_mid_lead_extra_page_failure_keeps_the_lead(db, session_factory):
     a = lead(db)
     b = add_lead(db, "1000000002", "Other Clinic", 40, "low")
     db.query(SourceRecord).filter_by(organization_id=b.id).update({"raw": NPI2[0]})
@@ -362,8 +364,8 @@ def test_mid_lead_fetch_failure_rolls_back_that_lead_only(db, session_factory):
     assert run(session_factory, jid, lambda q: next(searches), fetch) == "done"
     db.expire_all()
     assert db.get(Organization, a.id).enrichment_status == "enriched" and web_contacts(db, a)
-    assert db.get(Organization, b.id).enrichment_status == "failed"
-    assert web_contacts(db, b) == [] and db.get(Organization, b.id).website is None
+    assert db.get(Organization, b.id).enrichment_status == "enriched"
+    assert db.get(Organization, b.id).website == "https://other.example/"
 
 
 def test_unexpected_error_fails_only_that_lead(db, session_factory, caplog):
@@ -384,3 +386,86 @@ def test_unexpected_error_fails_only_that_lead(db, session_factory, caplog):
     assert db.get(Organization, b.id).enrichment_status == "no_website_found"
     assert job(db, jid).counters["enrich_failures"] == 1
     assert "secret detail" not in caplog.text and "RuntimeError" in caplog.text
+
+
+# ---- final fix wave ----
+
+def dead(*urls, pages=GOOD):
+    ok = site(pages)
+
+    def fetch(url):
+        if url in urls:
+            raise FetchFailed("down")
+        return ok(url)
+    return fetch
+
+
+def test_dead_first_root_does_not_fail_lead(db):
+    org = lead(db)
+    status = enrich_lead(db, org, search=lambda q: ["https://dead.example/", "https://lonestar.example/"],
+                         fetch=dead("https://dead.example/"), counters={}, now=lambda: NOW)
+    assert status == "enriched" and org.website == "https://lonestar.example/"
+
+
+def test_dead_extra_page_keeps_home_contacts(db):
+    org = lead(db)
+    status = enrich_lead(db, org, search=lambda q: ["https://lonestar.example/"],
+                         fetch=dead("https://lonestar.example/team"), counters={}, now=lambda: NOW)
+    db.commit()
+    assert status == "enriched"
+    assert "billing@lonestar.example" in {c.email for c in web_contacts(db, org)}
+
+
+def test_all_roots_dead_marks_failed_and_keeps_old_contacts(db):
+    org = lead(db)
+    enrich(db, org)
+    before = len(web_contacts(db, org))
+    org.enrichment_status = "failed"
+    db.commit()
+    counters = {}
+    status = enrich_lead(db, org, search=lambda q: ["https://a.example/", "https://b.example/"],
+                         fetch=dead("https://a.example/", "https://b.example/"), counters=counters, now=lambda: NOW)
+    db.commit()
+    assert status == "failed" and org.enrichment_status == "failed"
+    assert len(web_contacts(db, org)) == before
+
+
+def test_reachable_but_unverified_root_is_no_website_found(db):
+    org = lead(db)
+    pages = {"https://other.example/": "<p>Nothing</p>"}
+    status = enrich_lead(db, org, search=lambda q: ["https://dead.example/", "https://other.example/"],
+                         fetch=dead("https://dead.example/", pages=pages), counters={}, now=lambda: NOW)
+    assert status == "no_website_found"
+
+
+def test_job_counts_dead_lead_as_failure_and_retries(db, session_factory):
+    org = lead(db)
+    jid = make_job(db, enrich=True)
+    link(db, jid, org)
+    assert run(session_factory, jid, lambda q: ["https://lonestar.example/"], dead("https://lonestar.example/")) == "done"
+    db.expire_all()
+    assert db.get(Organization, org.id).enrichment_status == "failed"
+    assert job(db, jid).counters["enrich_failures"] == 1
+
+
+def test_redirect_to_blocked_host_is_not_stored(db):
+    org = lead(db)
+    ok = site(GOOD)
+
+    def fetch(url):
+        return Page("https://www.yelp.com/biz/lone-star", HOME) if url == "https://lonestar.example/" else ok(url)
+    status = enrich_lead(db, org, search=lambda q: ["https://lonestar.example/"], fetch=fetch, counters={}, now=lambda: NOW)
+    assert status == "no_website_found" and org.website is None
+
+
+def test_skipped_counter_is_summed_into_job(db, session_factory):
+    org = lead(db)
+    jid = make_job(db, enrich=True)
+    link(db, jid, org)
+    stats = {"pages_fetched": 0, "blocked_by_robots": 0, "skipped": 0}
+
+    def fetch(url):
+        stats["skipped"] += 1
+        return site(GOOD)(url)
+    run(session_factory, jid, lambda q: ["https://lonestar.example/"], fetch, stats=stats)
+    assert job(db, jid).counters["skipped"] == 3

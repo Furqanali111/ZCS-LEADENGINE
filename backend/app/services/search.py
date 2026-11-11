@@ -16,7 +16,7 @@ from app.config import get_settings
 from app.constants import US_STATES
 from app.models import Contact, LeadScore, Location, Organization, SearchJob, SearchJobLead, SourceConfig, SourceRecord
 from app.services.enrich import COUNTERS as ENRICH_COUNTERS, enrich_job_leads
-from app.services.leads import save_score
+from app.services.leads import has_titled_staff, npis_with_titled_staff, save_score
 from app.services.scoring import load_config, score
 from app.services.suppression import enforce
 from app.sources import brave
@@ -39,6 +39,10 @@ ORG_FIELDS = ("name", "dba_name", "organization_type", "parent_organization_name
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def make_client() -> httpx.Client:
+    return httpx.Client(timeout=30)  # one per purpose: Brave and practice sites must never share headers or cookies
 
 
 def _fetch(fetch, client, sleep, retries: int, **query) -> list[dict]:
@@ -109,7 +113,8 @@ def _save_lead(session: Session, job: SearchJob, lead: NormalizedLead, config: d
         constraint="uq_source_records_source_external",
         set_={"organization_id": org_id, "raw": stmt.excluded.raw, "collected_at": func.now(), "updated_at": func.now()}))
 
-    save_score(session, session.get(Organization, org_id), score(lead, config))
+    save_score(session, session.get(Organization, org_id),
+               score(lead, config, staff_with_title=has_titled_staff(session, org_id)))
 
     linked = session.scalar(insert(SearchJobLead).values(search_job_id=job.id, organization_id=org_id, was_new=was_new)
                             .on_conflict_do_nothing().returning(SearchJobLead.id))
@@ -118,9 +123,10 @@ def _save_lead(session: Session, job: SearchJob, lead: NormalizedLead, config: d
     return "accepted_new" if was_new else "accepted_existing"
 
 
-def _save_batch(session: Session, job: SearchJob, leads: list[NormalizedLead], config: dict) -> list[str | None]:
+def _save_batch(session: Session, job: SearchJob, leads: list[NormalizedLead], config: dict,
+                staffed: set[str]) -> list[str | None]:
     """Upserts distinct-NPI leads in a handful of multi-row statements. Same result as _save_lead per lead."""
-    scores = [score(l, config) for l in leads]
+    scores = [score(l, config, staff_with_title=l.npi in staffed) for l in leads]
     cols = (*ORG_FIELDS, "fit_score", "priority")
     stmt = insert(Organization).values([
         {"npi": l.npi, **{f: getattr(l, f) for f in ORG_FIELDS}, "fit_score": s.total, "priority": s.priority}
@@ -224,11 +230,12 @@ def _process_page(session: Session, job: SearchJob, phase: str, records: list[di
             accepted[lead.npi] = lead
 
     leads = list(accepted.values())
+    staffed = npis_with_titled_staff(session, list(accepted))  # website staff of already enriched leads, one query per page
     for i in range(0, len(leads), BATCH):
         chunk = leads[i:i + BATCH]
         try:
             with session.begin_nested():
-                outcomes = _save_batch(session, job, chunk, config)
+                outcomes = _save_batch(session, job, chunk, config, staffed)
         except Exception as e:
             logger.warning("search job %s: batched save failed (%s), retrying record by record", job.id, type(e).__name__)
             outcomes = _save_each(session, job, chunk, config, counters)
@@ -258,9 +265,9 @@ def _complete(session: Session, job: SearchJob, counters: dict, session_factory,
     with ExitStack() as stack:
         deps = enrich_deps
         if deps is None:  # read the key at run time, never log it
-            client = stack.enter_context(httpx.Client(timeout=30))
-            fetcher = PoliteFetcher(client, min_interval=settings.enrich_page_delay_seconds)
-            deps = EnrichDeps(lambda q: brave.search(client, settings.brave_api_key, q), fetcher.get, fetcher.stats)
+            brave_client, page_client = stack.enter_context(make_client()), stack.enter_context(make_client())
+            fetcher = PoliteFetcher(page_client, min_interval=settings.enrich_page_delay_seconds)
+            deps = EnrichDeps(lambda q: brave.search(brave_client, settings.brave_api_key, q), fetcher.get, fetcher.stats)
         status = enrich_job_leads(session_factory, job.id, search=deps.search, fetch=deps.fetch,
                                   fetch_stats=deps.fetch_stats, sleep=sleep)
     session.refresh(job)  # enrichment wrote counters and any pause message from its own sessions

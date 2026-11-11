@@ -7,6 +7,8 @@ from urllib.robotparser import RobotFileParser
 
 import httpx
 
+from app.services.verify import blocked_host, is_public_host
+
 USER_AGENT = "ZCSLeadEngine/1.0 (internal prospecting tool)"
 MAX_BYTES = 1_000_000
 ROBOTS_MAX_BYTES = 512_000
@@ -60,8 +62,14 @@ class PoliteFetcher:
             self._last[key] = self.clock()
 
     @staticmethod
-    def _is_http(url: str) -> bool:
-        return urlsplit(url).scheme in ("http", "https")
+    def _allowed(url: str) -> bool:
+        """http(s) only, public host, not a directory or social site: checked on the first URL and on every redirect hop."""
+        try:
+            parts = urlsplit(url)
+            host = parts.hostname or ""
+        except ValueError:
+            return False
+        return parts.scheme in ("http", "https") and is_public_host(host) and not blocked_host(host)
 
     def _load_robots(self, origin: str) -> RobotFileParser | None:
         url = f"{origin}/robots.txt"
@@ -72,7 +80,7 @@ class PoliteFetcher:
                 return None
             if resp.status_code in REDIRECTS and resp.headers.get("location"):
                 url = urljoin(url, resp.headers["location"])
-                if not self._is_http(url):
+                if not self._allowed(url):
                     return None
                 continue
             if body is None or resp.status_code >= 500 or resp.status_code in (401, 403) + REDIRECTS:
@@ -91,7 +99,7 @@ class PoliteFetcher:
 
     def get(self, url: str) -> Page | None:
         for _ in range(MAX_REDIRECTS + 1):
-            if not self._is_http(url):
+            if not self._allowed(url):
                 self.stats["skipped"] += 1
                 return None
             rp = self._robots_for(url)
@@ -121,4 +129,8 @@ class PoliteFetcher:
             self.stats["skipped"] += 1
             return None
         self.stats["pages_fetched"] += 1
-        return Page(url, body.decode(resp.encoding or "utf-8", "replace"))
+        try:
+            html = body.decode(resp.encoding or "utf-8", "replace")
+        except LookupError:  # unknown charset label
+            html = body.decode("utf-8", "replace")
+        return Page(url, html)

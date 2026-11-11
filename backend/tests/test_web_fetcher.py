@@ -200,3 +200,21 @@ def test_non_http_redirect_target_skipped_not_blocked():
     assert f.get("https://a.com/x") is None
     assert f.stats["skipped"] == 1
     assert f.stats["blocked_by_robots"] == 0
+
+
+@pytest.mark.parametrize("target", ["http://127.0.0.1:8000/", "http://169.254.169.254/latest", "http://intranet/",
+                                    "https://yelp.com/biz/x"])
+def test_redirect_to_non_public_host_refused(target):
+    f, log, _ = make({("a.com", "/"): httpx.Response(302, headers={"location": target})})
+    assert f.get("https://a.com/") is None
+    assert f.stats["skipped"] == 1 and not any(u.startswith(target[:12]) for u in log)
+
+
+def test_first_url_on_private_host_refused():
+    f, log, _ = make({"/": ok()})
+    assert f.get("http://10.0.0.5/") is None and log == [] and f.stats["skipped"] == 1
+
+
+def test_bogus_charset_falls_back_to_utf8():
+    f, _, _ = make({"/": httpx.Response(200, headers={"content-type": "text/html; charset=bogus-9"}, content=b"<p>caf\xc3\xa9</p>")})
+    assert f.get("https://a.com/").html == "<p>café</p>"

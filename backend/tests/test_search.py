@@ -425,7 +425,7 @@ def test_repeated_addresses_within_and_across_leads_in_one_batch(db, session_fac
 
 def test_rerun_replaces_changed_authorized_official(db, session_factory):
     fetch = fake({"NPI-2": [NPI2]})
-    run(session_factory, make_job(db, include_solo=False), fetch)
+    run(session_factory, make_job(db, include_solo=False, include_subparts=True, include_hospitals=True), fetch)
     org = db.scalars(select(Organization)).first()
     old = db.scalars(select(Contact).where(Contact.organization_id == org.id)).all()
     assert old
@@ -433,7 +433,7 @@ def test_rerun_replaces_changed_authorized_official(db, session_factory):
     for r in changed:
         r["basic"]["authorized_official_first_name"] = "Zed"
         r["basic"]["authorized_official_last_name"] = "Newperson"
-    run(session_factory, make_job(db, include_solo=False), fake({"NPI-2": [changed]}))
+    run(session_factory, make_job(db, include_solo=False, include_subparts=True, include_hospitals=True), fake({"NPI-2": [changed]}))
     db.expire_all()
     names = {c.first_name for c in db.scalars(select(Contact).where(Contact.organization_id == org.id))}
     assert names == {"Zed"}
@@ -476,7 +476,7 @@ def test_enrich_job_runs_npi_then_enriches_linked_leads(db, session_factory, enr
 
 
 def test_enrich_false_never_touches_enrichment(db, session_factory):
-    job_id = make_job(db, include_solo=False)
+    job_id = make_job(db, include_solo=False, include_subparts=True, include_hospitals=True)
     run_enrich(session_factory, job_id, fake({"NPI-2": [NPI2]}), deps(lambda q: 1 / 0))
     job = job_of(db, job_id)
     assert job.status == "completed" and job.counters["enrich_attempted"] == 0
@@ -532,3 +532,64 @@ def test_enrich_job_fails_when_enrich_source_not_available(db, session_factory, 
     job = job_of(db, job_id)
     assert job.status == "failed" and "brave_search" in job.error
     assert count(db, Organization) == 0
+
+
+def _staffed_record():
+    rec = copy.deepcopy(NPI2[0])
+    rec["basic"] = {k: v for k, v in rec["basic"].items() if not k.startswith("authorized_official")}
+    return rec
+
+
+@pytest.mark.parametrize("batched", [True, False])
+def test_research_keeps_staff_points_of_enriched_lead(db, session_factory, monkeypatch, batched):
+    from app.services import search as search_mod
+    from app.services.leads import rescore_org
+
+    if not batched:
+        def boom(*a, **k):
+            raise RuntimeError("force record by record")
+        monkeypatch.setattr(search_mod, "_save_batch", boom)
+    rec = _staffed_record()
+    run(session_factory, make_job(db, include_solo=False, include_subparts=True, include_hospitals=True), fake({"NPI-2": [[rec]]}))
+    org = db.scalar(select(Organization))
+    db.add(Contact(organization_id=org.id, role="staff", first_name="Ann", last_name="Lee", title="practice manager",
+                   source_key="practice_website"))
+    db.commit()
+    rescore_org(db, org)
+    db.commit()
+    before = (org.fit_score, org.score.components["decision_maker"]["points"])
+    assert before[1] > 0
+    run(session_factory, make_job(db, include_solo=False, include_subparts=True, include_hospitals=True), fake({"NPI-2": [[rec]]}))
+    db.expire_all()
+    org = db.scalar(select(Organization))
+    assert (org.fit_score, org.score.components["decision_maker"]["points"]) == before
+    assert org.fit_score == org.score.total
+
+
+def test_real_deps_use_separate_clients_and_key_only_goes_to_brave(db, session_factory, enrich_sources, monkeypatch):
+    import httpx
+    from app.services import search as search_mod
+
+    seen = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append((req.url.host, req.headers.get("x-subscription-token")))
+        if req.url.host == "api.search.brave.com":
+            return httpx.Response(200, json={"web": {"results": [{"url": "https://practice.example/"}]}})
+        return httpx.Response(200, headers={"content-type": "text/html"}, text="<p>hello</p>")
+
+    clients = []
+
+    def fake_client():
+        clients.append(httpx.Client(transport=httpx.MockTransport(handler)))
+        return clients[-1]
+    real = search_mod.get_settings()
+    monkeypatch.setattr(search_mod, "make_client", fake_client)
+    monkeypatch.setattr(search_mod, "get_settings",
+                        lambda: real.model_copy(update={"brave_api_key": "KEY123", "enrich_page_delay_seconds": 0}))
+    job_id = make_job(db, include_solo=False, enrich=True, target_count=1)
+    run_job(session_factory, job_id, fetch=fake({"NPI-2": [NPI2]}), sleep=lambda s: None)
+    assert len(clients) == 2 and clients[0] is not clients[1] and all(c.is_closed for c in clients)
+    brave_calls = [k for h, k in seen if h == "api.search.brave.com"]
+    page_calls = [k for h, k in seen if h != "api.search.brave.com"]
+    assert brave_calls == ["KEY123"] and page_calls and all(k is None for k in page_calls)

@@ -438,6 +438,37 @@ def test_rescore_passes_staff_with_title(db, session_factory):
     db.refresh(org)
     assert org.score.components["decision_maker"]["points"] == 10
 
+def test_reject_website_is_idempotent(client, db):
+    from app.models import LeadActivity
+
+    org = add_lead(db, "1000000009", "Acme", website="https://acme.example", enrichment_status="enriched")
+    first = client.patch(f"/api/leads/{org.id}", json={"reject_website": True}).json()
+    again = client.patch(f"/api/leads/{org.id}", json={"reject_website": True})
+    assert again.status_code == 200 and again.json() == first
+    db.expire_all()
+    assert db.query(LeadActivity).filter_by(organization_id=org.id, summary="Website rejected").count() == 1
+
+
+def test_reject_website_rescores_without_website_staff(client, db):
+    from app.models import Contact, SourceRecord
+    from app.services.leads import rescore_org
+
+    raw = {"number": "3333333333", "enumeration_type": "NPI-2", "basic": {"organization_name": "Staff Co"},
+           "taxonomies": [{"code": "207Q00000X", "desc": "Family Medicine", "primary": True}],
+           "addresses": [{"address_purpose": "LOCATION", "city": "Austin", "state": "TX"}]}
+    org = add_lead(db, "3333333333", "Staff Co", website="https://staff.example", enrichment_status="enriched")
+    db.query(SourceRecord).filter_by(organization_id=org.id).update({"raw": raw})
+    db.add(Contact(organization_id=org.id, first_name="Ann", last_name="Lee", title="practice manager",
+                   role="staff", source_key="practice_website"))
+    db.commit()
+    rescore_org(db, org)
+    db.commit()
+    assert org.score.components["decision_maker"]["points"] == 10
+    assert client.patch(f"/api/leads/{org.id}", json={"reject_website": True}).status_code == 200
+    db.expire_all()
+    assert org.score.components["decision_maker"]["points"] == 0 and org.fit_score == org.score.total
+
+
 # ---- website and emails ----
 
 def add_web_contacts(db, org):

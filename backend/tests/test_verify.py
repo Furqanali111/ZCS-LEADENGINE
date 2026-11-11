@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from app.services import verify as v
 
 FX = Path(__file__).parent / "fixtures" / "web"
@@ -120,9 +122,33 @@ def test_email_not_decoded_or_built():
     assert v.extract_emails("", "info [at] a.com john(at)a.com", site_domain="a.com", phone_verified=True) == []
 
 
-def test_general_mailbox_flag():
-    hits = v.extract_emails("", "info@a.com jane.doe@a.com", site_domain="a.com", phone_verified=False)
-    assert {h.email: h.general for h in hits} == {"info@a.com": True, "jane.doe@a.com": False}
+def test_long_run_without_at_is_linear():
+    import time
+    t0 = time.perf_counter()
+    assert v.extract_emails("", "a" * 1_000_000, site_domain="a.com", phone_verified=True) == []
+    assert time.perf_counter() - t0 < 1
+
+
+def test_email_found_after_junk():
+    hits = v.extract_emails("", "x" * 5000 + " jane@a.com", site_domain="a.com", phone_verified=False)
+    assert [h.email for h in hits] == ["jane@a.com"]
+
+
+@pytest.mark.parametrize("host", ["127.0.0.1", "10.0.0.5", "192.168.1.1", "169.254.169.254", "localhost", "::1",
+                                  "intranet", "a.localhost", "printer.local", "db.internal", "0.0.0.0", "224.0.0.1",
+                                  "::ffff:127.0.0.1", ""])
+def test_non_public_hosts(host):
+    assert not v.is_public_host(host)
+
+
+def test_public_hosts():
+    assert v.is_public_host("example.com") and v.is_public_host("8.8.8.8") and v.is_public_host("WWW.Example.com.")
+
+
+def test_candidate_roots_drops_non_public():
+    urls = ["http://127.0.0.1/", "http://10.0.0.5/", "http://192.168.1.1/", "http://169.254.169.254/x",
+            "http://localhost:8000/", "http://[::1]/", "http://intranet/", "https://good.example.com/a"]
+    assert v.candidate_roots(urls) == ["https://good.example.com/"]
 
 
 def test_person_with_suffixes():
