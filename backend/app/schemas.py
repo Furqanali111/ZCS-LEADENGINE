@@ -251,3 +251,62 @@ class ExportRequest(BaseModel):
 
     filters: LeadFilters | None = None
     ids: list[uuid.UUID] | None = Field(default=None, max_length=5000)
+
+
+class PipelineCard(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    city: str | None
+    state: str | None
+    organization_type: str
+    fit_score: int | None
+    priority: str | None
+    next_follow_up_at: date | None
+    last_contacted_at: datetime | None
+
+
+class PipelineColumn(BaseModel):
+    status: str
+    count: int
+    leads: list[PipelineCard]
+
+
+class PipelineBoard(BaseModel):
+    columns: list[PipelineColumn]
+
+
+class DateRange(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    from_: date = Field(alias="from")
+    to: date
+
+
+class CountItem(BaseModel):
+    key: str
+    count: int
+
+
+class Conversion(BaseModel):
+    """Recorded outcomes only: never a prediction."""
+
+    converted: int
+    contacted: int
+    rate: float | None
+
+
+class DashboardStats(BaseModel):
+    range: DateRange
+    total: int
+    new_leads: int
+    critical_high: int
+    follow_ups_due: int
+    meetings_scheduled: int
+    converted: int
+    by_state: list[CountItem]
+    by_specialty: list[CountItem]
+    by_status: list[CountItem]
+    recent_jobs: list[JobOut]
+    conversion: Conversion
