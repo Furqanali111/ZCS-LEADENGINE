@@ -183,3 +183,10 @@ class LeadPage(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class ExportRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    filters: LeadFilters | None = None
+    ids: list[uuid.UUID] | None = Field(default=None, max_length=5000)
