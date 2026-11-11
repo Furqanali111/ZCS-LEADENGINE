@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Fragment, useState } from "react";
 import { LeadRowDetail } from "@/components/lead-row-detail";
 import { Badge } from "@/components/ui/badge";
@@ -139,7 +140,7 @@ export function LeadsTable({
                   className="cursor-pointer"
                   data-state={selected.has(l.id) ? "selected" : undefined}
                   onClick={(e) => {
-                    if ((e.target as HTMLElement).closest("button,select,input,[role=checkbox],label")) return;
+                    if ((e.target as HTMLElement).closest("a,button,select,input,[role=checkbox],label")) return;
                     setExpanded(open ? null : l.id);
                   }}
                 >
@@ -151,13 +152,15 @@ export function LeadsTable({
                       type="button"
                       aria-expanded={open}
                       aria-controls={detailId}
+                      aria-label={`${open ? "Hide" : "Show"} details for ${l.name}`}
                       onClick={() => setExpanded(open ? null : l.id)}
-                      className="rounded text-left font-medium outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
+                      className="mr-1 rounded outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                     >
-                      <span aria-hidden="true">{open ? "▾ " : "▸ "}</span>
-                      {l.name}
-                      <span className="sr-only">{open ? ", hide details" : ", show details"}</span>
+                      <span aria-hidden="true">{open ? "▾" : "▸"}</span>
                     </button>
+                    <Link href={`/leads/${l.id}`} className="rounded font-medium outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50">
+                      {l.name}
+                    </Link>
                     {l.organization_type === "solo_provider" && (
                       <Badge variant="outline" className="ml-2">
                         Solo
