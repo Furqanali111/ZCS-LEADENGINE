@@ -21,6 +21,13 @@ const COUNTER_LABELS: [keyof Job["counters"], string][] = [
   ["source_failures", "Source failures"],
 ];
 
+const ENRICH_LABELS: [keyof Job["counters"], string][] = [
+  ["websites_found", "Websites found"],
+  ["emails_found", "Emails found"],
+  ["people_found", "People found"],
+  ["no_website_found", "No website"],
+];
+
 function summary(j: Job) {
   const types = [j.include_practices && "practices", j.include_solo && "solo doctors"].filter(Boolean).join(" + ");
   return `${j.specialty}, ${j.city ? j.city + ", " : ""}${j.state} (${types})`;
@@ -109,7 +116,21 @@ export function JobList({ refreshKey }: { refreshKey: number }) {
                   </div>
                 ))}
               </dl>
-              {j.error && <p className="text-sm text-red-700 dark:text-red-400">Error: {j.error}</p>}
+              {j.enrich && (
+                <dl aria-label="Enrichment results" className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
+                  {ENRICH_LABELS.map(([k, label]) => (
+                    <div key={k} className="flex gap-1">
+                      <dt>{label}:</dt>
+                      <dd className="tabular-nums">{j.counters[k] ?? 0}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+              {j.error && (
+                <p role={j.status === "paused" ? "status" : undefined} className="text-sm text-red-700 dark:text-red-400">
+                  {j.status === "paused" ? `Paused: ${j.error} Resume when fixed.` : `Error: ${j.error}`}
+                </p>
+              )}
             </li>
           );
         })}

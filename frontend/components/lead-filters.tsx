@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -146,6 +147,15 @@ export function LeadFilters({
         </select>
         {jobsError && <p className="mt-1 text-xs text-muted-foreground">Search jobs could not be loaded.</p>}
       </div>
+      <fieldset className="flex flex-wrap items-center gap-4 sm:col-span-2 lg:col-span-4">
+        <legend className="sr-only">Enrichment</legend>
+        {([["has_website", "Has website"], ["has_email", "Has email"]] as const).map(([key, label]) => (
+          <label key={key} className="flex items-center gap-2 text-sm">
+            <Checkbox checked={filters[key] === "true"} onCheckedChange={(v) => onChange({ [key]: v ? "true" : undefined })} />
+            {label}
+          </label>
+        ))}
+      </fieldset>
       <div className="sm:col-span-2 lg:col-span-4">
         <Button
           type="button"

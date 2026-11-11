@@ -14,16 +14,18 @@ function CheckRow({
   onChange,
   disabled,
   hint,
+  describedBy,
 }: {
   label: string;
   checked: boolean;
   onChange?: (v: boolean) => void;
   disabled?: boolean;
   hint?: string;
+  describedBy?: string;
 }) {
   return (
     <label className="flex items-center gap-2 text-sm">
-      <Checkbox checked={checked} disabled={disabled} onCheckedChange={(v) => onChange?.(v)} />
+      <Checkbox checked={checked} disabled={disabled} aria-describedby={describedBy} onCheckedChange={(v) => onChange?.(v)} />
       <span className={disabled ? "text-muted-foreground" : undefined}>{label}</span>
       {hint && <span className="text-muted-foreground">({hint})</span>}
     </label>
@@ -47,6 +49,7 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
   const [solo, setSolo] = useState(true);
   const [subparts, setSubparts] = useState(true);
   const [hospitals, setHospitals] = useState(false);
+  const [enrich, setEnrich] = useState(false);
   const [sources, setSources] = useState<Source[] | null>(null);
   const [sourcesError, setSourcesError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
@@ -85,6 +88,7 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
         include_subparts: subparts,
         include_hospitals: hospitals,
         sources: selected,
+        enrich,
       });
       onCreated();
     } catch (err) {
@@ -220,6 +224,15 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
           ),
         )}
         <FieldError id="sources-error" text={fieldErrors.sources} />
+      </fieldset>
+
+      <fieldset className="space-y-2">
+        <legend className="mb-1 text-sm font-medium">Enrichment</legend>
+        <CheckRow label="Also find websites and emails" checked={enrich} onChange={setEnrich} describedBy="enrich-hint" />
+        <p id="enrich-hint" className="text-sm text-muted-foreground">
+          Uses your Brave key, one query per lead
+          {targetValid ? `, so about ${targetNum} ${targetNum === 1 ? "query" : "queries"} for this search` : ""}.
+        </p>
       </fieldset>
 
       {formError && (

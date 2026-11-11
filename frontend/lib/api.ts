@@ -25,6 +25,12 @@ export type Counters = {
   skipped_works_at_known_org?: number;
   pages_fetched?: number;
   source_failures?: number;
+  websites_found?: number;
+  no_website_found?: number;
+  emails_found?: number;
+  people_found?: number;
+  enrich_attempted?: number;
+  enrich_failures?: number;
 };
 
 export type Job = {
@@ -38,6 +44,7 @@ export type Job = {
   include_subparts: boolean;
   include_hospitals: boolean;
   sources: string[];
+  enrich: boolean;
   status: string;
   counters: Counters;
   error: string | null;
@@ -56,6 +63,7 @@ export type SearchInput = {
   include_subparts: boolean;
   include_hospitals: boolean;
   sources: string[];
+  enrich: boolean;
 };
 
 export type Contact = {
@@ -64,6 +72,10 @@ export type Contact = {
   title: string | null;
   phone: string | null;
   role: string | null;
+  email: string | null;
+  email_status: string | null;
+  source_url: string | null;
+  collected_at: string | null;
 };
 
 export type LeadLocation = {
@@ -96,7 +108,12 @@ export type Lead = {
   next_follow_up_at: string | null;
   suppressed: boolean;
   updated_at: string;
+  website: string | null;
+  enrichment_status: string;
+  website_evidence: { page_url?: string; check?: string; checked_at?: string } | null;
+  primary_email: string | null;
   contact: Contact | null;
+  contacts: Contact[];
   locations: LeadLocation[];
   score: { components: Record<string, unknown>; config_version: string; calculated_at: string } | null;
   source: { source_key: string; collected_at: string } | null;
@@ -114,6 +131,8 @@ export type LeadFilters = {
   crm_status?: string;
   search_job_id?: string;
   follow_up?: "due" | "overdue" | "none";
+  has_website?: "true";
+  has_email?: "true";
 };
 
 export type ListLeadsParams = LeadFilters & {
@@ -182,7 +201,7 @@ export function listLeads(params: ListLeadsParams = {}) {
   return json<LeadPage>(`/api/leads?${qs}`);
 }
 
-export type LeadPatch = { crm_status?: string; next_follow_up_at?: string | null };
+export type LeadPatch = { crm_status?: string; next_follow_up_at?: string | null; reject_website?: true };
 
 export const patchLead = (id: string, body: LeadPatch) =>
   json<Lead>(`/api/leads/${id}`, {
