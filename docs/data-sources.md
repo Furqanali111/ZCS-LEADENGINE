@@ -30,7 +30,7 @@ If the terms forbid automated collection or commercial reuse, set `rejected` and
 
 | Source | Status | Access | Notes |
 |---|---|---|---|
-| CMS NPI Registry API | `approved_not_built` | Free public JSON API, no key | Slice 1 backbone. Details below. |
+| CMS NPI Registry API | `available` | Free public JSON API, no key | Slice 1 backbone. Details below. |
 | CMS NPPES bulk file | `approved_not_built` | Free public download | Deferred. Fallback if the API cap or missing provider counts become a real problem. |
 | Official practice websites | `not_reviewed` | Page fetch, per-site robots rules | Slice 3. Main route to websites, emails, and staff names. |
 

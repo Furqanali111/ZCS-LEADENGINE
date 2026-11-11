@@ -19,4 +19,5 @@ Things the docs or code refer to that are intentionally not built yet. If a revi
 | Better solo-practice detection than the self-reported sole-proprietor flag | Slice 1 spec section 6 | Slice 3 | Too many solo leads turn out to be employed doctors |
 | `disqualified` priority tier | PRD FR-08 | Slice 2 | Needs explicit rules or a user action |
 | Automated frontend tests | Plan Phase 10 | Slice 2 | Slice 1 frontend is two pages, checked by hand |
-| `develop` branch | `CLAUDE.md` git rules | Before the first code PR | Repo has only an empty `main` today |
+| Counter updates inside a page (today once per 200-record page, about 5 s per page) | Real run 2026-11-11 after batching | Later | Pages become slow enough that the UI looks stuck |
+| Scoring thresholds tuned on real data | Real runs 2026-11-11: 116 of the Florida internal medicine leads came out critical | After more real searches | Priority does not separate leads usefully |
