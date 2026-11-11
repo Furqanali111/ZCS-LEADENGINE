@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.constants import US_STATES
-from app.models import Contact, LeadScore, Location, Organization, SearchJob, SearchJobLead, SourceRecord
+from app.models import Contact, LeadScore, Location, Organization, SearchJob, SearchJobLead, SourceConfig, SourceRecord
 from app.services.leads import save_score
 from app.services.scoring import load_config, score
 from app.sources.npi_registry import MAX_SKIP, PAGE_SIZE, NormalizedLead, SourceError, fetch_page, normalize
@@ -83,6 +83,7 @@ def _save_lead(session: Session, job: SearchJob, lead: NormalizedLead, config: d
                 for loc in lead.locations]
         session.execute(insert(Location).values(rows).on_conflict_do_nothing())
 
+    session.execute(delete(Contact).where(Contact.organization_id == org_id, Contact.source_key == SOURCE_KEY))
     if lead.contact:
         c = lead.contact
         stmt = insert(Contact).values(organization_id=org_id, role=c["role"], first_name=c["first_name"] or "",
@@ -133,6 +134,7 @@ def _save_batch(session: Session, job: SearchJob, leads: list[NormalizedLead], c
     if loc_rows:
         session.execute(insert(Location).values(loc_rows).on_conflict_do_nothing())
 
+    session.execute(delete(Contact).where(Contact.organization_id.in_(org_id.values()), Contact.source_key == SOURCE_KEY))
     contact_rows = [{"organization_id": org_id[l.npi], "role": l.contact["role"], "first_name": l.contact["first_name"] or "",
                      "last_name": l.contact["last_name"] or "", "title": l.contact["title"], "phone": l.contact["phone"],
                      "source_key": SOURCE_KEY} for l in leads if l.contact]
@@ -228,6 +230,9 @@ def run_job(session_factory, job_id: UUID, *, fetch=fetch_page, sleep=time.sleep
     config = load_config()
     with session_factory() as session, httpx.Client(timeout=30) as client:
         job = session.get(SearchJob, job_id)
+        source = session.scalar(select(SourceConfig.status).where(SourceConfig.key == SOURCE_KEY))
+        if source != "available":
+            return _finish(session, job, "failed", "Source npi_registry is not available")
         if job.cancel_requested:
             return _finish(session, job, "cancelled")
         job.status, job.error, job.finished_at = "running", None, None

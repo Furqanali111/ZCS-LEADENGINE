@@ -3,9 +3,9 @@ import json
 from pathlib import Path
 
 import pytest
-from sqlalchemy import event, func, select
+from sqlalchemy import event, func, select, update
 
-from app.models import Contact, LeadScore, Location, Organization, SearchJob, SearchJobLead, SourceRecord
+from app.models import Contact, LeadScore, Location, Organization, SearchJob, SearchJobLead, SourceConfig, SourceRecord
 from app.services.search import run_job
 from app.sources.npi_registry import SourceError, digits
 from app.worker import claim_next, pause_running_jobs, run_next
@@ -33,6 +33,12 @@ def fake(pages: dict[str, list[list[dict]]], calls: list | None = None):
         i = skip // 200
         return copy.deepcopy(type_pages[i]) if i < len(type_pages) else []
     return fetch
+
+
+@pytest.fixture(autouse=True)
+def npi_source(db):
+    db.add(SourceConfig(key="npi_registry", name="NPI Registry", status="available"))
+    db.commit()
 
 
 def make_job(db, **kw) -> object:
@@ -419,3 +425,28 @@ def test_repeated_addresses_within_and_across_leads_in_one_batch(db, session_fac
     assert job.counters["accepted_new"] == 5 and job.counters["candidates_seen"] == 6
     assert count(db, Organization) == 5 and count(db, SearchJobLead) == 5
     assert slow_path_calls == []
+
+
+def test_rerun_replaces_changed_authorized_official(db, session_factory):
+    fetch = fake({"NPI-2": [NPI2]})
+    run(session_factory, make_job(db, include_solo=False), fetch)
+    org = db.scalars(select(Organization)).first()
+    old = db.scalars(select(Contact).where(Contact.organization_id == org.id)).all()
+    assert old
+    changed = copy.deepcopy(NPI2)
+    for r in changed:
+        r["basic"]["authorized_official_first_name"] = "Zed"
+        r["basic"]["authorized_official_last_name"] = "Newperson"
+    run(session_factory, make_job(db, include_solo=False), fake({"NPI-2": [changed]}))
+    db.expire_all()
+    names = {c.first_name for c in db.scalars(select(Contact).where(Contact.organization_id == org.id))}
+    assert names == {"Zed"}
+
+
+def test_job_fails_when_source_not_available(db, session_factory):
+    db.execute(update(SourceConfig).where(SourceConfig.key == "npi_registry").values(status="not_reviewed"))
+    db.commit()
+    job_id = make_job(db)
+    run(session_factory, job_id, fake({"NPI-2": [NPI2]}))
+    assert job_of(db, job_id).status == "failed"
+    assert count(db, Organization) == 0

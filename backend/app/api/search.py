@@ -56,7 +56,7 @@ def cancel_search(job_id: str, session: Session = Depends(get_session)):
     if job.status in ("completed", "cancelled", "failed"):
         raise AppError(409, "invalid_job_state", f"Cannot cancel a {job.status} job")
     job.cancel_requested = True
-    if job.status == "queued":
+    if job.status in ("queued", "paused"):
         job.status = "cancelled"
         job.finished_at = datetime.now(timezone.utc)
     return _save(session, job)

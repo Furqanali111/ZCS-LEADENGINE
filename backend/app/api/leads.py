@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_session
 from app.errors import AppError
-from app.models import Organization
+from app.models import Organization, SourceRecord
 from app.schemas import LeadFilters, LeadOut, LeadPage, LeadPatch
 from app.services.leads import lead_query
 
@@ -16,13 +16,13 @@ router = APIRouter(prefix="/api/leads")
 
 SORTS = {"score": Organization.fit_score, "name": Organization.name, "updated": Organization.updated_at}
 LOADS = (selectinload(Organization.contacts), selectinload(Organization.locations),
-         selectinload(Organization.score), selectinload(Organization.source_records))
+         selectinload(Organization.score), selectinload(Organization.source_records).defer(SourceRecord.raw))
 PLAIN = [f for f in LeadOut.model_fields if f not in ("contact", "locations", "score", "source")]
 
 
 def _out(org: Organization) -> LeadOut:
     by_role = {c.role: c for c in org.contacts}
-    src = org.source_records[0] if org.source_records else None
+    src = max(org.source_records, key=lambda s: s.collected_at, default=None)
     return LeadOut.model_validate({
         **{f: getattr(org, f) for f in PLAIN},
         "contact": by_role.get("authorized_official") or by_role.get("provider"),

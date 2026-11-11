@@ -148,3 +148,11 @@ def test_empty_ids_exports_no_leads(db):
     seed(db, "A Clinic", "1111111111")
     ws = export(db, ids=[])["All Leads"]
     assert ws.max_row == 1
+
+
+def test_org_without_source_record_exports(db):
+    org = seed(db, "No Source", "4444444444")
+    db.query(SourceRecord).filter_by(organization_id=org.id).delete()
+    db.commit()
+    ws = export(db)["All Leads"]
+    assert ws["A2"].value == "No Source" and ws["S2"].value is None and ws["T2"].value is None

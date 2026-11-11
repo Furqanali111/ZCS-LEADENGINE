@@ -118,6 +118,12 @@ def test_cancel_queued_job(client, db):
     assert r.json()["finished_at"] is not None
 
 
+def test_cancel_paused_job_is_cancelled(client, db):
+    job = add_job(db, status="paused")
+    r = client.post(f"/api/search/{job.id}/cancel")
+    assert r.json()["status"] == "cancelled" and r.json()["finished_at"] is not None
+
+
 def test_cancel_running_job_sets_flag_and_terminal_conflicts(client, db):
     running = add_job(db, "running")
     assert client.post(f"/api/search/{running.id}/cancel").json()["status"] == "running"

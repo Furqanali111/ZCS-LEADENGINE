@@ -90,7 +90,7 @@ def build_workbook(session: Session, *, filters: LeadFilters | None, ids: list[U
             org.city, org.state, loc.zip if loc else None, org.npi, org.fit_score,
             label(org.priority), label(org.crm_status),
             SOURCE_NAMES.get(src.source_key, src.source_key) if src else None,
-            src.collected_at.replace(tzinfo=None).date()  # UTC calendar date if src else None,
+            src.collected_at.replace(tzinfo=None).date() if src else None,  # UTC calendar date
         ])
         row = leads.max_row
         leads.cell(row, 20).number_format = "yyyy-mm-dd"
