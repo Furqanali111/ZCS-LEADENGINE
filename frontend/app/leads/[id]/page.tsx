@@ -102,13 +102,16 @@ function LeadDetail() {
   }
 
   async function save(body: LeadPatch, ok: string) {
+    let saved = false;
     try {
       await patchLead(id, body);
       setMessage({ text: ok, error: false });
+      saved = true;
     } catch (e) {
       setMessage({ text: `Not saved. ${msg(e)}`, error: true });
     }
     await refresh(); // on failure this restores the server value in the controls
+    return saved;
   }
 
   // Saves a typed date only when it is empty or complete; otherwise waits for blur.
@@ -121,8 +124,8 @@ function LeadDetail() {
   async function rejectWebsite() {
     if (!lead?.website) return;
     if (!window.confirm(`Remove ${hostOf(lead.website)} as the website for ${lead.name}? Its emails and people found there will be removed too.`)) return;
-    await save({ reject_website: true }, "Website removed.");
-    webHeading.current?.focus(); // the button is gone after refresh; keep focus in this section
+    if (await save({ reject_website: true }, "Website removed.")) webHeading.current?.focus();
+    // on success the button is gone, so focus moves to the section heading
   }
 
   async function suppress() {
@@ -278,7 +281,7 @@ function LeadDetail() {
             <p className="tabular-nums">Fax {formatPhone(lead.fax)}</p>
           </section>
           <section aria-labelledby="web-h">
-            <h2 id="web-h" ref={webHeading} tabIndex={-1} className="mb-2 font-semibold outline-none">
+            <h2 id="web-h" ref={webHeading} tabIndex={-1} className="mb-2 font-semibold outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
               Website and emails
             </h2>
             {lead.website ? (
