@@ -11,3 +11,6 @@ node_modules/
 .next/
 .superpowers/
 *.egg-info/
+.claude/
+.playwright-mcp/
+.idea/
