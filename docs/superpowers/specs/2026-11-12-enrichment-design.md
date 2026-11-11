@@ -49,7 +49,7 @@ Seed: `source_configs` rows for `brave_search`, `practice_websites`, and `yelp` 
 8. **Suppression.** Before storing an email, check the suppression list (kind `email`). A suppressed address is not stored. If a stored contact email later matches a new suppression entry, the lead is set to `do_not_contact` (this closes the slice 2 deferred item, email matching). Lead-level matches on NPI and phone already apply.
 9. Mark `enrichment_status` (`enriched` if a website was accepted) and `enriched_at`; rescore the lead.
 
-Failures: network errors and 5xx retry twice with backoff, then count `enrich_failures` and mark `failed` (retried by the next run). HTTP 403, CAPTCHA pages and robots disallow are skipped, never retried, and counted. Brave 429 backs off; a persistent 401 or quota error pauses the job with a clear error. A missing `BRAVE_API_KEY` or a source not `available` refuses `enrich=true` at the API with a 400.
+Failures: network errors and 5xx retry twice with backoff, then count `enrich_failures` and mark `failed` (retried by the next run). HTTP 403, CAPTCHA pages and robots disallow are skipped, never retried, and counted. Brave 429 backs off; a persistent 401 or quota error pauses the job with a clear error. A missing `BRAVE_API_KEY` or a source not `available` refuses `enrich=true` at the API with a 422.
 
 ## 7. Scoring
 
@@ -59,8 +59,8 @@ The Decision-maker factor now also counts a `staff` contact with an allowed titl
 
 | Method | Path | Change |
 |---|---|---|
-| POST | `/api/searches` | New field `enrich` (bool). 400 `source_unavailable` or `missing_api_key` when it cannot run |
-| GET | `/api/searches`, `/api/searches/{id}` | Job output includes `enrich` and the new counters |
+| POST | `/api/search` | New field `enrich` (bool). 422 `source_not_available` or `missing_api_key` when it cannot run |
+| GET | `/api/search`, `/api/search/{id}` | Job output includes `enrich` and the new counters. `pages_fetched` counts NPI pages plus web pages for enrich jobs |
 | GET | `/api/leads`, `/api/leads/{id}` | Add `website`, `enrichment_status`, `primary_email`, contacts with `email`, `email_status`, `source_url`, `collected_at`, and `website_evidence` on detail |
 | PATCH | `/api/leads/{id}` | `reject_website: true` clears `website`, deletes the `practice_website` contacts, sets `rejected_by_user`, and logs a note activity |
 | POST | `/api/exports/excel` | New columns Website, Email, Decision-maker (name and title) |

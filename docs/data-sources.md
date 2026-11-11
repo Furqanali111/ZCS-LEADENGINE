@@ -32,7 +32,19 @@ If the terms forbid automated collection or commercial reuse, set `rejected` and
 |---|---|---|---|
 | CMS NPI Registry API | `available` | Free public JSON API, no key | Slice 1 backbone. Details below. |
 | CMS NPPES bulk file | `approved_not_built` | Free public download | Deferred. Fallback if the API cap or missing provider counts become a real problem. |
-| Official practice websites | `not_reviewed` | Page fetch, per-site robots rules | Slice 3. Main route to websites, emails, and staff names. |
+| Brave Search API | `approved_not_built` | Official search API, key in backend `.env` | Slice 3 website discovery. Condition below. |
+| Official practice websites | `approved_not_built` | Page fetch, per-site robots rules | Slice 3. Main route to websites, emails, and staff names. Terms below. |
+| Yelp (Fusion API and site) | `rejected` | Official API, site | Terms forbid what we need. Reasons below. |
+
+Statuses above match what migration 0005 seeds into `source_configs`. The owner moves Brave and the practice websites to `available` by hand (see the README) once the Brave condition is met.
+
+### Slice 3 source terms review (2026-11-12)
+
+| Source | Result | Why |
+|---|---|---|
+| Yelp (Fusion API and site) | `rejected` | API terms (terms.yelp.com/developers/api_terms, checked 2026-11-12): Yelp content may not be stored beyond 24 hours, no scraping or bulk download, no building a business database, no commercial use without written consent, no direct-marketing use. Only business IDs may be kept, for matching. Everything we would use it for is forbidden. Do not scrape the site, which also blocks automated access and which we never bypass. |
+| Brave Search API | `approved_not_built`, with a condition | The terms (updated Feb 2026, read through a search summary because the dashboard page could not be fetched) bar storing, caching or building a database of Search Results beyond transient use, unless the plan grants storage rights. We use results in memory only and store only a URL we fetched and verified on the practice's own page. The owner must confirm the storage terms with Brave support (searchapi-support@brave.com) or pick a plan with storage rights before this becomes `available`, because storing even the verified URL is a gray area. |
+| Official practice websites | `approved_not_built`, then `available` | Public pages of the practice itself. robots.txt honored, including Crawl-delay. About 1 request per second per domain. No logins, no CAPTCHA or anti-bot bypass. User-Agent `ZCSLeadEngine/1.0 (internal prospecting tool)`. |
 
 ### CMS NPI Registry API (tested 2026-11-11)
 
@@ -72,7 +84,7 @@ Known gaps: almost no emails, no websites, no reliable provider count per practi
 
 ## Business directories (requested by the product owner)
 
-All 30 are `not_reviewed`. The notes are first impressions from general knowledge, **not** a terms review, and must be confirmed before any status change.
+All 30 are `not_reviewed` except Yelp, which is `rejected`. The notes are first impressions from general knowledge, **not** a terms review, and must be confirmed before any status change.
 
 General concerns that apply to most of them: they do not carry medical specialty or NPI, so every result must be matched back to an NPI record; many restrict automated collection in their terms; several are thin listing sites with sparse healthcare coverage.
 
@@ -81,7 +93,7 @@ General concerns that apply to most of them: they do not carry medical specialty
 | 1 | Allbiz | `not_reviewed` | General listing site |
 | 2 | Yellow Pages | `not_reviewed` | Large U.S. coverage. Expect scraping restrictions. |
 | 3 | Manta | `not_reviewed` | Small-business focus. Expect scraping restrictions. |
-| 4 | Yelp | `not_reviewed` | Has an official API with limits on storing its data. Review the API terms, not the website. |
+| 4 | Yelp | `rejected` | Reviewed 2026-11-12. API terms bar storing, bulk use, databases and marketing use. See the Slice 3 review above. |
 | 5 | Chamber of Commerce | `not_reviewed` | General listing site |
 | 6 | Hotfrog | `not_reviewed` | Thin listing site |
 | 7 | Brownbook | `not_reviewed` | Thin listing site |
@@ -109,10 +121,13 @@ General concerns that apply to most of them: they do not carry medical specialty
 | 29 | MapQuest | `not_reviewed` | Has developer APIs. Review the API terms, not the website. |
 | 30 | Better Business Bureau | `not_reviewed` | Trusted profiles. Expect scraping restrictions. |
 
-Suggested review order when slice 3 starts: Yelp API, MapQuest API, Better Business Bureau, Yellow Pages, Superpages, Manta, then the rest only if those leave a gap.
+Suggested review order for the remaining directories: MapQuest API, Better Business Bureau, Yellow Pages, Superpages, Manta, then the rest only if those leave a gap.
 
 ## Review log
 
 | Date | Source | Reviewer | Outcome |
 |---|---|---|---|
 | 2026-11-11 | CMS NPI Registry API | Claude (live test) | Works. Approved as slice 1 backbone. Rate limits still to confirm. |
+| 2026-11-12 | Yelp | Claude (terms review) | `rejected`. Storage, scraping, database and marketing use all forbidden. |
+| 2026-11-12 | Brave Search API | Claude (terms review) | `approved_not_built`. Owner must confirm storage terms before `available`. |
+| 2026-11-12 | Official practice websites | Claude (terms review) | `approved_not_built`. Robots honored, about 1 request per second per domain. |
