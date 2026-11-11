@@ -32,3 +32,4 @@ Things the docs or code refer to that are intentionally not built yet. If a revi
 | Search-form toggle disabled with a reason when the key or source is unavailable (spec section 9) | Final review, Slice 3 | Later | Needs a key flag on `/api/sources`; users hit the job-start failure instead |
 | Contacts do not store which check accepted them (the check is on `website_evidence`) | Final review, Slice 3 | Later | Someone needs per-contact provenance |
 | Contacts export sheet has no Email column | Final review, Slice 3 | Later | Outreach prep needs emails in the contacts sheet |
+| `is_public_host` accepts dotted hex/octal/short IPv4 forms (`0x7f.0.0.1`, `0177.0.0.1`, `127.1`) and CGNAT `100.64.0.0/10` | Final review, Slice 3 | Before running on Linux/macOS or a server | getaddrinfo there resolves these to loopback; reject any host whose dot-separated labels are all digits or start with `0x` (`backend/app/services/verify.py` ~42) |
