@@ -151,3 +151,49 @@ def test_get_unknown_job_404(client):
 
     assert client.get(f"/api/search/{uuid.uuid4()}").status_code == 404
     assert client.get("/api/search/not-a-uuid").status_code == 404
+
+
+def test_create_search_rejects_non_string_state(client):
+    assert client.post("/api/search", json={**BODY, "state": ["TX"]}).status_code == 422
+    assert client.post("/api/search", json={**BODY, "state": {}}).status_code == 422
+
+
+def test_create_search_uppercases_state(client, db):
+    add_source(db)
+    r = client.post("/api/search", json={**BODY, "state": "tx"})
+    assert r.status_code == 201
+    assert r.json()["state"] == "TX"
+
+
+def test_create_search_unknown_or_rejected_source(client, db):
+    add_source(db, "bad", "Bad", "rejected")
+    for key in ("nope", "bad"):
+        r = client.post("/api/search", json={**BODY, "sources": [key]})
+        assert r.status_code == 422
+        assert r.json()["error"]["code"] == "source_not_available"
+
+
+def test_create_search_field_bounds(client):
+    for patch in ({"target_count": 0}, {"specialty": "   "}, {"specialty": "x" * 101}, {"sources": []}):
+        assert client.post("/api/search", json={**BODY, **patch}).status_code == 422, patch
+
+
+def test_create_search_dedupes_sources(client, db):
+    add_source(db)
+    r = client.post("/api/search", json={**BODY, "sources": ["npi_registry", "npi_registry"]})
+    assert r.status_code == 201
+    assert r.json()["sources"] == ["npi_registry"]
+
+
+def test_resume_failed_and_queued(client, db):
+    failed = add_job(db, "failed")
+    failed.error = "boom"
+    db.commit()
+    r = client.post(f"/api/search/{failed.id}/resume")
+    assert r.status_code == 200
+    assert r.json()["status"] == "queued"
+    assert r.json()["error"] is None
+    queued = add_job(db)
+    r = client.post(f"/api/search/{queued.id}/resume")
+    assert r.status_code == 409
+    assert r.json()["error"]["code"] == "invalid_job_state"

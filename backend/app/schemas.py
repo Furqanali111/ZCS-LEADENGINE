@@ -34,7 +34,9 @@ class SearchCreate(BaseModel):
     @field_validator("state", mode="before")
     @classmethod
     def upper_state(cls, v):
-        v = v.strip().upper() if isinstance(v, str) else v
+        if not isinstance(v, str):
+            raise ValueError("must be a string")
+        v = v.strip().upper()
         if v not in US_STATES:
             raise ValueError("must be a US state or DC code")
         return v
@@ -43,6 +45,11 @@ class SearchCreate(BaseModel):
     @classmethod
     def blank_city(cls, v):
         return (v.strip() or None) if isinstance(v, str) else v
+
+    @field_validator("sources")
+    @classmethod
+    def dedupe_sources(cls, v):
+        return list(dict.fromkeys(v))
 
     @model_validator(mode="after")
     def need_a_lead_type(self):
