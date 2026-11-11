@@ -29,3 +29,6 @@ Things the docs or code refer to that are intentionally not built yet. If a revi
 | Brave storage terms confirmation, then set `brave_search` and `practice_websites` to `available` | `docs/data-sources.md` | Before first enrich run | Owner confirms with Brave support or a plan with storage rights |
 | Functional index on `lower(contacts.email)` | Slice 3 | Later | Contact volume grows and suppression email matching gets slow |
 | Email attachment is first-page-wins (an address is attached to the first organization that surfaces it) | Slice 3 | Later | Shared addresses across organizations cause wrong attachments |
+| Search-form toggle disabled with a reason when the key or source is unavailable (spec section 9) | Final review, Slice 3 | Later | Needs a key flag on `/api/sources`; users hit the job-start failure instead |
+| Contacts do not store which check accepted them (the check is on `website_evidence`) | Final review, Slice 3 | Later | Someone needs per-contact provenance |
+| Contacts export sheet has no Email column | Final review, Slice 3 | Later | Outreach prep needs emails in the contacts sheet |

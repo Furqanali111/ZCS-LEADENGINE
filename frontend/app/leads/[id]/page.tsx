@@ -20,7 +20,7 @@ import {
   type LeadPatch,
 } from "@/lib/api";
 import { CRM_STATUSES, ORG_TYPES, PRIORITIES, SCORE_FACTORS } from "@/lib/constants";
-import { formatPhone, hostOf, safeHttpUrl } from "@/lib/format";
+import { formatPhone, hostOf, pagePath, safeHttpUrl } from "@/lib/format";
 
 const SELECT =
   "h-8 rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
@@ -34,14 +34,6 @@ function address(l: Lead["locations"][number]) {
   const place = [l.city, [l.state, l.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
   return [street, place].filter(Boolean).join(", ") || "No address";
 }
-
-const pagePath = (u: string) => {
-  try {
-    return new URL(u).pathname || "/";
-  } catch {
-    return u;
-  }
-};
 
 // Suspense is required: reading route params at request time is dynamic under cacheComponents.
 export default function LeadDetailPage() {

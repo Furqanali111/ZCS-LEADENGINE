@@ -31,6 +31,7 @@ export type Counters = {
   people_found?: number;
   enrich_attempted?: number;
   enrich_failures?: number;
+  skipped?: number;
 };
 
 export type Job = {

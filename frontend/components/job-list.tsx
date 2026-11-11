@@ -26,6 +26,7 @@ const ENRICH_LABELS: [keyof Job["counters"], string][] = [
   ["emails_found", "Emails found"],
   ["people_found", "People found"],
   ["no_website_found", "No website"],
+  ["skipped", "Pages skipped"],
 ];
 
 function summary(j: Job) {

@@ -89,7 +89,9 @@ Rules:
 - Yelp is rejected by its terms and is never used.
 - Brave results are used in memory only. Only the verified website URL is stored.
 
-The job list shows the enrichment counters. `pages_fetched` counts NPI pages plus web pages for enrich jobs. Only leads linked to an enrich job are enriched.
+Optional env: `ENRICH_PAGE_DELAY_SECONDS` (default 1) is the minimum wait between requests to the same website; robots.txt Crawl-delay can raise it.
+
+The job list shows the enrichment counters. `pages_fetched` counts NPI pages plus web pages for enrich jobs, and `skipped` (shown as "pages skipped") counts pages not read: non-HTML, too large, CAPTCHA, failed redirects, or hosts that are not public websites. Only leads linked to an enrich job are enriched.
 
 Route changes:
 

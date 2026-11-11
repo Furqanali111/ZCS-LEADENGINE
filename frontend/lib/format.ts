@@ -14,6 +14,14 @@ export const safeHttpUrl = (u: string | null | undefined) => {
   }
 };
 
+export const pagePath = (u: string) => {
+  try {
+    return new URL(u).pathname || "/";
+  } catch {
+    return u;
+  }
+};
+
 export const hostOf = (u: string) => {
   try {
     return new URL(u).hostname.replace(/^www\./, "");
