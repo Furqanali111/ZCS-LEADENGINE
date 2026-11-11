@@ -133,9 +133,12 @@ function LeadDetail() {
       <Link href="/leads" className="text-sm underline underline-offset-4">
         Back to leads
       </Link>
-      <p role={message?.error ? "alert" : "status"} className={`min-h-5 text-sm ${message?.error ? "text-destructive" : ""}`}>
-        {message?.text ?? ""}
-      </p>
+      <div className="min-h-5 text-sm">
+        <p role="status">{message && !message.error ? message.text : ""}</p>
+        <p role="alert" className="text-destructive">
+          {message?.error ? message.text : ""}
+        </p>
+      </div>
 
       <header className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">

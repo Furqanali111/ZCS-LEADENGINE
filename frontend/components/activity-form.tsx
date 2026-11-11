@@ -28,12 +28,14 @@ export function ActivityForm({ leadId, onSaved }: { leadId: string; onSaved: () 
   const [followUp, setFollowUp] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
   const [fields, setFields] = useState<Record<string, string>>({});
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
+    setSaved(false);
     setFields({});
     try {
       await addActivity(leadId, {
@@ -41,8 +43,10 @@ export function ActivityForm({ leadId, onSaved }: { leadId: string; onSaved: () 
         occurred_at: new Date(when).toISOString(),
         summary: summary.trim(),
         outcome: outcome || null,
-        next_follow_up_at: followUp || null,
+        // Omit the key when empty: the backend treats a present key (even null) as "set it".
+        ...(followUp ? { next_follow_up_at: followUp } : {}),
       });
+      setSaved(true);
       // Typed text is cleared only after the server accepted it.
       setSummary("");
       setOutcome("");
@@ -116,6 +120,9 @@ export function ActivityForm({ leadId, onSaved }: { leadId: string; onSaved: () 
         <Button type="submit" disabled={busy}>
           {busy ? "Saving..." : "Add to timeline"}
         </Button>
+        <p role="status" className="text-sm">
+          {saved ? "Activity saved" : ""}
+        </p>
         <p role="alert" className="text-sm text-destructive">
           {error ? `Not saved. ${error}` : ""}
         </p>

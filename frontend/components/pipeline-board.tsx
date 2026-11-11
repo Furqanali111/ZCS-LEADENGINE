@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PipelineCard } from "@/components/pipeline-card";
 import { Button } from "@/components/ui/button";
 import { ApiError, getPipeline, getPipelineColumn, patchLead, type PipelineCard as Card, type PipelineColumn } from "@/lib/api";
@@ -15,9 +15,17 @@ export function PipelineBoard() {
   const [busy, setBusy] = useState<Set<string>>(new Set());
   const [over, setOver] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState<string | null>(null);
+  const [notice, setNotice] = useState("");
+  const serverOffset = useRef<Record<string, number>>({});
 
   useEffect(() => {
-    getPipeline().then((r) => setCols(r.columns), (e) => setError(msg(e)));
+    getPipeline().then(
+      (r) => {
+        serverOffset.current = Object.fromEntries(r.columns.map((c) => [c.status, c.leads.length]));
+        setCols(r.columns);
+      },
+      (e) => setError(msg(e)),
+    );
   }, []);
 
   const move = useCallback(async (card: Card, from: string, to: string) => {
@@ -37,9 +45,9 @@ export function PipelineBoard() {
     );
     try {
       await patchLead(card.id, { crm_status: to });
-      // Counts only (limit 1): keeps the cards already loaded in each column.
-      const [a, b] = await Promise.all([getPipelineColumn(from, 0, 1), getPipelineColumn(to, 0, 1)]);
-      setCols((cs) => cs && cs.map((c) => (c.status === from ? { ...c, count: a.count } : c.status === to ? { ...c, count: b.count } : c)));
+      setNotice(`Moved ${card.name} to ${LABELS[to]}`);
+      // Refocus after React commits the card in its new column.
+      setTimeout(() => document.getElementById(`move-${card.id}`)?.focus(), 0);
     } catch (e) {
       // Restore only the two affected columns so other in-flight moves survive.
       setCols((cs) =>
@@ -54,19 +62,34 @@ export function PipelineBoard() {
         }),
       );
       setError(`Could not move ${card.name} to ${LABELS[to]}: ${msg(e)}`);
-    } finally {
       setBusy((b) => {
         const n = new Set(b);
         n.delete(card.id);
         return n;
       });
+      return;
+    }
+    setBusy((b) => {
+      const n = new Set(b);
+      n.delete(card.id);
+      return n;
+    });
+    // Counts only (limit 1): keeps loaded cards. If this fails, the optimistic counts stay.
+    try {
+      const [a, b] = await Promise.all([getPipelineColumn(from, 0, 1), getPipelineColumn(to, 0, 1)]);
+      setCols((cs) => cs && cs.map((c) => (c.status === from ? { ...c, count: a.count } : c.status === to ? { ...c, count: b.count } : c)));
+    } catch {
+      // Move already saved; optimistic counts are kept.
     }
   }, []);
 
   async function loadMore(col: PipelineColumn) {
     setLoadingMore(col.status);
     try {
-      const r = await getPipelineColumn(col.status, col.leads.length);
+      // Server-side offset: local moves change leads.length but not what the server has served.
+      const offset = serverOffset.current[col.status] ?? col.leads.length;
+      const r = await getPipelineColumn(col.status, offset);
+      serverOffset.current[col.status] = offset + r.leads.length;
       setCols((cs) =>
         cs && cs.map((c) => {
           if (c.status !== col.status) return c;
@@ -103,6 +126,7 @@ export function PipelineBoard() {
 
   return (
     <div>
+      <p role="status" className="sr-only">{notice}</p>
       {error && (
         <p role="alert" className="mb-3 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
@@ -123,7 +147,7 @@ export function PipelineBoard() {
           >
             <h2 id={`col-${col.status}`} className="mb-2 flex items-center justify-between px-1 text-sm font-semibold">
               {LABELS[col.status] ?? col.status}
-              <span className="font-normal text-muted-foreground" aria-label={`${col.count} leads`}>{col.count}</span>
+              <span className="font-normal text-muted-foreground">{col.count}<span className="sr-only"> leads</span></span>
             </h2>
             <ul className="flex min-h-12 flex-col gap-2">
               {col.leads.map((card) => (

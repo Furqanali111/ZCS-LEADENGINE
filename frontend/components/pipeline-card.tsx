@@ -44,6 +44,7 @@ export function PipelineCard({
       <label className="mt-2 block text-xs text-muted-foreground">
         Move to
         <select
+          id={`move-${card.id}`}
           aria-label={`Move ${card.name} to`}
           disabled={busy}
           value={status}
