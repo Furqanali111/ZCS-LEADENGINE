@@ -179,8 +179,12 @@ def _save_each(session: Session, job: SearchJob, leads: list[NormalizedLead], co
         except Exception as e:
             logger.warning("search job %s: record NPI %s failed: %s", job.id, lead.npi, type(e).__name__)
             counters["source_failures"] += 1
-    with session.begin_nested():  # once per page, like the batched path
-        enforce(session, session.scalars(select(Organization.id).where(Organization.npi.in_(saved))).all())
+    try:
+        with session.begin_nested():  # once per page, like the batched path
+            enforce(session, session.scalars(select(Organization.id).where(Organization.npi.in_(saved))).all())
+    except Exception as e:  # the leads are saved; a failed enforce must not fail the job, so count it and go on
+        logger.warning("search job %s: suppression enforce failed: %s", job.id, type(e).__name__)
+        counters["source_failures"] += 1
     return outcomes
 
 

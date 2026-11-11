@@ -4,7 +4,7 @@ from sqlalchemy import select
 from app.models import LeadActivity, Organization, SuppressionEntry
 from app.services.suppression import normalize
 from tests.test_api import add_lead
-from tests.test_search import NPI2, fake, make_job, npi_source, run  # noqa: F401  npi_source is a fixture
+from tests.test_search import NPI2, fake, make_job, run
 
 
 def post(client, kind, value, reason=None):
@@ -111,3 +111,57 @@ def test_email_entry_is_stored_and_lowercased(client, db):
     r = post(client, "email", "  Boss@Example.COM ")
     assert r.status_code == 201 and r.json()["value"] == "boss@example.com"
     assert post(client, "email", "nope").status_code == 422
+
+
+def test_phone_plus_one_prefix_matches_ten_digit_storage(client, db):
+    assert normalize("phone", "+1 813 671 0064") == normalize("phone", "(813) 671-0064") == "8136710064"
+    stored = add_lead(db, "1000000001", "Alpha", phone="8136710064")
+    prefixed = add_lead(db, "1000000002", "Beta", fax="+1 (813) 671-0099")
+    assert post(client, "phone", "+1 813 671 0064").status_code == 201
+    assert post(client, "phone", "+1 813 671 0099").status_code == 201
+    db.expire_all()
+    assert stored.crm_status == "do_not_contact" and prefixed.crm_status == "do_not_contact"
+    r = post(client, "phone", "(813) 671-0064")
+    assert r.status_code == 409 and r.json()["error"]["code"] == "already_suppressed"
+
+
+def test_add_entry_integrity_error_is_409(client, db, monkeypatch):
+    from sqlalchemy.exc import IntegrityError
+
+    post(client, "npi", "1000000001")
+    monkeypatch.setattr(db, "scalar", lambda *a, **k: None)  # the pre-check misses, as in a race
+    r = post(client, "npi", "1000000001")
+    assert r.status_code == 409 and r.json()["error"]["code"] == "already_suppressed"
+
+
+@pytest.mark.usefixtures("npi_source")
+def test_search_save_of_fax_match_is_do_not_contact(db, session_factory):
+    fax = "".join(c for c in NPI2[0]["addresses"][0]["fax_number"] if c.isdigit())
+    db.add(SuppressionEntry(kind="phone", value=fax))
+    db.commit()
+    run(session_factory, make_job(db, include_solo=False, include_subparts=True), fake({"NPI-2": [NPI2]}))
+    db.expire_all()
+    assert db.scalars(select(Organization).where(Organization.npi == str(NPI2[0]["number"]))).one().crm_status == "do_not_contact"
+
+
+@pytest.mark.usefixtures("npi_source")
+def test_enforce_failure_on_fallback_path_is_counted_and_page_continues(db, session_factory, monkeypatch):
+    from app.models import SearchJob
+    from app.services import search
+
+    page = [dict(r) for r in NPI2]
+    page[0] = {**page[0], "basic": {**page[0]["basic"], "organization_name": "Bad\x00Name"}}  # forces the fallback
+    calls = []
+
+    def boom(session, ids):
+        calls.append(1)
+        raise RuntimeError("secret lead data")
+
+    monkeypatch.setattr(search, "enforce", boom)
+    job_id = make_job(db, include_solo=False, include_subparts=True)
+    run(session_factory, job_id, fake({"NPI-2": [page]}))
+    db.expire_all()
+    job = db.get(SearchJob, job_id)
+    assert job.status == "completed" and calls
+    assert job.counters["source_failures"] == 2  # the bad record plus the enforce failure
+    assert db.scalars(select(Organization)).all()

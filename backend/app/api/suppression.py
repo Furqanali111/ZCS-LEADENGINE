@@ -20,7 +20,7 @@ def list_entries(session: Session = Depends(get_session)):
 
 @router.post("", response_model=SuppressionOut, status_code=201)
 def create_entry(body: SuppressionIn, session: Session = Depends(get_session)):
-    """Phone entries match digits only (phone and fax). Email entries are stored lowercased but match no lead until slice 3 stores emails."""
+    """Phone entries match digits only (phone and fax), ignoring a leading US 1 on 11-digit numbers. Email entries are stored lowercased but match no lead until slice 3 stores emails."""
     try:
         return suppression.add_entry(session, body.kind, body.value, body.reason)
     except ValueError as e:

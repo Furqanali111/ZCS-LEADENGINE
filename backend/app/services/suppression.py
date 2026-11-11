@@ -3,6 +3,7 @@ from collections.abc import Collection
 from uuid import UUID
 
 from sqlalchemy import exists, func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.errors import AppError
@@ -20,6 +21,8 @@ def normalize(kind: str, value: str) -> str:
             raise ValueError("Email must contain one @")
     elif kind in ("npi", "phone"):
         value = re.sub(r"\D", "", value)
+        if kind == "phone" and len(value) == 11 and value[0] == "1":
+            value = value[1:]  # US country code
         if kind == "npi" and len(value) != 10:
             raise ValueError("NPI must be 10 digits")
         if kind == "phone" and len(value) < 7:
@@ -30,7 +33,7 @@ def normalize(kind: str, value: str) -> str:
 
 
 def _digits(col):
-    return func.regexp_replace(col, r"\D", "", "g")
+    return func.regexp_replace(func.regexp_replace(col, r"\D", "", "g"), r"^1(?=\d{10}$)", "")
 
 
 def _matches():
@@ -65,7 +68,11 @@ def add_entry(session: Session, kind: str, value: str, reason: str | None = None
         raise AppError(409, "already_suppressed", f"{kind} {value} is already suppressed")
     entry = SuppressionEntry(kind=kind, value=value, reason=reason)
     session.add(entry)
-    session.flush()
+    try:
+        session.flush()
+    except IntegrityError:  # lost a race with a concurrent insert of the same entry
+        session.rollback()
+        raise AppError(409, "already_suppressed", f"{kind} {value} is already suppressed")
     if kind == "npi":
         _mark(session, Organization.npi == value)
     elif kind == "phone":
