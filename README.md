@@ -14,10 +14,9 @@ cd backend
 py -3.12 -m venv .venv
 .venv\Scripts\activate
 pip install -e .[dev]
-copy .env.example .env
 ```
 
-Edit `backend/.env`: set `DATABASE_URL` (percent-encode special characters in the password, `@` = `%40`, `#` = `%23`). Never commit `.env`. Then create the tables (`alembic upgrade head` applies all migrations, including 0004 for activities and the suppression list):
+In `backend/.env`, set `DATABASE_URL` (percent-encode special characters in the password, `@` = `%40`, `#` = `%23`). Never commit `.env`. Then create the tables (`alembic upgrade head` applies all migrations, including 0004 for activities and the suppression list). Run it with the venv active; the global `alembic` fails with `No module named 'app'`:
 
 ```powershell
 alembic upgrade head
@@ -36,7 +35,7 @@ copy .env.example .env.local
 Two terminals:
 
 ```powershell
-cd backend; .venv\Scripts\activate; uvicorn app.main:app --factory --port 8000
+cd backend; .venv\Scripts\activate; uvicorn app.main:create_app --factory --reload --port 8000
 ```
 
 ```powershell
