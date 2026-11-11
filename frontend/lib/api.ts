@@ -92,6 +92,9 @@ export type Lead = {
   fit_score: number | null;
   priority: string | null;
   crm_status: string;
+  last_contacted_at: string | null;
+  next_follow_up_at: string | null;
+  suppressed: boolean;
   updated_at: string;
   contact: Contact | null;
   locations: LeadLocation[];
@@ -110,12 +113,13 @@ export type LeadFilters = {
   min_score?: number;
   crm_status?: string;
   search_job_id?: string;
+  follow_up?: "due" | "overdue" | "none";
 };
 
 export type ListLeadsParams = LeadFilters & {
   page?: number;
   page_size?: number;
-  sort?: "score" | "name" | "updated";
+  sort?: "score" | "name" | "updated" | "follow_up";
   order?: "asc" | "desc";
 };
 
@@ -178,12 +182,106 @@ export function listLeads(params: ListLeadsParams = {}) {
   return json<LeadPage>(`/api/leads?${qs}`);
 }
 
-export const patchLeadStatus = (id: string, crm_status: string) =>
+export type LeadPatch = { crm_status?: string; next_follow_up_at?: string | null };
+
+export const patchLead = (id: string, body: LeadPatch) =>
   json<Lead>(`/api/leads/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ crm_status }),
+    body: JSON.stringify(body),
   });
+
+export const patchLeadStatus = (id: string, crm_status: string) => patchLead(id, { crm_status });
+
+export const getLead = (id: string) => json<Lead>(`/api/leads/${id}`);
+
+export type Activity = {
+  id: string;
+  type: string;
+  occurred_at: string;
+  summary: string | null;
+  outcome: string | null;
+  from_status: string | null;
+  to_status: string | null;
+  created_at: string;
+};
+
+export type ActivityInput = {
+  type: string;
+  occurred_at?: string;
+  summary?: string;
+  outcome?: string | null;
+  next_follow_up_at?: string | null;
+};
+
+export type ActivityPage = { items: Activity[]; total: number; page: number; page_size: number };
+
+export const listActivities = (id: string, page = 1) =>
+  json<ActivityPage>(`/api/leads/${id}/activities?page=${page}`);
+
+export const addActivity = (id: string, body: ActivityInput) =>
+  json<Activity>(`/api/leads/${id}/activities`, post(body));
+
+export type PipelineCard = {
+  id: string;
+  name: string;
+  city: string | null;
+  state: string | null;
+  organization_type: string;
+  fit_score: number | null;
+  priority: string | null;
+  next_follow_up_at: string | null;
+  last_contacted_at: string | null;
+};
+
+export type PipelineColumn = { status: string; count: number; leads: PipelineCard[] };
+
+export const getPipeline = (limit = 20) =>
+  json<{ columns: PipelineColumn[] }>(`/api/pipeline?limit=${limit}`);
+
+export const getPipelineColumn = (status: string, offset: number, limit = 20) =>
+  json<PipelineColumn>(`/api/pipeline/${status}?offset=${offset}&limit=${limit}`);
+
+export type CountItem = { key: string; count: number };
+
+export type DashboardStats = {
+  range: { from: string; to: string };
+  total: number;
+  new_leads: number;
+  critical_high: number;
+  follow_ups_due: number;
+  meetings_scheduled: number;
+  converted: number;
+  by_state: CountItem[];
+  by_specialty: CountItem[];
+  by_status: CountItem[];
+  recent_jobs: Job[];
+  conversion: { converted: number; contacted: number; rate: number | null };
+};
+
+export function getDashboard(range: { from?: string; to?: string } = {}) {
+  const qs = new URLSearchParams();
+  if (range.from) qs.set("from", range.from);
+  if (range.to) qs.set("to", range.to);
+  return json<DashboardStats>(`/api/dashboard/stats?${qs}`);
+}
+
+export type SuppressionEntry = {
+  id: string;
+  kind: string;
+  value: string;
+  reason: string | null;
+  created_at: string;
+};
+
+export const listSuppression = () => json<SuppressionEntry[]>("/api/suppression");
+
+export const addSuppression = (body: { kind: string; value: string; reason?: string }) =>
+  json<SuppressionEntry>("/api/suppression", post(body));
+
+export const removeSuppression = async (id: string) => {
+  await request(`/api/suppression/${id}`, { method: "DELETE" });
+};
 
 // Returns the blob and the filename from Content-Disposition.
 export async function exportLeadsFile(body: { filters?: LeadFilters; ids?: string[] }) {

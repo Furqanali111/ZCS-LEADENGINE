@@ -4,8 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const ITEMS = [
+  { href: "/", label: "Dashboard" },
   { href: "/search", label: "Search" },
   { href: "/leads", label: "Leads" },
+  { href: "/pipeline", label: "Pipeline" },
+  { href: "/suppression", label: "Suppression" },
 ];
 
 export function Nav() {
@@ -15,7 +18,7 @@ export function Nav() {
       <nav aria-label="Main" className="mx-auto flex max-w-5xl items-center gap-6 px-4 py-3">
         <span className="font-semibold">ZCS LeadEngine</span>
         {ITEMS.map((i) => {
-          const current = path.startsWith(i.href);
+          const current = i.href === "/" ? path === "/" : path.startsWith(i.href);
           return (
             <Link
               key={i.href}
