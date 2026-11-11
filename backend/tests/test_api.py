@@ -197,3 +197,159 @@ def test_resume_failed_and_queued(client, db):
     r = client.post(f"/api/search/{queued.id}/resume")
     assert r.status_code == 409
     assert r.json()["error"]["code"] == "invalid_job_state"
+
+
+# ---- leads API ----
+
+def add_lead(db, npi, name, score=None, priority=None, state="TX", city="Austin", crm="new", desc="Internal Medicine", **kw):
+    from app.models import Contact, LeadScore, Location, Organization, SourceRecord
+
+    org = Organization(npi=npi, name=name, organization_type="practice", state=state, city=city, crm_status=crm,
+                       primary_taxonomy_desc=desc, fit_score=score, priority=priority, **kw)
+    db.add(org)
+    db.flush()
+    if score is not None:
+        db.add(LeadScore(organization_id=org.id, components={"specialty": {"points": 25}}, total=score,
+                         priority=priority, config_version="1"))
+    db.add(Location(organization_id=org.id, purpose="location", address_1="1 Main", zip="78701", is_primary=True))
+    db.add(Contact(organization_id=org.id, first_name="Pat", last_name="Lee", role="provider", source_key="npi_registry"))
+    db.add(Contact(organization_id=org.id, first_name="Ann", last_name="Boss", title="Admin", role="authorized_official", source_key="npi_registry"))
+    db.add(SourceRecord(organization_id=org.id, source_key="npi_registry", external_id=npi, raw={"number": npi}))
+    db.commit()
+    return org
+
+
+def seed_leads(db):
+    return [
+        add_lead(db, "1000000001", "Alpha Clinic", 90, "critical"),
+        add_lead(db, "1000000002", "Bravo Care", 70, "high", state="FL", city="Miami"),
+        add_lead(db, "1000000003", "Charlie Health", 50, "medium", crm="called"),
+        add_lead(db, "1000000004", "Delta 100% Group", 20, "low", state="AZ", city="Phoenix", desc="Cardiology"),
+        add_lead(db, "1000000005", "Echo Medical", 85, "critical", dba_name="Echo Docs"),
+        add_lead(db, "1000000006", "Foxtrot Unscored"),
+    ]
+
+
+def names(r):
+    return [i["name"] for i in r.json()["items"]]
+
+
+def test_leads_default_sort_is_score_desc(client, db):
+    seed_leads(db)
+    r = client.get("/api/leads")
+    assert names(r) == ["Alpha Clinic", "Echo Medical", "Bravo Care", "Charlie Health", "Delta 100% Group", "Foxtrot Unscored"]
+    assert names(client.get("/api/leads?order=asc"))[-1] == "Foxtrot Unscored"
+    assert names(client.get("/api/leads?sort=name&order=asc"))[0] == "Alpha Clinic"
+
+
+def test_leads_filters_combine(client, db):
+    seed_leads(db)
+    assert names(client.get("/api/leads?state=tx&priority=critical&min_score=88")) == ["Alpha Clinic"]
+    assert names(client.get("/api/leads?crm_status=called")) == ["Charlie Health"]
+    assert names(client.get("/api/leads?specialty=cardio")) == ["Delta 100% Group"]
+    assert client.get("/api/leads?organization_type=solo_provider").json()["total"] == 0
+
+
+def test_leads_q_matches_name_city_npi(client, db):
+    seed_leads(db)
+    assert names(client.get("/api/leads?q=bravo")) == ["Bravo Care"]
+    assert names(client.get("/api/leads?q=phoenix")) == ["Delta 100% Group"]
+    assert names(client.get("/api/leads?q=1000000003")) == ["Charlie Health"]
+    assert names(client.get("/api/leads?q=echo docs")) == ["Echo Medical"]
+    assert names(client.get("/api/leads?q=%25")) == ["Delta 100% Group"]
+    assert client.get("/api/leads?q=_").json()["total"] == 0
+
+
+def test_leads_filter_by_search_job(client, db):
+    from app.models import SearchJobLead
+
+    orgs = seed_leads(db)
+    job = add_job(db)
+    db.add(SearchJobLead(search_job_id=job.id, organization_id=orgs[1].id, was_new=True))
+    db.commit()
+    assert names(client.get(f"/api/leads?search_job_id={job.id}")) == ["Bravo Care"]
+
+
+def test_leads_pagination_total(client, db):
+    seed_leads(db)
+    j = client.get("/api/leads?page_size=2&page=3").json()
+    assert (len(j["items"]), j["total"], j["page"], j["page_size"]) == (2, 6, 3, 2)
+    assert client.get("/api/leads?page_size=201").status_code == 422
+    assert client.get("/api/leads?page=0").status_code == 422
+
+
+def test_lead_includes_contact_score_source(client, db):
+    seed_leads(db)
+    lead = client.get("/api/leads?q=alpha").json()["items"][0]
+    assert lead["contact"]["role"] == "authorized_official" and lead["contact"]["last_name"] == "Boss"
+    assert lead["score"]["config_version"] == "1" and "specialty" in lead["score"]["components"]
+    assert lead["source"]["source_key"] == "npi_registry" and lead["source"]["collected_at"]
+    assert lead["locations"][0]["is_primary"] is True
+    unscored = client.get("/api/leads?q=foxtrot").json()["items"][0]
+    assert unscored["score"] is None and unscored["fit_score"] is None
+
+
+def test_patch_status_persists(client, db):
+    org = seed_leads(db)[0]
+    r = client.patch(f"/api/leads/{org.id}", json={"crm_status": "called"})
+    assert r.status_code == 200 and r.json()["crm_status"] == "called"
+    db.refresh(org)
+    assert org.crm_status == "called" and org.status_updated_at is not None
+
+
+def test_patch_invalid_status_422(client, db):
+    org = seed_leads(db)[0]
+    assert client.patch(f"/api/leads/{org.id}", json={"crm_status": "won"}).status_code == 422
+
+
+def test_patch_rejects_other_fields(client, db):
+    org = seed_leads(db)[0]
+    assert client.patch(f"/api/leads/{org.id}", json={"name": "x"}).status_code == 422
+    assert client.patch(f"/api/leads/{org.id}", json={"crm_status": "called", "name": "x"}).status_code == 422
+
+
+def test_patch_unknown_id_404(client):
+    import uuid
+
+    for lead_id in (uuid.uuid4(), "not-a-uuid"):
+        r = client.patch(f"/api/leads/{lead_id}", json={"crm_status": "called"})
+        assert r.status_code == 404 and r.json()["error"]["code"] == "not_found"
+
+
+def test_leads_invalid_filters_422(client):
+    for qs in ("state=ZZ", "priority=urgent", "min_score=101", "min_score=-1", "organization_type=x",
+               "crm_status=won", "sort=bogus", "search_job_id=nope"):
+        assert client.get(f"/api/leads?{qs}").status_code == 422, qs
+
+
+def test_rescore_updates_all(db, session_factory, tmp_path):
+    import json
+
+    from app.models import Organization, SourceRecord
+    from app.rescore import rescore_all
+    from app.services.scoring import load_config
+
+    raw = {"number": "1111111111", "enumeration_type": "NPI-2",
+           "basic": {"organization_name": "Core Practice", "authorized_official_first_name": "A",
+                     "authorized_official_last_name": "B", "authorized_official_title_or_position": "Owner"},
+           "taxonomies": [{"code": "207Q00000X", "desc": "Family Medicine", "primary": True}],
+           "addresses": [{"address_purpose": "LOCATION", "city": "Austin", "state": "TX", "telephone_number": "512-555-0100"}]}
+    org = Organization(npi="1111111111", name="Core Practice", organization_type="practice", state="TX")
+    db.add(org)
+    db.flush()
+    db.add(SourceRecord(organization_id=org.id, source_key="npi_registry", external_id="1111111111", raw=raw))
+    db.add(Organization(npi="2222222222", name="No Source", organization_type="practice", state="TX"))
+    db.commit()
+
+    assert rescore_all(session_factory) == 1
+    db.refresh(org)
+    assert (org.fit_score, org.priority) == (85, "critical")
+
+    cfg = load_config()
+    cfg["version"] = "2"
+    cfg["priority_thresholds"] = {"critical": 90, "high": 80, "medium": 45}
+    p = tmp_path / "cfg.json"
+    p.write_text(json.dumps(cfg))
+    assert rescore_all(session_factory, str(p)) == 1
+    db.refresh(org)
+    assert (org.fit_score, org.priority, org.score.config_version) == (85, "high", "2")

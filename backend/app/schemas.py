@@ -3,7 +3,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.constants import US_STATES
+from app.constants import CRM_STATUSES, ORG_TYPES, PRIORITIES, US_STATES
 
 
 class SourceOut(BaseModel):
@@ -77,3 +77,109 @@ class JobOut(BaseModel):
     created_at: datetime
     started_at: datetime | None
     finished_at: datetime | None
+
+
+class LeadFilters(BaseModel):
+    q: str | None = None
+    state: str | None = None
+    specialty: str | None = None
+    organization_type: str | None = None
+    priority: str | None = None
+    min_score: int | None = Field(default=None, ge=0, le=100)
+    crm_status: str | None = None
+    search_job_id: uuid.UUID | None = None
+
+    @field_validator("state", mode="before")
+    @classmethod
+    def upper_state(cls, v):
+        if v is None:
+            return v
+        if not isinstance(v, str) or v.strip().upper() not in US_STATES:
+            raise ValueError("must be a US state or DC code")
+        return v.strip().upper()
+
+    @field_validator("organization_type", "priority", "crm_status")
+    @classmethod
+    def known_value(cls, v, info):
+        allowed = {"organization_type": ORG_TYPES, "priority": PRIORITIES, "crm_status": CRM_STATUSES}[info.field_name]
+        if v is not None and v not in allowed:
+            raise ValueError(f"must be one of {', '.join(allowed)}")
+        return v
+
+
+class LeadPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    crm_status: str
+
+    @field_validator("crm_status")
+    @classmethod
+    def known_status(cls, v):
+        if v not in CRM_STATUSES:
+            raise ValueError(f"must be one of {', '.join(CRM_STATUSES)}")
+        return v
+
+
+class ContactOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    first_name: str | None
+    last_name: str | None
+    title: str | None
+    phone: str | None
+    role: str | None
+
+
+class LocationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    purpose: str | None
+    address_1: str | None
+    address_2: str | None
+    city: str | None
+    state: str | None
+    zip: str | None
+    phone: str | None
+    is_primary: bool
+
+
+class ScoreOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    components: dict
+    config_version: str
+    calculated_at: datetime
+
+
+class SourceInfoOut(BaseModel):
+    source_key: str
+    collected_at: datetime
+
+
+class LeadOut(BaseModel):
+    id: uuid.UUID
+    npi: str
+    name: str
+    dba_name: str | None
+    organization_type: str
+    parent_organization_name: str | None
+    primary_taxonomy_desc: str | None
+    phone: str | None
+    fax: str | None
+    city: str | None
+    state: str | None
+    fit_score: int | None
+    priority: str | None
+    crm_status: str
+    updated_at: datetime
+    contact: ContactOut | None
+    locations: list[LocationOut]
+    score: ScoreOut | None
+    source: SourceInfoOut | None
+
+
+class LeadPage(BaseModel):
+    items: list[LeadOut]
+    total: int
+    page: int
+    page_size: int
