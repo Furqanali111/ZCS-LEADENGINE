@@ -144,3 +144,26 @@ def test_organization_with_activities_cannot_be_deleted(db):
     with pytest.raises(IntegrityError):
         db.execute(text("DELETE FROM organizations"))
     db.rollback()
+
+
+def test_enrichment_defaults_and_status_check(db):
+    o = org()
+    db.add(o)
+    db.commit()
+    assert o.enrichment_status == "not_run" and o.website is None and o.enriched_at is None
+    db.add(org(npi="2", enrichment_status="done"))
+    with pytest.raises(IntegrityError):
+        db.commit()
+
+
+def test_contact_staff_general_roles_and_email_status(db):
+    o = org()
+    o.contacts.append(Contact(first_name="A", last_name="B", role="staff", email="a@x.com", email_status="found_on_page", source_key="practice_websites"))
+    o.contacts.append(Contact(role="general", email="info@x.com", source_key="practice_websites"))
+    db.add(o)
+    db.commit()
+    for kw in ({"role": "other"}, {"role": "staff", "email_status": "verified"}):
+        db.add(Contact(organization_id=o.id, first_name="Z", source_key="practice_websites", **kw))
+        with pytest.raises(IntegrityError):
+            db.commit()
+        db.rollback()

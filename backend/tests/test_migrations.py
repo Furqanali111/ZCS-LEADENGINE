@@ -46,9 +46,9 @@ def test_up_down_up_and_no_model_drift(migrated_url):
         rows = dict(conn.execute(text("select key, status from source_configs")).all())
         npi = conn.execute(text("select rate_limit_per_sec, policy_reviewed_on::text from source_configs where key='npi_registry'")).one()
     engine.dispose()
-    assert len(rows) == 33
+    assert len(rows) == 34
     assert rows["npi_registry"] == "available" and rows["nppes_bulk"] == "approved_not_built"
-    assert sum(s == "not_reviewed" for s in rows.values()) == 31
+    assert sum(s == "not_reviewed" for s in rows.values()) == 29
     assert tuple(npi) == (1.0, "2026-11-11")
 
 
@@ -116,3 +116,24 @@ def test_0004_check_constraints_match_constants(migrated_url):
     engine.dispose()
     for name, values in (("ck_lead_activities_type", ACTIVITY_TYPES), ("ck_lead_activities_outcome", OUTCOMES), ("ck_suppression_list_kind", SUPPRESSION_KINDS)):
         assert set(re.findall(r"'([a-z_]+)'::text", defs[name])) == set(values), name
+
+
+def test_0005_adds_enrichment_columns_and_source_rows(migrated_url):
+    cols = text("select table_name, column_name from information_schema.columns where table_schema = 'public' and column_name in "
+                "('website', 'website_evidence', 'enrichment_status', 'enriched_at', 'email', 'email_status', 'source_url', 'collected_at', 'enrich')")
+    engine = create_engine(migrated_url)
+    alembic(migrated_url, "upgrade", "head")
+    with engine.connect() as conn:
+        found = {tuple(r) for r in conn.execute(cols).all()}
+        rows = dict(conn.execute(text("select key, status from source_configs where key in ('brave_search', 'practice_websites', 'yelp')")).all())
+    assert {("organizations", "website"), ("organizations", "website_evidence"), ("organizations", "enrichment_status"),
+            ("organizations", "enriched_at"), ("contacts", "email"), ("contacts", "email_status"), ("contacts", "source_url"),
+            ("contacts", "collected_at"), ("search_jobs", "enrich")} <= found
+    assert rows == {"brave_search": "approved_not_built", "practice_websites": "approved_not_built", "yelp": "rejected"}
+    alembic(migrated_url, "downgrade", "0004")
+    with engine.connect() as conn:
+        found = conn.execute(cols).all()
+        rows = dict(conn.execute(text("select key, status from source_configs where key in ('brave_search', 'practice_websites', 'yelp')")).all())
+    engine.dispose()
+    assert [r for r in found if r[0] == "organizations" and r[1] in ("website", "enrichment_status")] == []
+    assert rows == {"practice_websites": "not_reviewed", "yelp": "not_reviewed"}
