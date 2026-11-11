@@ -437,3 +437,82 @@ def test_rescore_passes_staff_with_title(db, session_factory):
     rescore_all(session_factory)
     db.refresh(org)
     assert org.score.components["decision_maker"]["points"] == 10
+
+# ---- website and emails ----
+
+def add_web_contacts(db, org):
+    from datetime import datetime, timezone
+
+    from app.models import Contact
+
+    t = datetime(2026, 11, 12, tzinfo=timezone.utc)
+    db.add(Contact(organization_id=org.id, first_name="Jane", last_name="Doe", title="Practice Manager", role="staff",
+                   source_key="practice_website", email="jane@acme.example", email_status="found_on_page",
+                   source_url="https://acme.example/team", collected_at=t))
+    db.add(Contact(organization_id=org.id, first_name="", last_name="", role="general", source_key="practice_website",
+                   email="info@acme.example", email_status="found_on_page",
+                   source_url="https://acme.example/contact", collected_at=t))
+    db.commit()
+
+
+def test_detail_exposes_website_evidence_and_contacts(client, db):
+    org = add_lead(db, "1000000009", "Acme", website="https://acme.example", enrichment_status="enriched",
+                   website_evidence={"matched": ["phone"]})
+    add_web_contacts(db, org)
+    lead = client.get(f"/api/leads/{org.id}").json()
+    assert lead["website"] == "https://acme.example" and lead["enrichment_status"] == "enriched"
+    assert lead["website_evidence"] == {"matched": ["phone"]}
+    assert len(lead["contacts"]) == 4
+    jane = next(c for c in lead["contacts"] if c["email"] == "jane@acme.example")
+    assert jane["source_url"] == "https://acme.example/team" and jane["email_status"] == "found_on_page"
+    assert jane["collected_at"]
+    assert lead["primary_email"] == "info@acme.example"  # first general contact wins over staff
+
+
+def test_primary_email_falls_back_to_staff_then_null(client, db):
+    from app.models import Contact
+
+    org = add_lead(db, "1000000009", "Acme")
+    assert client.get(f"/api/leads/{org.id}").json()["primary_email"] is None
+    db.add(Contact(organization_id=org.id, first_name="Jane", last_name="Doe", role="staff", source_key="practice_website",
+                   email="jane@acme.example"))
+    db.commit()
+    db.expire_all()  # the test and the app share one session
+    assert client.get("/api/leads?q=acme").json()["items"][0]["primary_email"] == "jane@acme.example"
+
+
+def test_reject_website(client, db):
+    from app.models import Contact, LeadActivity
+
+    org = add_lead(db, "1000000009", "Acme", website="https://acme.example", enrichment_status="enriched",
+                   website_evidence={"matched": ["phone"]})
+    add_web_contacts(db, org)
+    r = client.patch(f"/api/leads/{org.id}", json={"reject_website": True})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["website"] is None and body["website_evidence"] is None
+    assert body["enrichment_status"] == "rejected_by_user" and body["primary_email"] is None
+    assert len(body["contacts"]) == 2  # NPI contacts survive
+    db.expire_all()
+    assert {c.source_key for c in db.query(Contact).filter_by(organization_id=org.id)} == {"npi_registry"}
+    assert db.query(LeadActivity).filter_by(organization_id=org.id, type="note", summary="Website rejected").count() == 1
+
+
+def test_reject_website_false_or_alone_validates(client, db):
+    org = add_lead(db, "1000000009", "Acme")
+    assert client.patch(f"/api/leads/{org.id}", json={"reject_website": False}).status_code == 422
+    assert client.patch(f"/api/leads/{org.id}", json={"reject_website": None}).status_code == 422
+    assert client.patch(f"/api/leads/{org.id}", json={}).status_code == 422
+    r = client.patch(f"/api/leads/{org.id}", json={"reject_website": True, "crm_status": "called"})
+    assert r.status_code == 200 and r.json()["crm_status"] == "called"
+
+
+def test_has_website_and_has_email_filters(client, db):
+    from app.models import Contact
+
+    a = add_lead(db, "1000000001", "Alpha", website="https://a.example")
+    b = add_lead(db, "1000000002", "Bravo")
+    db.add(Contact(organization_id=b.id, role="general", source_key="practice_website", email="x@b.example"))
+    db.commit()
+    assert names(client.get("/api/leads?has_website=true")) == ["Alpha"]
+    assert names(client.get("/api/leads?has_email=true")) == ["Bravo"]

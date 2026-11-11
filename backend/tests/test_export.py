@@ -44,7 +44,7 @@ def test_export_headers_match_spec_list(db):
         "Organization Name", "DBA Name", "Specialty", "Organization Type", "Parent Organization", "Business Phone",
         "Fax", "Contact Person", "Contact Title", "Contact Phone", "Address", "City", "State", "ZIP", "NPI",
         "Lead Score", "Lead Priority", "Outreach Status", "Source", "Collected On",
-        "Last Contacted", "Next Follow-up", "Suppressed"]
+        "Last Contacted", "Next Follow-up", "Suppressed", "Website", "Email", "Decision-maker"]
 
 
 def test_export_has_new_columns_and_marks_suppressed(db):
@@ -113,7 +113,7 @@ def test_header_frozen_and_filtered(db):
     seed(db, "A Clinic", "1111111111")
     ws = export(db)["All Leads"]
     assert ws.freeze_panes == "A2"
-    assert ws.auto_filter.ref == "A1:W2"
+    assert ws.auto_filter.ref == "A1:Z2"
     assert ws["A1"].font.bold
 
 
@@ -178,3 +178,18 @@ def test_org_without_source_record_exports(db):
     db.commit()
     ws = export(db)["All Leads"]
     assert ws["A2"].value == "No Source" and ws["S2"].value is None and ws["T2"].value is None
+
+
+def test_website_email_decision_maker_columns(db):
+    org = seed(db, "Acme", "1111111111")
+    org.website = "https://acme.example"
+    db.add(Contact(organization_id=org.id, first_name="", last_name="", role="general", source_key="practice_website",
+                   email="=cmd@acme.example"))
+    db.add(Contact(organization_id=org.id, first_name="Jane", last_name="Doe", title="Practice Manager", role="staff",
+                   source_key="practice_website", email="jane@acme.example"))
+    db.commit()
+    ws = export(db)["All Leads"]
+    row = {h.value: c for h, c in zip(ws[1], ws[2])}
+    assert row["Website"].value == "https://acme.example"
+    assert row["Decision-maker"].value == "Jane Doe, Practice Manager"
+    assert row["Email"].value == "=cmd@acme.example" and row["Email"].data_type == "s"

@@ -20,6 +20,16 @@ def save_score(session: Session, org: Organization, result: ScoreResult) -> None
     org.fit_score, org.priority = result.total, result.priority
 
 
+def sorted_contacts(org: Organization) -> list[Contact]:
+    return sorted(org.contacts, key=lambda c: (c.collected_at is None, c.collected_at or 0, c.id))
+
+
+def primary_email(org: Organization) -> str | None:
+    """Email of the first general contact, else the first contact with an email."""
+    with_email = [c for c in sorted_contacts(org) if c.email]
+    return next((c.email for c in with_email if c.role == "general"), with_email[0].email if with_email else None)
+
+
 def _contains(column, text: str):
     escaped = text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     return column.ilike(f"%{escaped}%", escape="\\")
@@ -46,6 +56,11 @@ def lead_query(filters: LeadFilters) -> Select:
     if filters.search_job_id is not None:
         stmt = stmt.where(o.id.in_(
             select(SearchJobLead.organization_id).where(SearchJobLead.search_job_id == filters.search_job_id)))
+    if filters.has_website is not None:
+        stmt = stmt.where(o.website.is_not(None) if filters.has_website else o.website.is_(None))
+    if filters.has_email is not None:
+        has = exists().where(Contact.organization_id == o.id, Contact.email.is_not(None))
+        stmt = stmt.where(has if filters.has_email else ~has)
     if filters.follow_up == "none":
         stmt = stmt.where(o.next_follow_up_at.is_(None))
     elif filters.follow_up:
