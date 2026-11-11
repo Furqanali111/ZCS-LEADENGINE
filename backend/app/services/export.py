@@ -9,7 +9,7 @@ from openpyxl.utils import get_column_letter
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models import Organization
+from app.models import Organization, SourceRecord
 from app.schemas import LeadFilters
 from app.services.leads import lead_query
 
@@ -23,7 +23,7 @@ PRIORITY_FILLS = {"Critical": "F4B6B6", "High": "F9D5A7", "Medium": "FFF2A8", "L
 STATUS_FILLS = {"New": "DDE7F5", "Researching": "C9DAF8", "Email sent": "D5E8D4", "Called": "B7E1CD",
                 "Follow up required": "FFE0B2", "Interested": "C6EFCE", "Meeting scheduled": "A9D8A9",
                 "Not interested": "E0E0E0", "Converted": "8FD19E", "Do not contact": "F4B6B6"}
-LOADS = (selectinload(Organization.contacts), selectinload(Organization.locations), selectinload(Organization.source_records))
+LOADS = (selectinload(Organization.contacts), selectinload(Organization.locations), selectinload(Organization.source_records).defer(SourceRecord.raw))
 MAX_WIDTH = 50
 
 
@@ -58,7 +58,7 @@ def _fill(cell, fills: dict[str, str]) -> None:
 
 
 def describe(filters: LeadFilters | None, ids: list[UUID] | None) -> str:
-    if ids:
+    if ids is not None:
         return f"{len(ids)} selected leads"
     used = {k: v for k, v in (filters.model_dump() if filters else {}).items() if v is not None}
     return ", ".join(f"{k}={v}" for k, v in used.items()) or "None"
@@ -66,7 +66,7 @@ def describe(filters: LeadFilters | None, ids: list[UUID] | None) -> str:
 
 def build_workbook(session: Session, *, filters: LeadFilters | None, ids: list[UUID] | None) -> bytes:
     o = Organization
-    stmt = select(o).where(o.id.in_(ids)) if ids else lead_query(filters or LeadFilters())
+    stmt = select(o).where(o.id.in_(ids)) if ids is not None else lead_query(filters or LeadFilters())
     orgs = session.scalars(stmt.options(*LOADS).order_by(o.fit_score.desc().nulls_last(), o.name, o.id)).all()
 
     wb = Workbook()
@@ -80,7 +80,7 @@ def build_workbook(session: Session, *, filters: LeadFilters | None, ids: list[U
         by_role = {c.role: c for c in org.contacts}
         person = by_role.get("authorized_official") or by_role.get("provider")
         loc = next((x for x in org.locations if x.is_primary), org.locations[0] if org.locations else None)
-        src = org.source_records[0] if org.source_records else None
+        src = max(org.source_records, key=lambda s: s.collected_at, default=None)  # newest record
         _put(leads, [
             org.name, org.dba_name, org.primary_taxonomy_desc, label(org.organization_type),
             org.parent_organization_name, org.phone, org.fax,
@@ -90,7 +90,7 @@ def build_workbook(session: Session, *, filters: LeadFilters | None, ids: list[U
             org.city, org.state, loc.zip if loc else None, org.npi, org.fit_score,
             label(org.priority), label(org.crm_status),
             SOURCE_NAMES.get(src.source_key, src.source_key) if src else None,
-            src.collected_at.replace(tzinfo=None).date() if src else None,
+            src.collected_at.replace(tzinfo=None).date()  # UTC calendar date if src else None,
         ])
         row = leads.max_row
         leads.cell(row, 20).number_format = "yyyy-mm-dd"

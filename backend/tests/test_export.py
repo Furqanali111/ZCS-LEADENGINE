@@ -7,7 +7,7 @@ from openpyxl import load_workbook
 
 from app.models import Contact, Location, Organization, SourceRecord
 from app.schemas import LeadFilters
-from app.services.export import HEADERS, build_workbook
+from app.services.export import build_workbook
 
 XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
@@ -44,7 +44,6 @@ def test_all_leads_headers_match_spec(db):
         "Organization Name", "DBA Name", "Specialty", "Organization Type", "Parent Organization", "Business Phone",
         "Fax", "Contact Person", "Contact Title", "Contact Phone", "Address", "City", "State", "ZIP", "NPI",
         "Lead Score", "Lead Priority", "Outreach Status", "Source", "Collected On"]
-    assert HEADERS[0] == "Organization Name"
 
 
 def test_row_values(db):
@@ -143,3 +142,9 @@ def test_export_endpoint_rejects_bad_body(client):
     assert client.post("/api/exports/excel", json={"nope": 1}).status_code == 422
     assert client.post("/api/exports/excel", json={"ids": [str(uuid.uuid4())] * 5001}).status_code == 422
     assert client.post("/api/exports/excel", json={"filters": {"state": "ZZ"}}).status_code == 422
+
+
+def test_empty_ids_exports_no_leads(db):
+    seed(db, "A Clinic", "1111111111")
+    ws = export(db, ids=[])["All Leads"]
+    assert ws.max_row == 1
