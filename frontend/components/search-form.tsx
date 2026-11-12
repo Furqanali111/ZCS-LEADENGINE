@@ -5,7 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ApiError, createSearch, getSearchProgress, getSources, resetSearchProgress, type SearchProgress, type Source } from "@/lib/api";
+import { SavedSearches } from "@/components/saved-searches";
+import {
+  ApiError,
+  createSavedSearch,
+  createSearch,
+  getSearchProgress,
+  getSources,
+  resetSearchProgress,
+  touchSavedSearch,
+  type SavedSearch,
+  type SearchProgress,
+  type Source,
+} from "@/lib/api";
 import { SOURCE_STATUS_LABELS, SPECIALTIES, US_STATES } from "@/lib/constants";
 
 function CheckRow({
@@ -44,6 +56,9 @@ function FieldError({ id, text }: { id: string; text?: string }) {
   ) : null;
 }
 
+// aria-describedby lists only ids that exist in the DOM
+const describe = (...ids: (string | false | undefined)[]) => ids.filter(Boolean).join(" ") || undefined;
+
 export function SearchForm({ onCreated }: { onCreated: () => void }) {
   const [choice, setChoice] = useState<string>("Internal Medicine");
   const [custom, setCustom] = useState("");
@@ -63,6 +78,42 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [progress, setProgress] = useState<SearchProgress | null>(null);
+  const [savedKey, setSavedKey] = useState(0);
+  const [usedSavedId, setUsedSavedId] = useState<string | null>(null);
+  const [saveName, setSaveName] = useState("");
+  const [saveMsg, setSaveMsg] = useState<{ text: string; error: boolean } | null>(null);
+
+  function applySaved(s: SavedSearch) {
+    const known = (SPECIALTIES as readonly string[]).includes(s.specialty);
+    setChoice(known ? s.specialty : OTHER);
+    setCustom(known ? "" : s.specialty);
+    setState(s.state);
+    setCity(s.city ?? "");
+    setTarget(String(s.target_count));
+    setPractices(s.include_practices);
+    setSolo(s.include_solo);
+    setSubparts(s.include_subparts);
+    setHospitals(s.include_hospitals);
+    setEnrich(s.enrich);
+    setSelected(s.sources.filter((k) => !sources || sources.some((x) => x.key === k && x.status === "available")));
+    setUsedSavedId(s.id);
+    setFieldErrors({});
+    setFormError(null);
+    setSaveMsg({ text: `Loaded "${s.name}".`, error: false });
+  }
+
+  async function saveSearch() {
+    setSaveMsg(null);
+    try {
+      const saved = await createSavedSearch({ ...currentInput(), name: saveName.trim() });
+      setSaveName("");
+      setUsedSavedId(saved.id);
+      setSavedKey((n) => n + 1);
+      setSaveMsg({ text: `Saved "${saved.name}".`, error: false });
+    } catch (err) {
+      setSaveMsg({ text: err instanceof ApiError ? err.message : "Could not save the search.", error: true });
+    }
+  }
 
   useEffect(() => {
     getSources()
@@ -93,8 +144,22 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
     setProgress({ leads_fetched: 0, exhausted: false });
   }
 
+  const currentInput = () => ({
+    specialty: specialty.trim(),
+    state,
+    city: city.trim() || null,
+    target_count: targetNum,
+    include_practices: practices,
+    include_solo: solo,
+    include_subparts: subparts,
+    include_hospitals: hospitals,
+    sources: selected,
+    ...(enrich && !enrichReason && { enrich: true }),
+  });
+
   const targetNum = Number(target);
   const targetValid = Number.isInteger(targetNum) && targetNum >= 1 && targetNum <= 50000;
+  const canSave = saveName.trim() !== "" && (practices || solo) && selected.length > 0 && targetValid && specialty.trim() !== "" && state !== "";
   const canSubmit =
     !submitting && (practices || solo) && selected.length > 0 && targetValid && specialty.trim() !== "" && state !== "";
 
@@ -105,18 +170,12 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
     setFormError(null);
     setFieldErrors({});
     try {
-      await createSearch({
-        specialty: specialty.trim(),
-        state,
-        city: city.trim() || null,
-        target_count: targetNum,
-        include_practices: practices,
-        include_solo: solo,
-        include_subparts: subparts,
-        include_hospitals: hospitals,
-        sources: selected,
-        ...(enrich && !enrichReason && { enrich: true }),
-      });
+      await createSearch(currentInput());
+      if (usedSavedId) {
+        touchSavedSearch(usedSavedId)
+          .then(() => setSavedKey((n) => n + 1))
+          .catch(() => {}); // last_run_at is a nicety, never block the search
+      }
       onCreated();
     } catch (err) {
       if (err instanceof ApiError) {
@@ -147,6 +206,8 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
 
   return (
     <form onSubmit={submit} className="space-y-6" noValidate>
+      <SavedSearches refreshKey={savedKey} onUse={applySaved} />
+
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor="specialty">Specialty</Label>
@@ -155,7 +216,7 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
             value={choice}
             required
             aria-invalid={!!fieldErrors.specialty}
-            aria-describedby="specialty-error"
+            aria-describedby={describe(!!fieldErrors.specialty && "specialty-error")}
             onChange={(e) => setChoice(e.target.value)}
             className={SELECT_CLASS}
           >
@@ -174,7 +235,7 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
                 maxLength={100}
                 required
                 aria-invalid={!!fieldErrors.specialty}
-                aria-describedby="specialty-hint specialty-error"
+                aria-describedby={describe("specialty-hint", !!fieldErrors.specialty && "specialty-error")}
                 onChange={(e) => setCustom(e.target.value)}
                 className="mt-2"
               />
@@ -200,7 +261,7 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
             value={state}
             required
             aria-invalid={!!fieldErrors.state}
-            aria-describedby="state-error"
+            aria-describedby={describe(!!fieldErrors.state && "state-error")}
             onChange={(e) => setState(e.target.value)}
             className={SELECT_CLASS}
           >
@@ -223,7 +284,7 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
             value={city}
             maxLength={100}
             aria-invalid={!!fieldErrors.city}
-            aria-describedby="city-error"
+            aria-describedby={describe(!!fieldErrors.city && "city-error")}
             onChange={(e) => setCity(e.target.value)}
             className="mt-1"
           />
@@ -238,7 +299,7 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
             max={50000}
             value={target}
             aria-invalid={!targetValid || !!fieldErrors.target_count}
-            aria-describedby="target-help target-error"
+            aria-describedby={describe("target-help", (!!fieldErrors.target_count || !targetValid) && "target-error")}
             onChange={(e) => setTarget(e.target.value)}
             className="mt-1"
           />
@@ -275,7 +336,7 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
         <CheckRow label="Include hospitals" checked={hospitals} onChange={setHospitals} />
       </fieldset>
 
-      <fieldset className="space-y-2" aria-describedby="sources-error">
+      <fieldset className="space-y-2" aria-describedby={describe(!!fieldErrors.sources && "sources-error")}>
         <legend className="mb-1 text-sm font-medium">Sources</legend>
         {sources === null && !sourcesError && <p className="text-sm text-muted-foreground">Loading sources...</p>}
         {sourcesError && (
@@ -321,6 +382,34 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
       <Button type="submit" disabled={!canSubmit}>
         {submitting ? "Starting..." : "Start search"}
       </Button>
+
+      <div className="border-t pt-5">
+        <Label htmlFor="save-name">Save this search</Label>
+        <div className="mt-1 flex gap-2">
+          <Input
+            id="save-name"
+            value={saveName}
+            maxLength={60}
+            placeholder="Name, e.g. IM Florida"
+            aria-describedby={describe(!!saveMsg && "save-msg")}
+            onChange={(e) => setSaveName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault(); // Enter here saves, it must not start the search
+                if (canSave) saveSearch();
+              }
+            }}
+          />
+          <Button type="button" variant="outline" disabled={!canSave} onClick={saveSearch}>
+            Save
+          </Button>
+        </div>
+        {saveMsg && (
+          <p id="save-msg" role="status" className={saveMsg.error ? "mt-1 text-sm text-red-700 dark:text-red-400" : "mt-1 text-sm text-muted-foreground"}>
+            {saveMsg.text}
+          </p>
+        )}
+      </div>
     </form>
   );
 }

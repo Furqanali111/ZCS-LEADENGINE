@@ -64,7 +64,7 @@ def test_rls_enabled_on_every_table_and_removed_on_downgrade(migrated_url):
     alembic(migrated_url, "upgrade", "head")
     with engine.connect() as conn:
         rls = dict(conn.execute(RLS_SQL).all())
-    assert len(rls) == 13 and all(rls.values()), rls
+    assert len(rls) == 14 and all(rls.values()), rls
     alembic(migrated_url, "downgrade", "0002")
     with engine.connect() as conn:
         rls = dict(conn.execute(RLS_SQL).all())
@@ -202,4 +202,23 @@ def test_0010_in_progress_status_allowed_and_downgrade_maps_it_back(migrated_url
     alembic(migrated_url, "downgrade", "0009")
     with engine.connect() as conn:
         assert conn.execute(text("select crm_status from organizations")).scalar() == "researching"
+    engine.dispose()
+
+
+def test_0012_saved_searches_table_rls_and_case_insensitive_name(migrated_url):
+    q = text("select c.relrowsecurity from pg_class c join pg_namespace n on n.oid = c.relnamespace "
+             "where n.nspname = 'public' and c.relname = 'saved_searches'")
+    ins = text("insert into saved_searches (name, specialty, state, include_practices, include_solo, include_subparts, "
+               "include_hospitals, target_count, enrich, sources) values (:n, 'x', 'FL', true, true, true, false, 5, false, '{npi_registry}')")
+    engine = create_engine(migrated_url)
+    alembic(migrated_url, "upgrade", "head")
+    with engine.connect() as conn:
+        assert conn.execute(q).scalar() is True
+    with engine.begin() as conn:
+        conn.execute(ins, {"n": "IM FL"})
+    with pytest.raises(Exception, match="uq_saved_searches_name_lower"), engine.begin() as conn:
+        conn.execute(ins, {"n": "im fl"})
+    alembic(migrated_url, "downgrade", "0011")
+    with engine.connect() as conn:
+        assert conn.execute(q).first() is None
     engine.dispose()

@@ -355,3 +355,12 @@ export async function exportLeadsFile(body: { filters?: LeadFilters; ids?: strin
   const m = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(res.headers.get("Content-Disposition") ?? "");
   return { blob: await res.blob(), filename: m ? decodeURIComponent(m[1]) : "zcs-leads.xlsx" };
 }
+
+// saved searches
+export type SavedSearch = Required<Omit<SearchInput, "city">> & { id: string; name: string; city: string | null; created_by: string | null; created_at: string; last_run_at: string | null };
+export const listSavedSearches = () => json<SavedSearch[]>("/api/saved-searches");
+export const createSavedSearch = (body: SearchInput & { name: string }) => json<SavedSearch>("/api/saved-searches", post(body));
+export const touchSavedSearch = (id: string) => json<SavedSearch>(`/api/saved-searches/${id}/touch`, post());
+export const deleteSavedSearch = async (id: string) => {
+  await request(`/api/saved-searches/${id}`, { method: "DELETE" });
+};
