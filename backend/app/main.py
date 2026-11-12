@@ -1,11 +1,14 @@
 import logging
+import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from starlette.exceptions import HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api import dashboard, exports, health, leads, pipeline, saved_searches, search, sources, suppression, templates
 from app.config import get_settings
@@ -69,4 +72,8 @@ def create_app(testing: bool = False) -> FastAPI:
     app.include_router(suppression.router)
     app.include_router(templates.router)
     app.include_router(saved_searches.router)
+    # Desktop bundle: the exported frontend is served from the same port. Mounted last so /api and /health win.
+    static_dir = os.environ.get("ZCS_STATIC_DIR")
+    if static_dir and Path(static_dir).is_dir():
+        app.mount("/", StaticFiles(directory=static_dir, html=True), name="ui")
     return app

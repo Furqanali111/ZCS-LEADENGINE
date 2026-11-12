@@ -55,7 +55,7 @@ export function CallToday() {
             return (
               <li key={lead.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
                 <div className="min-w-0 flex-1 basis-56">
-                  <Link href={`/leads/${lead.id}`} className="block truncate font-medium underline-offset-4 hover:underline">
+                  <Link href={`/lead?id=${lead.id}`} className="block truncate font-medium underline-offset-4 hover:underline">
                     {lead.name}
                   </Link>
                   <p className="text-sm text-muted-foreground">

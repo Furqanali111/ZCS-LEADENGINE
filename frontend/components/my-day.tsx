@@ -13,7 +13,7 @@ type Mine = { due: Lead[]; stale: Lead[] };
 function LeadLink({ l, note }: { l: Lead; note: string }) {
   return (
     <li className="flex items-center justify-between gap-3 py-1.5">
-      <Link href={`/leads/${l.id}`} className="min-w-0 truncate font-medium underline-offset-2 hover:underline">
+      <Link href={`/lead?id=${l.id}`} className="min-w-0 truncate font-medium underline-offset-2 hover:underline">
         {l.name}
       </Link>
       <span className="shrink-0 text-xs text-muted-foreground">{note}</span>

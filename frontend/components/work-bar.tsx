@@ -49,7 +49,7 @@ export function WorkBar({ lead, onChanged }: { lead: Lead; onChanged: () => void
 
   async function goNext() {
     const next = await claimNext(me, lead.id);
-    if (next) router.push(`/leads/${next.id}`);
+    if (next) router.push(`/lead?id=${next.id}`);
     else setMsg({ text: "No more leads to call right now. New ones appear after a search.", error: false });
   }
 
