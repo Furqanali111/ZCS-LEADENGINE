@@ -104,6 +104,7 @@ Route changes:
 | `POST /api/search` | Accepts `enrich`. Returns 422 `source_not_available` or `missing_api_key` when it cannot run |
 | `GET /api/leads` | New filters `has_website` and `has_email` |
 | `PATCH /api/leads/{id}` | `reject_website` clears the website and its web contacts |
+| `GET/DELETE /api/search/progress` | How many new leads a search has already fetched, and reset it (Start over). `target_count` now allows up to 50,000 |
 
 ## Tests
 
@@ -126,5 +127,5 @@ cd backend; python -m app.rescore
 
 - Sources are opt-in: only sources marked `available` in `docs/data-sources.md` can be searched.
 - Fit score, priority and conversion probability are different things. Slice 1 has no conversion probability.
-- One NPI query returns at most 1,200 records. Use the optional city filter to go deeper.
+- Searches continue where the last one stopped: the app saves, per specialty, state, city and the subparts and hospitals toggles, how far it has read, so a repeat search returns new leads only (the target counts new leads). One NPI query returns at most 1,200 records, so when a search hits that cap it is split by ZIP prefix automatically. Use Start over on the search form to read from the beginning again. Saved leads are never deleted by that.
 - Not built yet: see `docs/deferred-items.md`.

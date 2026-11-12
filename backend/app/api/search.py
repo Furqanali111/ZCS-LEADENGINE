@@ -8,8 +8,9 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.db import get_session
 from app.errors import AppError
-from app.models import SearchJob, SourceConfig
-from app.schemas import JobOut, SearchCreate
+from app.models import SearchJob, SearchProgress, SourceConfig
+from app.schemas import JobOut, ProgressOut, SearchCreate
+from app.services.search import progress_key
 from app.sources.provider import search_provider
 
 router = APIRouter(prefix="/api/search")
@@ -48,6 +49,29 @@ def create_search(body: SearchCreate, session: Session = Depends(get_session)):
 @router.get("", response_model=list[JobOut])
 def list_searches(session: Session = Depends(get_session)):
     return session.scalars(select(SearchJob).order_by(SearchJob.created_at.desc()).limit(50)).all()
+
+
+def _progress(session: Session, specialty: str, state: str, city: str | None, include_subparts: bool, include_hospitals: bool):
+    return session.scalar(select(SearchProgress).filter_by(**progress_key(specialty, state, city, include_subparts, include_hospitals)))
+
+
+@router.get("/progress", response_model=ProgressOut)
+def get_progress(specialty: str, state: str, city: str | None = None, include_subparts: bool = True,
+                 include_hospitals: bool = False, session: Session = Depends(get_session)):
+    row = _progress(session, specialty, state.upper(), city, include_subparts, include_hospitals)
+    if row is None:
+        return ProgressOut(leads_fetched=0, exhausted=False)
+    return ProgressOut(leads_fetched=row.leads_fetched, exhausted=bool(row.cursor) and all(not c["slices"] for c in row.cursor.values()))
+
+
+@router.delete("/progress", status_code=204)
+def reset_progress(specialty: str, state: str, city: str | None = None, include_subparts: bool = True,
+                   include_hospitals: bool = False, session: Session = Depends(get_session)):
+    """Start over: the next search for these filters reads from the beginning again. Saved leads are kept."""
+    row = _progress(session, specialty, state.upper(), city, include_subparts, include_hospitals)
+    if row is not None:
+        session.delete(row)
+        session.commit()
 
 
 @router.get("/{job_id}", response_model=JobOut)

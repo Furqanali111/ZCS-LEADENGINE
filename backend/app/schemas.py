@@ -21,7 +21,7 @@ class SearchCreate(BaseModel):
     specialty: str = Field(min_length=1, max_length=100)
     state: str
     city: str | None = Field(default=None, max_length=100)
-    target_count: int = Field(default=500, ge=1, le=1200)
+    target_count: int = Field(default=500, ge=1, le=50000)
     include_practices: bool = True
     include_solo: bool = True
     include_subparts: bool = True
@@ -59,6 +59,11 @@ class SearchCreate(BaseModel):
         if not (self.include_practices or self.include_solo):
             raise ValueError("include_practices and include_solo cannot both be false")
         return self
+
+
+class ProgressOut(BaseModel):
+    leads_fetched: int
+    exhausted: bool  # every phase walked so far has been read to the end
 
 
 class JobOut(BaseModel):

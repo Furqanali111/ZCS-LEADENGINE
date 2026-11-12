@@ -590,3 +590,24 @@ def test_create_search_enrich_needs_sources_and_key(client, db, monkeypatch):
     r = client.post("/api/search", json=body)
     assert r.status_code == 201 and r.json()["enrich"] is True
     assert client.post("/api/search", json=BODY).json()["enrich"] is False
+
+
+def test_search_progress_read_and_reset(client, db):
+    from app.models import SearchProgress
+
+    q = "specialty=Internal%20Medicine&state=tx"
+    assert client.get(f"/api/search/progress?{q}").json() == {"leads_fetched": 0, "exhausted": False}
+    db.add(SearchProgress(specialty="internal medicine", state="TX", city="", include_subparts=True, include_hospitals=False,
+                          cursor={"practices": {"slices": [], "skip": 0}}, leads_fetched=600))
+    db.commit()
+    assert client.get(f"/api/search/progress?{q}").json() == {"leads_fetched": 600, "exhausted": True}
+    assert client.get(f"/api/search/progress?{q}&include_hospitals=true").json()["leads_fetched"] == 0  # separate filters, separate cursor
+    assert client.delete(f"/api/search/progress?{q}").status_code == 204
+    assert client.get(f"/api/search/progress?{q}").json()["leads_fetched"] == 0
+
+
+def test_create_search_accepts_more_than_1200(client, db):
+    add_source(db)
+    r = client.post("/api/search", json={**BODY, "target_count": 5000})
+    assert r.status_code == 201 and r.json()["target_count"] == 5000
+    assert client.post("/api/search", json={**BODY, "target_count": 50001}).status_code == 422
