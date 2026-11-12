@@ -54,7 +54,7 @@ export function RelatedLeads({ leadId }: { leadId: string }) {
         <ul className="space-y-3">
           {items.map((r) => (
             <li key={r.id}>
-              <Link href={`/leads/${r.id}`} className="font-medium text-primary underline underline-offset-4">
+              <Link href={`/lead?id=${r.id}`} className="font-medium text-primary underline underline-offset-4">
                 {r.name}
               </Link>
               <span className="text-muted-foreground"> {[r.city, r.state].filter(Boolean).join(", ")}</span>

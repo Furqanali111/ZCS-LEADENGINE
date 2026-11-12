@@ -1,6 +1,8 @@
 import { getName } from "@/lib/me";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+// "same-origin" (desktop bundle) means relative URLs: the API is served from the same port as the UI.
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+const BASE = API_URL === "same-origin" ? "" : API_URL;
 
 export class ApiError extends Error {
   code: string;

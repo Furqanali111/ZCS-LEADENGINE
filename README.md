@@ -49,7 +49,7 @@ Open http://localhost:3000.
 | Dashboard | `/` | Tiles, breakdowns, conversion as converted / contacted |
 | Search | `/search` | Start and watch discovery jobs |
 | Leads | `/leads` | List, filter, sort, export |
-| Lead detail | `/leads/[id]` | Status, follow-up, activity log, score, contacts |
+| Lead detail | `/lead?id=<id>` | Status, follow-up, activity log, score, contacts |
 | Pipeline | `/pipeline` | Kanban board by status |
 | Suppression | `/suppression` | Do-not-contact list |
 | Templates | `/templates` | Saved email and call templates, copied by hand from lead detail. Nothing is sent |
@@ -150,3 +150,42 @@ Config v4: the decision-maker factor (max 15) pays 6 for a named official with a
 - Fit score, priority and conversion probability are different things. Slice 1 has no conversion probability.
 - Searches continue where the last one stopped: the app saves, per specialty, state, city and the subparts and hospitals toggles, how far it has read, so a repeat search returns new leads only (the target counts new leads). One NPI query returns at most 1,200 records, so when a search hits that cap it is split by ZIP prefix automatically. Use Start over on the search form to read from the beginning again. Saved leads are never deleted by that.
 - Not built yet: see `docs/deferred-items.md`.
+
+## Desktop app and automatic updates
+
+Teammates run one Windows app instead of two dev servers. It serves the UI and the API on `http://127.0.0.1:8005`, runs pending database migrations on start (guarded by a Postgres advisory lock, so two people starting at once is safe), and updates itself.
+
+**First install (each teammate):**
+1. Download `zcs-leadengine-vX.Y.Z.zip` from the repository's Releases page and unzip it anywhere.
+2. Copy `.env.example` to `.env` next to `zcs-leadengine.exe` and fill in `DATABASE_URL` (the admin sends the real values privately; never commit them).
+3. Double-click `zcs-leadengine.exe`. Windows SmartScreen may warn "unknown publisher" because the exe is not code-signed: More info, then Run anyway.
+
+**Updates:** every start checks the latest GitHub release. If it is newer, the app downloads it, verifies the checksum, swaps the files (your `.env` is never touched) and restarts. If the check fails (offline, rate limited), the current version starts. Set `ZCS_NO_UPDATE=1` to skip the check. For a private repository, put a read-only fine-grained token (Contents: read) in `.env` as `ZCS_UPDATE_TOKEN`. `ZCS_UPDATE_REPO` and `ZCS_PORT` (default 8005) are optional overrides.
+
+**Releasing (maintainer):** cut `release/vX.Y.Z` from `develop`, then tag and push:
+
+```powershell
+git tag vX.Y.Z; git push origin vX.Y.Z
+```
+
+The `release` workflow builds the UI (`STATIC_EXPORT=1`, same-origin API), bundles it with PyInstaller and attaches the zip to a GitHub Release. The `ci` workflow runs backend tests, frontend lint, tests and both builds on every pull request.
+
+Limits: Windows only; the app updates only when it starts (a long-running window keeps the old version until restarted); every teammate's `.env` holds the database URL, which is full access to the data, fine for a trusted team; migrations run from every client, so keep them additive and backward compatible.
+
+### Quick build: one .exe for the team (no GitHub needed)
+
+**Build it** (on your PC, about 2 minutes; stop the dev servers first). From the repo root:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\build-test-exe.ps1 -Port 8005
+```
+
+`-Port` is the port the app will use on the teammate's PC (default 8005). It is baked into the exe; your own `backend\.env` is not changed. This creates `backend\dist\zcs-leadengine.exe`: one file with the UI, the migrations and your `backend\.env` packed inside. It needs Node and the backend `.venv` already set up on your PC.
+
+**Share it:** send that one file privately (USB, private chat). Never upload it anywhere public, because the database URL is inside it and anyone can extract it. To keep a teammate off the real data, point `backend\.env` at another database before building.
+
+**Teammate steps:**
+1. Double-click `zcs-leadengine.exe`. If Windows SmartScreen warns "unknown publisher", click More info, then Run anyway.
+2. The browser opens `http://127.0.0.1:<port>` (8005 unless you built with another `-Port`). Keep the black window open while using the app: closing it stops the app.
+
+**New version later:** pull the latest `develop`, run the build command again, and send the new file. This build does not self-update (only the zipped GitHub release build does).

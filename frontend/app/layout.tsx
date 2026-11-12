@@ -26,7 +26,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        {/* Suspense: usePathname is dynamic on routes with params (/leads/[id]) under cacheComponents. */}
+        {/* Suspense: usePathname is dynamic on routes with params (/lead?id=) under cacheComponents. */}
         <Suspense fallback={<div className="h-14 border-b" />}>
           <Nav />
         </Suspense>

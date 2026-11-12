@@ -2,7 +2,7 @@
 
 import { ArrowLeft, Globe, PhoneCall, ShieldBan } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { ActivityForm, type ActivityFormHandle } from "@/components/activity-form";
 import { ActivityTimeline } from "@/components/activity-timeline";
@@ -49,7 +49,7 @@ export default function LeadDetailPage() {
 }
 
 function LeadDetail() {
-  const { id } = useParams<{ id: string }>();
+  const id = useSearchParams().get("id") ?? "";
   const [lead, setLead] = useState<Lead | null>(null);
   const [acts, setActs] = useState<Activity[]>([]);
   const [total, setTotal] = useState(0);

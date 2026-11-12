@@ -14,3 +14,7 @@ node_modules/
 .claude/
 .playwright-mcp/
 .idea/
+backend/build/
+backend/dist/
+backend/*.spec
+frontend/out/

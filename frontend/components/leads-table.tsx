@@ -257,7 +257,7 @@ export function LeadsTable({
                         >
                           {open ? <ChevronDown aria-hidden className="size-4" /> : <ChevronRight aria-hidden className="size-4" />}
                         </button>
-                        <Link href={`/leads/${l.id}`} className={`font-medium ${LINK}`}>
+                        <Link href={`/lead?id=${l.id}`} className={`font-medium ${LINK}`}>
                           {l.name}
                         </Link>
                         {l.organization_type === "solo_provider" && (
