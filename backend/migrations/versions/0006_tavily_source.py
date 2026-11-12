@@ -19,8 +19,8 @@ def upgrade() -> None:
     )
     op.execute(
         "INSERT INTO source_configs (key, name, status, access_method, notes) VALUES "
-        "('duckduckgo_search', 'DuckDuckGo search (ddgs fallback)', 'not_reviewed', 'Unofficial ddgs library, no key', "
-        "'No official API. Used only after Tavily credits run out. Owner must read the acceptable use policy first.')"
+        "('duckduckgo_search', 'DuckDuckGo search (ddgs fallback)', 'approved_not_built', 'Unofficial ddgs library, no key', "
+        "'No official API. Used only after Tavily credits run out. Owner accepted the acceptable use policy risk on 2026-11-12.')"
     )
 
 
