@@ -73,7 +73,7 @@ export function PipelineCard({
             aria-expanded={open}
             aria-label={`Move ${card.name} to another status`}
             onClick={() => setOpen((o) => !o)}
-            className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+            className="flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
           >
             <ArrowRightLeft aria-hidden className="size-4" />
           </button>
@@ -104,6 +104,7 @@ export function PipelineCard({
       <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
         {priority && <ToneBadge tone={priorityTone(card.priority)}>{priority}</ToneBadge>}
         <span className="tabular-nums">Score {card.fit_score ?? "-"}</span>
+        {card.owner && <ToneBadge tone="warning">{card.owner}</ToneBadge>}
       </div>
       {card.next_follow_up_at && (
         <p className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">

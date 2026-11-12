@@ -1,11 +1,13 @@
 import uuid
 from datetime import datetime, timezone
 from typing import Annotated, Literal
+from urllib.parse import unquote
 
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, select
+from fastapi import APIRouter, Depends, Header, Query
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session, selectinload
 
+from app.constants import CLOSED_STATUSES
 from app.db import get_session
 from app.errors import AppError
 from app.models import Contact, LeadActivity, Organization, SourceRecord
@@ -15,6 +17,32 @@ from app.services.leads import lead_query, primary_email, rescore_org, sorted_co
 from app.services.suppression import suppressed_ids
 
 router = APIRouter(prefix="/api/leads")
+owners_router = APIRouter(prefix="/api/owners")
+OPEN_STATUSES = ("new", "researching")  # claiming moves only these to in_progress
+
+
+def salesperson(x_salesperson: Annotated[str | None, Header()] = None) -> str | None:
+    """The name the browser sends (percent-encoded). No accounts: this says who did it, it does not prove it."""
+    name = "".join(c for c in unquote(x_salesperson or "") if c.isprintable()).strip()[:40]  # no NUL or newlines
+    return None if name.lower() == "none" else name or None  # "none" means unclaimed in the owner filter
+
+
+def claim(session: Session, org: Organization, name: str | None) -> None:
+    """Atomic: the UPDATE only matches an unclaimed lead or one already ours, so two people cannot both win."""
+    if not name:
+        raise AppError(400, "name_required", "Enter your name at the top of the page first")
+    if suppressed_ids(session, [org.id]):
+        raise AppError(409, "lead_suppressed", "This lead is on the suppression list")
+    if org.crm_status in CLOSED_STATUSES:
+        raise AppError(409, "lead_closed", "This lead is closed. Change its status first if you want to work it again")
+    won = session.execute(update(Organization).where(
+        Organization.id == org.id, or_(Organization.owner.is_(None), func.lower(Organization.owner) == name.lower()),
+    ).values(owner=func.coalesce(Organization.owner, name)).execution_options(synchronize_session=False)).rowcount
+    session.refresh(org, ["owner", "crm_status"])
+    if not won:
+        raise AppError(409, "already_claimed", f"{org.owner} is already working on this lead")
+    if org.crm_status in OPEN_STATUSES:
+        change_status(session, org, "in_progress", name)
 
 SORTS = {"score": Organization.fit_score, "name": Organization.name, "updated": Organization.updated_at,
          "follow_up": Organization.next_follow_up_at,
@@ -73,12 +101,14 @@ def get_lead(lead_id: str, session: Session = Depends(get_session)):
 
 
 @router.patch("/{lead_id}", response_model=LeadOut)
-def patch_lead(lead_id: str, body: LeadPatch, session: Session = Depends(get_session)):
+def patch_lead(lead_id: str, body: LeadPatch, session: Session = Depends(get_session), name: str | None = Depends(salesperson)):
     org = _load(session, lead_id, LOADS)
     if body.crm_status is not None:
         if body.crm_status != "do_not_contact" and suppressed_ids(session, [org.id]):
             raise AppError(409, "lead_suppressed", "Remove the suppression entry before changing this lead's status")
-        change_status(session, org, body.crm_status)
+        if body.crm_status == "in_progress":
+            claim(session, org, name)  # picking In progress means "I am working this"
+        change_status(session, org, body.crm_status, name)
     if "next_follow_up_at" in body.model_fields_set:
         org.next_follow_up_at = body.next_follow_up_at
     if body.reject_website and not (org.enrichment_status == "rejected_by_user" and org.website is None):
@@ -87,10 +117,41 @@ def patch_lead(lead_id: str, body: LeadPatch, session: Session = Depends(get_ses
         org.website = org.website_evidence = None
         org.enrichment_status = "rejected_by_user"
         rescore_org(session, org)  # website staff points no longer apply
-        add_activity(session, org, type="note", summary="Website rejected")
+        add_activity(session, org, type="note", summary="Website rejected", actor=name)
     session.commit()
     session.refresh(org)  # reload server-side updated_at
     return _out(org, bool(suppressed_ids(session, [org.id])))
+
+
+@router.post("/{lead_id}/claim", response_model=LeadOut)
+def claim_lead(lead_id: str, session: Session = Depends(get_session), name: str | None = Depends(salesperson)):
+    org = _load(session, lead_id, LOADS)
+    claim(session, org, name)
+    session.commit()
+    session.refresh(org)
+    return _out(org, bool(suppressed_ids(session, [org.id])))
+
+
+@router.post("/{lead_id}/release", response_model=LeadOut)
+def release_lead(lead_id: str, session: Session = Depends(get_session), name: str | None = Depends(salesperson)):
+    org = _load(session, lead_id, LOADS)
+    if not name:
+        raise AppError(400, "name_required", "Enter your name at the top of the page first")
+    if org.owner and org.owner.lower() != name.lower():
+        raise AppError(409, "not_your_lead", f"{org.owner} is working on this lead, only they can release it")
+    if org.owner:
+        previous, org.owner = org.owner, None
+        if org.crm_status == "in_progress":
+            change_status(session, org, "new", name)
+        add_activity(session, org, type="note", summary=f"Released by {previous}", actor=name)
+    session.commit()
+    session.refresh(org)
+    return _out(org, bool(suppressed_ids(session, [org.id])))
+
+
+@owners_router.get("", response_model=list[str])
+def list_owners(session: Session = Depends(get_session)):
+    return list(session.scalars(select(Organization.owner).where(Organization.owner.is_not(None)).distinct().order_by(Organization.owner)))
 
 
 @router.get("/{lead_id}/activities", response_model=ActivityPage)
@@ -105,9 +166,9 @@ def list_activities(lead_id: str, session: Session = Depends(get_session),
 
 
 @router.post("/{lead_id}/activities", response_model=ActivityOut, status_code=201)
-def create_activity(lead_id: str, body: ActivityIn, session: Session = Depends(get_session)):
+def create_activity(lead_id: str, body: ActivityIn, session: Session = Depends(get_session), name: str | None = Depends(salesperson)):
     org = _load(session, lead_id)
-    act = add_activity(session, org, type=body.type, occurred_at=body.occurred_at, summary=body.summary, outcome=body.outcome)
+    act = add_activity(session, org, type=body.type, occurred_at=body.occurred_at, summary=body.summary, outcome=body.outcome, actor=name)
     if "next_follow_up_at" in body.model_fields_set:
         org.next_follow_up_at = body.next_follow_up_at
     session.commit()

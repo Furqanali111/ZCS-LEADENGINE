@@ -86,6 +86,7 @@ class Organization(IdMixin, Base):
         Index("ix_organizations_priority", "priority"),
         Index("ix_organizations_fit_score", "fit_score"),
         Index("ix_organizations_crm_status", "crm_status"),
+        Index("ix_organizations_owner", "owner"),
         Index("ix_organizations_next_follow_up_at", "next_follow_up_at"),
         # same expression as services.suppression._digits, so the planner can match it
         Index("ix_organizations_phone_digits", text(PHONE_DIGITS.format("phone"))),
@@ -107,6 +108,7 @@ class Organization(IdMixin, Base):
     fit_score: Mapped[int | None] = mapped_column(Integer)
     priority: Mapped[str | None] = mapped_column(Text)
     crm_status: Mapped[str] = mapped_column(Text, default="new", server_default="new")
+    owner: Mapped[str | None] = mapped_column(Text)  # salesperson name; set by claim, no accounts yet
     status_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_contacted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     next_follow_up_at: Mapped[date | None] = mapped_column(Date)
@@ -225,6 +227,7 @@ class LeadActivity(Base):
     outcome: Mapped[str | None] = mapped_column(Text)
     from_status: Mapped[str | None] = mapped_column(Text)
     to_status: Mapped[str | None] = mapped_column(Text)
+    actor: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

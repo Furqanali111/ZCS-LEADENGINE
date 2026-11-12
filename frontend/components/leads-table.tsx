@@ -17,7 +17,7 @@ import { formatPhone, hostOf, safeHttpUrl } from "@/lib/format";
 
 // The select itself is the colored status pill; same tone tokens as ToneBadge.
 const PILL =
-  "h-7 w-44 cursor-pointer rounded-full border border-transparent px-2.5 text-xs font-medium outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+  "h-8 w-44 cursor-pointer rounded-full border border-transparent px-2.5 text-xs font-medium outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 const PILL_TONE = {
   danger: "bg-tone-danger-bg text-tone-danger-fg",
   warning: "bg-tone-warning-bg text-tone-warning-fg",
@@ -96,15 +96,28 @@ export function LeadsTable({
   const [expanded, setExpanded] = useState<string | null>(null);
   // Saved or in-flight status values, keyed by lead id; removed on failure so the row reverts to the server value.
   const [statusOverride, setStatusOverride] = useState<Record<string, string>>({});
+  // One request per row at a time, so the shown value never has two writers.
+  const [pending, setPending] = useState<Set<string>>(new Set());
 
   if (data.total === 0) {
     return <p className="rounded-xl border border-dashed bg-card p-8 text-center text-sm text-muted-foreground">No leads match these filters.</p>;
   }
 
+  if (data.items.length === 0) {
+    return (
+      <p className="rounded-xl border border-dashed bg-card p-8 text-center text-sm text-muted-foreground">
+        This page is past the end of the list.{" "}
+        <Button variant="outline" size="sm" onClick={() => onPage(Math.max(1, Math.ceil(data.total / pageSize)))}>
+          Go to the last page
+        </Button>
+      </p>
+    );
+  }
+
   const from = (data.page - 1) * pageSize + 1;
   const to = from + data.items.length - 1;
   const lastPage = Math.max(1, Math.ceil(data.total / pageSize));
-  const allOnPage = data.items.every((l) => selected.has(l.id));
+  const allOnPage = data.items.length > 0 && data.items.every((l) => selected.has(l.id));
   const someOnPage = data.items.some((l) => selected.has(l.id));
 
   function toggle(id: string, on: boolean) {
@@ -125,6 +138,7 @@ export function LeadsTable({
   async function changeStatus(lead: Lead, value: string) {
     const label = CRM_STATUSES.find((s) => s.value === value)?.label ?? value;
     const previous = statusOverride[lead.id]; // last value shown, restored on failure
+    setPending((p) => new Set(p).add(lead.id));
     setStatusOverride((o) => ({ ...o, [lead.id]: value }));
     try {
       await patchLeadStatus(lead.id, value);
@@ -136,6 +150,12 @@ export function LeadsTable({
         if (previous === undefined) delete next[lead.id]; // fall back to the server value
         else next[lead.id] = previous;
         return next;
+      });
+    } finally {
+      setPending((p) => {
+        const n = new Set(p);
+        n.delete(lead.id);
+        return n;
       });
     }
   }
@@ -164,6 +184,7 @@ export function LeadsTable({
               <SortHead col="score" label="Score" sort={sort} order={order} onSort={onSort} />
               <TableHead>Priority</TableHead>
               <TableHead>Sales status</TableHead>
+              <TableHead>Owner</TableHead>
               <SortHead col="follow_up" label="Follow-up" sort={sort} order={order} onSort={onSort} />
             </TableRow>
           </TableHeader>
@@ -257,6 +278,7 @@ export function LeadsTable({
                         aria-label={`Sales status for ${l.name}`}
                         className={`${PILL} ${PILL_TONE[statusTone(status)]}`}
                         value={status}
+                        disabled={pending.has(l.id)}
                         onChange={(e) => changeStatus(l, e.target.value)}
                       >
                         {CRM_STATUSES.map((s) => (
@@ -266,11 +288,12 @@ export function LeadsTable({
                         ))}
                       </select>
                     </TableCell>
+                    <TableCell>{l.owner ? <ToneBadge tone="warning">{l.owner}</ToneBadge> : NONE}</TableCell>
                     <TableCell>
                       {l.next_follow_up_at ? (
                         <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-0.5">
                           {formatDay(l.next_follow_up_at)}
-                          {isOverdue(l.next_follow_up_at) && !closed.has(l.crm_status) && <ToneBadge tone="danger">Overdue</ToneBadge>}
+                          {isOverdue(l.next_follow_up_at) && !closed.has(status) && <ToneBadge tone="danger">Overdue</ToneBadge>}
                         </span>
                       ) : (
                         NONE
@@ -279,7 +302,7 @@ export function LeadsTable({
                   </TableRow>
                   {open && (
                     <TableRow id={detailId} className="bg-muted/40 hover:bg-muted/40">
-                      <TableCell colSpan={12} className="whitespace-normal p-0">
+                      <TableCell colSpan={13} className="whitespace-normal p-0">
                         <LeadRowDetail lead={l} />
                         <p className="px-4 pb-3 text-xs text-muted-foreground">Updated {new Date(l.updated_at).toLocaleDateString()}</p>
                       </TableCell>

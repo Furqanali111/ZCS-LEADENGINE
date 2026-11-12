@@ -1,3 +1,5 @@
+import { getName } from "@/lib/me";
+
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
 export class ApiError extends Error {
@@ -105,6 +107,7 @@ export type Lead = {
   fit_score: number | null;
   priority: string | null;
   crm_status: string;
+  owner: string | null;
   last_contacted_at: string | null;
   next_follow_up_at: string | null;
   suppressed: boolean;
@@ -130,6 +133,7 @@ export type LeadFilters = {
   priority?: string;
   min_score?: number;
   crm_status?: string;
+  owner?: string;
   search_job_id?: string;
   follow_up?: "due" | "overdue" | "none";
   has_website?: "true";
@@ -145,8 +149,9 @@ export type ListLeadsParams = LeadFilters & {
 
 async function request(path: string, init?: RequestInit): Promise<Response> {
   let res: Response;
+  const who = getName();
   try {
-    res = await fetch(`${BASE}${path}`, init);
+    res = await fetch(`${BASE}${path}`, who ? { ...init, headers: { ...init?.headers, "X-Salesperson": encodeURIComponent(who) } } : init);
   } catch {
     throw new ApiError("network_error", "Cannot reach the backend. Is it running on " + BASE + "?");
   }
@@ -225,6 +230,10 @@ export const patchLead = (id: string, body: LeadPatch) =>
     body: JSON.stringify(body),
   });
 
+export const claimLead = (id: string) => json<Lead>(`/api/leads/${id}/claim`, post());
+export const releaseLead = (id: string) => json<Lead>(`/api/leads/${id}/release`, post());
+export const listOwners = () => json<string[]>("/api/owners");
+
 export const patchLeadStatus = (id: string, crm_status: string) => patchLead(id, { crm_status });
 
 export const getLead = (id: string) => json<Lead>(`/api/leads/${id}`);
@@ -237,6 +246,7 @@ export type Activity = {
   outcome: string | null;
   from_status: string | null;
   to_status: string | null;
+  actor?: string | null;
   created_at: string;
 };
 
@@ -264,6 +274,7 @@ export type PipelineCard = {
   organization_type: string;
   fit_score: number | null;
   priority: string | null;
+  owner?: string | null;
   next_follow_up_at: string | null;
   last_contacted_at: string | null;
 };

@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/page-header";
 import { ToneBadge } from "@/components/tone-badge";
 import { BarList } from "@/components/bar-list";
 import { CallToday } from "@/components/call-today";
+import { MyDay } from "@/components/my-day";
 import { StatTile } from "@/components/stat-tile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -109,6 +110,7 @@ export default function DashboardPage() {
             <span className="ml-auto text-muted-foreground">{stats.follow_ups_due === 0 ? "Nothing due today" : "Open the list"}</span>
           </Link>
 
+          <MyDay />
           <CallToday />
 
           <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">

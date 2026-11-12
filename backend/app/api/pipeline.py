@@ -24,7 +24,7 @@ def board(limit: int = Query(20, ge=1, le=100), session: Session = Depends(get_s
     counts = _counts(session)
     # One query: rank cards inside each status, keep the first `limit` of each.
     rn = func.row_number().over(partition_by=O.crm_status, order_by=ORDER).label("rn")
-    r = select(O.crm_status, O.id, O.name, O.city, O.state, O.organization_type, O.fit_score, O.priority,
+    r = select(O.crm_status, O.id, O.name, O.city, O.state, O.organization_type, O.fit_score, O.priority, O.owner,
                O.next_follow_up_at, O.last_contacted_at, rn).subquery()
     rows = session.execute(select(r).where(r.c.rn <= limit).order_by(r.c.crm_status, r.c.rn))
     by_status: dict[str, list[PipelineCard]] = {s: [] for s in CRM_STATUSES}

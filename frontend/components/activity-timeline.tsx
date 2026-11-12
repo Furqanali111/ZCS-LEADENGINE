@@ -42,6 +42,7 @@ export function ActivityTimeline({
                 <p className="flex flex-wrap items-baseline gap-x-2">
                   <span className="font-medium">{label}</span>
                   {outcome && <span className="text-muted-foreground">{outcome}</span>}
+                  {a.actor && <span className="text-muted-foreground">by {a.actor}</span>}
                   <time dateTime={a.occurred_at} className="ml-auto text-xs tabular-nums text-muted-foreground">
                     {new Date(a.occurred_at).toLocaleString()}
                   </time>

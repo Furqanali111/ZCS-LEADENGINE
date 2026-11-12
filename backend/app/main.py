@@ -62,6 +62,7 @@ def create_app(testing: bool = False) -> FastAPI:
     app.include_router(sources.router)
     app.include_router(search.router)
     app.include_router(leads.router)
+    app.include_router(leads.owners_router)
     app.include_router(exports.router)
     app.include_router(pipeline.router)
     app.include_router(dashboard.router)

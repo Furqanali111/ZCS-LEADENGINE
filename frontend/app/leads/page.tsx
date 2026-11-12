@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ApiError, exportLeadsFile, listLeads, type LeadFilters as Filters, type LeadPage } from "@/lib/api";
 import { CRM_STATUSES, ORG_TYPES, PRIORITIES, US_STATES } from "@/lib/constants";
 
-const FILTER_KEYS = ["q", "state", "specialty", "organization_type", "priority", "min_score", "crm_status", "search_job_id", "follow_up", "has_website", "has_email"] as const;
+const FILTER_KEYS = ["q", "state", "specialty", "organization_type", "priority", "min_score", "crm_status", "owner", "search_job_id", "follow_up", "has_website", "has_email"] as const;
 const ALLOWED: Record<string, Set<string>> = {
   state: new Set(US_STATES.map((s) => s.code)),
   priority: new Set(PRIORITIES.map((p) => p.value)),
@@ -39,7 +39,8 @@ function LeadsView() {
     }
     return f as Filters;
   }, [params]);
-  const page = Math.max(1, Number(params.get("page")) || 1);
+  const pageRaw = params.get("page") ?? "";
+  const page = /^[1-9]\d{0,6}$/.test(pageRaw) ? Number(pageRaw) : 1;
   const sortParam = params.get("sort");
   const sort = (["name", "follow_up", "email", "website"] as const).find((s) => s === sortParam) ?? "score";
   const sizeParam = Number(params.get("size"));

@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SELECT_CLASS } from "@/lib/ui";
-import { listJobs, type Job, type LeadFilters } from "@/lib/api";
+import { listJobs, listOwners, type Job, type LeadFilters } from "@/lib/api";
+import { useName } from "@/lib/me";
 import { CRM_STATUSES, ORG_TYPES, PRIORITIES, SPECIALTIES, US_STATES } from "@/lib/constants";
 
 const SELECT = `mt-1 ${SELECT_CLASS}`;
@@ -63,6 +64,16 @@ export function LeadFilters({
   const [more, setMore] = useState(() =>
     Boolean(filters.specialty || filters.organization_type || filters.min_score !== undefined || filters.follow_up || filters.search_job_id || filters.has_website || filters.has_email),
   );
+  const me = useName();
+  const [owners, setOwners] = useState<string[]>([]);
+  useEffect(() => {
+    listOwners().then(setOwners).catch(() => {});
+  }, []);
+  const ownerOptions = [
+    ...(me ? [{ value: me, label: "Mine" }] : []),
+    { value: "none", label: "Unclaimed" },
+    ...owners.filter((o) => o.toLowerCase() !== me.toLowerCase()).map((o) => ({ value: o, label: o })),
+  ];
   const [jobs, setJobs] = useState<Job[]>([]);
   const [jobsError, setJobsError] = useState(false);
   useEffect(() => {
@@ -103,7 +114,8 @@ export function LeadFilters({
       {select("f-state", "State", "state", US_STATES.map((s) => ({ value: s.code, label: `${s.name} (${s.code})` })))}
       {select("f-priority", "Priority", "priority", PRIORITIES)}
       {select("f-status", "Sales status", "crm_status", CRM_STATUSES)}
-      <div className="flex items-end gap-2">
+      {select("f-owner", "Owner", "owner", ownerOptions)}
+      <div className="flex items-end justify-end gap-2 sm:col-span-2">
         <Button type="button" variant="ghost" size="sm" aria-expanded={more} aria-controls="more-filters" onClick={() => setMore((m) => !m)}>
           {more ? "Fewer filters" : "More filters"}
         </Button>
