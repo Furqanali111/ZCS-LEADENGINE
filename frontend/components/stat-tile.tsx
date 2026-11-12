@@ -2,7 +2,7 @@ import type { LucideIcon } from "lucide-react";
 
 // Solid colors dark enough for white text at 4.5:1; the icon is decoration only.
 const TONES = {
-  blue: "from-blue-600 to-blue-800",
+  blue: "from-primary to-blue-900",
   green: "from-emerald-700 to-emerald-900",
   orange: "from-orange-700 to-orange-900",
   red: "from-red-600 to-red-800",
