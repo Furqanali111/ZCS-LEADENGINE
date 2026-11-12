@@ -19,7 +19,7 @@ from app.models import (
     Contact, LeadScore, Location, Organization, SearchJob, SearchJobLead, SearchProgress, SourceConfig, SourceRecord,
 )
 from app.services.enrich import COUNTERS as ENRICH_COUNTERS, enrich_job_leads
-from app.services.leads import has_titled_staff, npis_with_titled_staff, save_score
+from app.services.leads import has_email, has_titled_staff, npis_with_email, npis_with_titled_staff, save_score
 from app.services.scoring import load_config, score
 from app.services.suppression import enforce
 from app.sources import ddg
@@ -117,7 +117,8 @@ def _save_lead(session: Session, job: SearchJob, lead: NormalizedLead, config: d
         set_={"organization_id": org_id, "raw": stmt.excluded.raw, "collected_at": func.now(), "updated_at": func.now()}))
 
     save_score(session, session.get(Organization, org_id),
-               score(lead, config, staff_with_title=has_titled_staff(session, org_id)))
+               score(lead, config, staff_with_title=has_titled_staff(session, org_id),
+                     email_found=has_email(session, org_id)))
 
     linked = session.scalar(insert(SearchJobLead).values(search_job_id=job.id, organization_id=org_id, was_new=was_new)
                             .on_conflict_do_nothing().returning(SearchJobLead.id))
@@ -127,9 +128,9 @@ def _save_lead(session: Session, job: SearchJob, lead: NormalizedLead, config: d
 
 
 def _save_batch(session: Session, job: SearchJob, leads: list[NormalizedLead], config: dict,
-                staffed: set[str]) -> list[str | None]:
+                staffed: set[str], emailed: set[str]) -> list[str | None]:
     """Upserts distinct-NPI leads in a handful of multi-row statements. Same result as _save_lead per lead."""
-    scores = [score(l, config, staff_with_title=l.npi in staffed) for l in leads]
+    scores = [score(l, config, staff_with_title=l.npi in staffed, email_found=l.npi in emailed) for l in leads]
     cols = (*ORG_FIELDS, "fit_score", "priority")
     stmt = insert(Organization).values([
         {"npi": l.npi, **{f: getattr(l, f) for f in ORG_FIELDS}, "fit_score": s.total, "priority": s.priority}
@@ -240,11 +241,12 @@ def _process_page(session: Session, job: SearchJob, phase: str, records: list[di
 
     leads = list(accepted.values())
     staffed = npis_with_titled_staff(session, list(accepted))  # website staff of already enriched leads, one query per page
+    emailed = npis_with_email(session, list(accepted))
     for i in range(0, len(leads), BATCH):
         chunk = leads[i:i + BATCH]
         try:
             with session.begin_nested():
-                outcomes = _save_batch(session, job, chunk, config, staffed)
+                outcomes = _save_batch(session, job, chunk, config, staffed, emailed)
         except Exception as e:
             logger.warning("search job %s: batched save failed (%s), retrying record by record", job.id, type(e).__name__)
             outcomes = _save_each(session, job, chunk, config, counters)

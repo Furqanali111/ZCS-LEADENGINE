@@ -141,8 +141,8 @@ Version 1 rules, total 100 (PRD FR-08 weights):
 | Specialty relevance | 25 | Primary taxonomy is core (Internal Medicine, Family Medicine, Geriatric Medicine, General Practice): 25. A subspecialty of those: 15. Anything else: 5. |
 | Practice size and independence | 20 | `practice`: 20. `solo_provider`: 16, with the reason "self-reported sole proprietor". `subpart`: 8. `hospital`: 4. Size is unknown in this slice and the reason text says so. |
 | Fit with ZCS services | 20 | Core primary-care taxonomies (Care Management fits): 20. Other outpatient specialties (RCM and staffing fit): 12. Hospitals: 5. |
-| Business contactability | 15 | Practice phone present: 10. Authorized official has a different direct phone: 5 more (never applies to solo doctors). |
-| Decision-maker identified | 10 | Official with name and title: 10. Name only: 5. None: 0. A solo doctor is their own decision-maker: 10. |
+| Business contactability | 10 | Practice phone present: 10. |
+| Decision-maker reachable | 15 | Official or titled staff with name and title: 6, plus 9 only when a direct way to reach them exists (official's phone differs from the office phone, or any contact email found; staff need an email). Name only: 3. None: 0. A solo doctor is their own decision-maker: 10. The office line alone earns no reachability points (scoring config v4). |
 | Multiple providers or locations | 10 | More than one practice location listed: 10. Otherwise 0, with the reason "provider count not available from this source". |
 
 Priority thresholds (configurable): Critical 80 and above, High 65 to 79, Medium 45 to 64, Low below 45.
