@@ -27,10 +27,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         {/* Suspense: usePathname is dynamic on routes with params (/leads/[id]) under cacheComponents. */}
-        <Suspense fallback={<div className="h-[49px] border-b" />}>
+        <Suspense fallback={<div className="h-14 border-b" />}>
           <Nav />
         </Suspense>
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8">{children}</main>
+        <main className="w-full flex-1 px-(--spacing-gutter) py-6">{children}</main>
       </body>
     </html>
   );
