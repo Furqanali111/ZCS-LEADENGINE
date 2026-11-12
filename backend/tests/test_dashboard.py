@@ -109,3 +109,15 @@ def test_dashboard_conversion_requires_contact_in_range(client, db):
     act(db, b, "status_change", 2, "converted")
     db.commit()
     assert stats(client).json()["conversion"] == {"converted": 1, "contacted": 1, "rate": 1.0}
+
+
+def test_dashboard_recent_jobs_newest_first_max_5_and_empty(client, db):
+    first = stats(client).json()
+    assert first["recent_jobs"] == [] and first["by_state"] == [] and first["by_status"] == []
+    now = datetime.now(timezone.utc)
+    for i in range(6):
+        db.add(SearchJob(specialty=f"s{i}", state="FL", target_count=5, sources=["nppes"], created_at=now - timedelta(minutes=10 - i)))
+    db.commit()
+    jobs = stats(client).json()["recent_jobs"]
+    assert [j["specialty"] for j in jobs] == ["s5", "s4", "s3", "s2", "s1"]
+    assert jobs[0]["sources"] == ["nppes"] and jobs[0]["status"] == "queued" and jobs[0]["counters"] == {}

@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { CalendarClock, CheckCircle2, Handshake, Sparkles, Star, Users } from "lucide-react";
+import { CalendarClock, CheckCircle2, Handshake, RefreshCw, Sparkles, Star, Users } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ToneBadge } from "@/components/tone-badge";
 import { BarList } from "@/components/bar-list";
 import { CallToday } from "@/components/call-today";
 import { MyDay } from "@/components/my-day";
-import { StatTile } from "@/components/stat-tile";
+import { StatTile, StatTileSkeleton } from "@/components/stat-tile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,35 +37,85 @@ function presetRange(p: Exclude<Preset, "custom">): { from: string; to: string }
   return { from: ymd(new Date(now.getFullYear(), now.getMonth() - 1, 1)), to: ymd(new Date(now.getFullYear(), now.getMonth(), 0)) };
 }
 
+// Last stats per range, so the page paints at once and refreshes behind it. Read through useSyncExternalStore:
+// the server snapshot is null, so prerender and hydration never see storage.
+const cacheKey = (r: { from?: string; to?: string }) => `zcs-dashboard:${r.from ?? ""}:${r.to ?? ""}`;
+const cacheListeners = new Set<() => void>();
+const readCache = (key: string): string | null => {
+  try {
+    return sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+const writeCache = (key: string, s: DashboardStats) => {
+  try {
+    sessionStorage.setItem(key, JSON.stringify(s));
+    cacheListeners.forEach((l) => l());
+  } catch {
+    /* storage full or blocked: the page just loads cold */
+  }
+};
+const subscribeCache = (l: () => void) => {
+  cacheListeners.add(l);
+  return () => void cacheListeners.delete(l);
+};
+const REFRESH_MIN_MS = 30_000;
+
+type Result = { key: string; tick: number; stats?: DashboardStats; error?: string };
+
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<Result | null>(null);
+  const [tick, setTick] = useState(0);
+  const lastFetch = useRef(0);
   const [preset, setPreset] = useState<Preset>("all");
   const [applied, setApplied] = useState<{ from?: string; to?: string }>({ from: "2000-01-01" }); // no end date: the API uses today
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const [loading, setLoading] = useState(false);
+
+  const key = cacheKey(applied);
+  const cachedRaw = useSyncExternalStore(subscribeCache, () => readCache(key), () => null);
+  const cached = useMemo<DashboardStats | null>(() => {
+    try {
+      return cachedRaw ? (JSON.parse(cachedRaw) as DashboardStats) : null;
+    } catch {
+      return null;
+    }
+  }, [cachedRaw]);
+  const mine = result?.key === key ? result : null;
+  const stats = mine?.stats ?? cached;
+  const error = mine?.error ?? null;
+  const loading = !mine || mine.tick !== tick; // derived from the request, so no state is set synchronously in the effect
 
   useEffect(() => {
     let live = true;
+    lastFetch.current = Date.now();
     getDashboard(applied)
       .then((s) => {
         if (!live) return;
-        setStats(s);
-        setError(null);
-        setLoading(false);
+        writeCache(key, s);
+        setResult({ key, tick, stats: s });
         setFrom((f) => f || s.range.from);
         setTo((t) => t || s.range.to);
       })
       .catch((e) => {
         if (!live) return;
-        setError(e instanceof ApiError ? e.message : "Could not load the dashboard.");
-        setLoading(false);
+        const error = e instanceof ApiError ? e.message : "Could not load the dashboard.";
+        setResult((r) => ({ key, tick, error, stats: r?.key === key ? r.stats : undefined }));
       });
     return () => {
       live = false;
     };
-  }, [applied]);
+  }, [applied, key, tick]);
+
+  // Coming back to the tab refreshes the numbers, at most once per 30 s.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && Date.now() - lastFetch.current > REFRESH_MIN_MS) setTick((t) => t + 1);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
 
   const rangeInvalid = !!from && !!to && from > to;
 
@@ -81,7 +131,6 @@ export default function DashboardPage() {
             onClick={() => {
               setPreset(p.id);
               if (p.id !== "custom") {
-                setLoading(true);
                 setApplied(presetRange(p.id));
               }
             }}
@@ -91,13 +140,27 @@ export default function DashboardPage() {
           </button>
         ))}
       </div>
+      <div className="flex items-center gap-3">
+        <Button type="button" variant="outline" size="sm" disabled={loading} onClick={() => setTick((t) => t + 1)}>
+          <RefreshCw aria-hidden className={`size-4 ${loading ? "animate-spin" : ""}`} />
+          Refresh
+        </Button>
+        <p role="status" className="text-sm text-muted-foreground">
+          {loading ? (stats ? "Updating..." : "Loading dashboard...") : ""}
+        </p>
+      </div>
       {error && (
         <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       )}
-      {loading && <p className="text-sm text-muted-foreground">Updating...</p>}
-      {!stats && !error && <p className="text-sm text-muted-foreground">Loading dashboard...</p>}
+      {!stats && !error && (
+        <dl aria-hidden className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <StatTileSkeleton key={i} />
+          ))}
+        </dl>
+      )}
       {stats && (
         <>
           <Link
@@ -114,11 +177,11 @@ export default function DashboardPage() {
           <CallToday />
 
           <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-            <StatTile tone="blue" Icon={Users} label="Total leads" value={stats.total} hint="In the system" />
-            <StatTile tone="green" Icon={Sparkles} label="New" value={stats.new_leads} hint="Not contacted yet" />
-            <StatTile tone="orange" Icon={Star} label="Critical and high priority" value={stats.critical_high} hint="Best fit first" />
-            <StatTile tone="purple" Icon={Handshake} label="Meetings scheduled" value={stats.meetings_scheduled} hint="Booked" />
-            <StatTile tone="teal" Icon={CheckCircle2} label="Converted" value={stats.converted} hint="Won" />
+            <StatTile tone="blue" Icon={Users} label="Total leads" href="/leads" value={stats.total} hint="In the system" />
+            <StatTile tone="green" Icon={Sparkles} label="New" href="/leads?crm_status=new" value={stats.new_leads} hint="Not contacted yet" />
+            <StatTile tone="orange" Icon={Star} label="Critical and high priority" href="/leads?priority=critical" value={stats.critical_high} hint="Best fit first" />
+            <StatTile tone="purple" Icon={Handshake} label="Meetings scheduled" href="/leads?crm_status=meeting_scheduled" value={stats.meetings_scheduled} hint="Booked" />
+            <StatTile tone="teal" Icon={CheckCircle2} label="Converted" href="/leads?crm_status=converted" value={stats.converted} hint="Won" />
           </dl>
 
           <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-4">
@@ -141,7 +204,6 @@ export default function DashboardPage() {
               onSubmit={(e) => {
                 e.preventDefault();
                 if (rangeInvalid) return;
-                setLoading(true);
                 setApplied({ from: from || undefined, to: to || undefined });
               }}
             >
@@ -165,9 +227,9 @@ export default function DashboardPage() {
             )}
           </section>
 
-            <BarList title="Top states" items={stats.by_state} />
-            <BarList title="Top specialties" items={stats.by_specialty} />
-            <BarList title="By status" items={stats.by_status} labels={STATUS_LABELS} />
+            <BarList title="Top states" items={stats.by_state} hrefFor={(k) => `/leads?state=${encodeURIComponent(k)}`} />
+            <BarList title="Top specialties" items={stats.by_specialty} hrefFor={(k) => `/leads?specialty=${encodeURIComponent(k)}`} />
+            <BarList title="By status" items={stats.by_status} labels={STATUS_LABELS} hrefFor={(k) => `/leads?crm_status=${encodeURIComponent(k)}`} />
           </div>
 
           <section aria-labelledby="recent-jobs">
