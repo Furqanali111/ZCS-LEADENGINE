@@ -46,6 +46,13 @@ Statuses above match what migration 0005 seeds into `source_configs`. The owner 
 | Brave Search API | `approved_not_built`, with a condition | The terms (updated Feb 2026, read through a search summary because the dashboard page could not be fetched) bar storing, caching or building a database of Search Results beyond transient use, unless the plan grants storage rights. We use results in memory only and store only a URL we fetched and verified on the practice's own page. The owner must confirm the storage terms with Brave support (searchapi-support@brave.com) or pick a plan with storage rights before this becomes `available`, because storing even the verified URL is a gray area. |
 | Official practice websites | `approved_not_built`, then `available` | Public pages of the practice itself. robots.txt honored, including Crawl-delay. About 1 request per second per domain. No logins, no CAPTCHA or anti-bot bypass. User-Agent `ZCSLeadEngine/1.0 (internal prospecting tool)`. |
 
+### Candidate sources checked 2026-11-12 (no connector built)
+
+| Source | Result | Why |
+|---|---|---|
+| HRSA Health Center Service Delivery and Look-Alike Sites (data.hrsa.gov downloads, XLSX/CSV) | `not_reviewed` | Free public file download. The "Data Usage Terms and Conditions" text could not be fetched, so reuse and commercial-use terms are unconfirmed. Web services need a registration with two contacts and a token. The file may carry site name, address and phone, but fields were not checked. Read the terms page by hand before approving. |
+| Healthgrades, Google Business, Facebook, state medical boards | `not_reviewed` | Not checked. Listing sites usually forbid automated collection, so assume no until the terms say otherwise. |
+
 ### CMS NPI Registry API (tested 2026-11-11)
 
 Endpoint: `https://npiregistry.cms.hhs.gov/api/?version=2.1`
