@@ -43,6 +43,7 @@ const ENRICH_LABELS: [keyof Job["counters"], string][] = [
 
 function summary(j: Job) {
   const types = [j.include_practices && "practices", j.include_solo && "solo doctors"].filter(Boolean).join(" + ");
+  if (!types) return `${j.specialty}, ${j.state}`; // an "enrich existing leads" job has no search phases
   return `${j.specialty}, ${j.city ? j.city + ", " : ""}${j.state} (${types})`;
 }
 
@@ -124,7 +125,9 @@ export function JobList({ refreshKey }: { refreshKey: number }) {
               </div>
               <Progress value={pct} aria-label={`Progress for ${summary(j)}`} className={`[&_[data-slot=progress-track]]:h-1.5 ${BAR[JOB_TONE[j.status] ?? "neutral"]}`} />
               <p className="text-sm">
-                {found} new {found === 1 ? "lead" : "leads"} found (target {j.target_count})
+                {j.include_practices || j.include_solo
+                  ? `${found} new ${found === 1 ? "lead" : "leads"} found (target ${j.target_count})`
+                  : `${j.counters.websites_found ?? 0} websites and ${j.counters.emails_found ?? 0} emails found for ${j.counters.enrich_attempted ?? 0} leads`}
               </p>
               <details className="text-xs text-muted-foreground">
                 <summary className="cursor-pointer">Details</summary>
