@@ -11,7 +11,16 @@ import { JOB_STATUS_LABELS } from "@/lib/constants";
 const ACTIVE = ["queued", "running"];
 const JOB_TONE: Record<string, Tone> = { queued: "neutral", running: "info", paused: "warning", completed: "success", cancelled: "neutral", failed: "danger" };
 
-const COUNTER_LABELS: [keyof Job["counters"], string][] = [
+// Bar colour follows the status tone instead of the heavy primary color.
+const BAR: Record<Tone, string> = {
+  danger: "[&_[data-slot=progress-indicator]]:bg-tone-danger-fg",
+  warning: "[&_[data-slot=progress-indicator]]:bg-tone-warning-fg",
+  success: "[&_[data-slot=progress-indicator]]:bg-tone-success-fg",
+  info: "[&_[data-slot=progress-indicator]]:bg-tone-info-fg",
+  neutral: "[&_[data-slot=progress-indicator]]:bg-muted-foreground",
+};
+
+const COUNTER_LABELS:[keyof Job["counters"], string][] = [
   ["candidates_seen", "Records checked"],
   ["accepted_new", "New leads"],
   ["accepted_existing", "Already known"],
@@ -105,7 +114,7 @@ export function JobList({ refreshKey }: { refreshKey: number }) {
                   )}
                 </span>
               </div>
-              <Progress value={pct} aria-label={`Progress for ${summary(j)}`} className="[&_[data-slot=progress-track]]:h-2" />
+              <Progress value={pct} aria-label={`Progress for ${summary(j)}`} className={`[&_[data-slot=progress-track]]:h-1.5 ${BAR[JOB_TONE[j.status] ?? "neutral"]}`} />
               <p className="text-sm">
                 {done} of {j.target_count} leads ({pct}%)
               </p>

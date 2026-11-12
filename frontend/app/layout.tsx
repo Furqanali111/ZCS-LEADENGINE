@@ -30,7 +30,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Suspense fallback={<div className="h-14 border-b" />}>
           <Nav />
         </Suspense>
-        <main className="w-full flex-1 px-(--spacing-gutter) py-6">{children}</main>
+        <main className="w-full flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
       </body>
     </html>
   );
