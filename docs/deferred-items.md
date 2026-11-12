@@ -11,7 +11,8 @@ Things the docs or code refer to that are intentionally not built yet. If a revi
 | Authentication and row-level security | PRD 4.2 | Later | A second user, or any non-localhost access |
 | Paid enrichment or verification APIs | PRD 4.2 | Later | Measured coverage gap and explicit approval |
 | Background queue (Redis, Celery) | PRD section 7 | Later | Measured worker bottleneck |
-| Automatic splitting of searches past the 1,200 cap | Slice 1 spec section 3 | After slice 1 | The optional city filter proves too manual |
+| A single ZIP code with more than 1,200 matching records cannot be split further, so the rest stay unreachable | Search continuation | Later | A real search reports fewer leads than expected for a dense ZIP |
+| Search progress is a saved offset; the NPI Registry's order can shift as providers register, so a few records could be missed or repeated (repeats are filtered by NPI) | Search continuation | Later | A Start over run finds many leads the continued runs missed |
 | Better solo-practice detection than the self-reported sole-proprietor flag | Slice 1 spec section 6 | Later | Too many solo leads turn out to be employed doctors |
 | `disqualified` priority tier | PRD FR-08 | Slice 2 | Needs explicit rules or a user action |
 | Automated frontend tests | Plan Phase 10 | Slice 2 | Slice 2 frontend is five pages checked by hand; add a test tool when a frontend bug repeats |

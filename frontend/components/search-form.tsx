@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ApiError, createSearch, getSources, type Source } from "@/lib/api";
+import { ApiError, createSearch, getSearchProgress, getSources, resetSearchProgress, type SearchProgress, type Source } from "@/lib/api";
 import { SOURCE_STATUS_LABELS, SPECIALTIES, US_STATES } from "@/lib/constants";
 
 function CheckRow({
@@ -56,6 +56,7 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [progress, setProgress] = useState<SearchProgress | null>(null);
 
   useEffect(() => {
     getSources()
@@ -66,8 +67,28 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
       .catch((e: Error) => setSourcesError(e.message));
   }, []);
 
+  const progressKey = { specialty: specialty.trim(), state, city: city.trim(), subparts, hospitals };
+  const progressId = JSON.stringify(progressKey);
+  useEffect(() => {
+    // how much of this search was already fetched; the next search continues after it
+    if (!state || !specialty.trim()) return;
+    let stale = false;
+    const t = setTimeout(() => {
+      getSearchProgress(JSON.parse(progressId)).then((p) => !stale && setProgress(p)).catch(() => !stale && setProgress(null));
+    }, 400);
+    return () => {
+      stale = true;
+      clearTimeout(t);
+    };
+  }, [progressId, state, specialty]);
+
+  async function startOver() {
+    await resetSearchProgress(progressKey);
+    setProgress({ leads_fetched: 0, exhausted: false });
+  }
+
   const targetNum = Number(target);
-  const targetValid = Number.isInteger(targetNum) && targetNum >= 1 && targetNum <= 1200;
+  const targetValid = Number.isInteger(targetNum) && targetNum >= 1 && targetNum <= 50000;
   const canSubmit =
     !submitting && (practices || solo) && selected.length > 0 && targetValid && specialty.trim() !== "" && state !== "";
 
@@ -178,7 +199,7 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
             id="target"
             type="number"
             min={1}
-            max={1200}
+            max={50000}
             value={target}
             aria-invalid={!targetValid || !!fieldErrors.target_count}
             aria-describedby="target-help target-error"
@@ -186,11 +207,21 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
             className="mt-1"
           />
           <p id="target-help" className="mt-1 text-sm text-muted-foreground">
-            One search returns at most 1,200 records. For large states, add a city.
+            Only new leads count. A repeat search continues after the leads you already fetched.
           </p>
+          {state && progress && (progress.leads_fetched > 0 || progress.exhausted) && (
+            <p id="progress-note" role="status" className="mt-1 text-sm">
+              {progress.exhausted
+                ? `All leads for this search are fetched (${progress.leads_fetched} saved). `
+                : `${progress.leads_fetched} already fetched for this search; the next search continues after them. `}
+              <button type="button" onClick={startOver} className="underline underline-offset-2">
+                Start over
+              </button>
+            </p>
+          )}
           <FieldError
             id="target-error"
-            text={fieldErrors.target_count ?? (targetValid ? undefined : "Enter a whole number from 1 to 1200.")}
+            text={fieldErrors.target_count ?? (targetValid ? undefined : "Enter a whole number from 1 to 50000.")}
           />
         </div>
       </div>

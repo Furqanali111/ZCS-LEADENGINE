@@ -64,7 +64,7 @@ def test_rls_enabled_on_every_table_and_removed_on_downgrade(migrated_url):
     alembic(migrated_url, "upgrade", "head")
     with engine.connect() as conn:
         rls = dict(conn.execute(RLS_SQL).all())
-    assert len(rls) == 12 and all(rls.values()), rls
+    assert len(rls) == 13 and all(rls.values()), rls
     alembic(migrated_url, "downgrade", "0002")
     with engine.connect() as conn:
         rls = dict(conn.execute(RLS_SQL).all())
@@ -177,4 +177,18 @@ def test_0008_outreach_templates_table(migrated_url):
     alembic(migrated_url, "downgrade", "0007")
     with engine.connect() as conn:
         assert conn.execute(q).first() is None
+    engine.dispose()
+
+
+def test_0009_search_progress_table_and_target_limit(migrated_url):
+    q = text("select to_regclass('public.search_progress')")
+    engine = create_engine(migrated_url)
+    alembic(migrated_url, "upgrade", "head")
+    with engine.begin() as conn:
+        assert conn.execute(q).scalar() is not None
+        conn.execute(text("insert into search_jobs (specialty, state, target_count, sources) values ('x', 'TX', 5000, '{npi_registry}')"))
+    alembic(migrated_url, "downgrade", "0008")
+    with engine.connect() as conn:
+        assert conn.execute(q).scalar() is None
+        assert conn.execute(text("select max(target_count) from search_jobs")).scalar() == 1200
     engine.dispose()

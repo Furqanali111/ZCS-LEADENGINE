@@ -46,7 +46,7 @@ class SearchJob(IdMixin, Base):
     __table_args__ = (
         CheckConstraint(in_list("state", US_STATES), name="ck_search_jobs_state"),
         CheckConstraint(in_list("status", JOB_STATUSES), name="ck_search_jobs_status"),
-        CheckConstraint("target_count BETWEEN 1 AND 1200", name="ck_search_jobs_target_count"),
+        CheckConstraint("target_count BETWEEN 1 AND 50000", name="ck_search_jobs_target_count"),
     )
 
     specialty: Mapped[str] = mapped_column(Text)
@@ -266,3 +266,20 @@ class OutreachTemplate(IdMixin, Base):
     kind: Mapped[str] = mapped_column(Text)
     subject: Mapped[str | None] = mapped_column(Text)
     body: Mapped[str] = mapped_column(Text)
+
+
+class SearchProgress(IdMixin, Base):
+    """Where the next search for the same specialty, state, city and filters continues, so leads are never re-fetched."""
+
+    __tablename__ = "search_progress"
+    __table_args__ = (
+        UniqueConstraint("specialty", "state", "city", "include_subparts", "include_hospitals", name="uq_search_progress_key"),
+    )
+
+    specialty: Mapped[str] = mapped_column(Text)  # trimmed and lower-cased
+    state: Mapped[str] = mapped_column(Text)
+    city: Mapped[str] = mapped_column(Text, server_default="")  # lower-cased, empty for the whole state
+    include_subparts: Mapped[bool] = mapped_column(Boolean)
+    include_hospitals: Mapped[bool] = mapped_column(Boolean)
+    cursor: Mapped[dict] = mapped_column(JSONB, default=dict, server_default=text("'{}'::jsonb"))  # per phase: pending ZIP prefixes and offset
+    leads_fetched: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))

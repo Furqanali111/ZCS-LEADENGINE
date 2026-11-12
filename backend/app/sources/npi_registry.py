@@ -39,13 +39,15 @@ def digits(phone: str | None) -> str | None:
 
 
 def fetch_page(client: httpx.Client, *, enumeration_type: str, specialty: str,
-               state: str, city: str | None, skip: int) -> list[dict]:
+               state: str, city: str | None, skip: int, zip_prefix: str = "") -> list[dict]:
     if skip > MAX_SKIP:
         raise ValueError(f"skip {skip} exceeds the API cap of {MAX_SKIP}")
     params = {"version": "2.1", "enumeration_type": enumeration_type,
               "taxonomy_description": specialty, "state": state, "limit": PAGE_SIZE, "skip": skip}
     if city:
         params["city"] = city
+    if zip_prefix:  # the API wants at least two leading digits before a wildcard
+        params["postal_code"] = zip_prefix if len(zip_prefix) >= 5 else zip_prefix + "*"
     resp = client.get(API_URL, params=params)
     if resp.status_code != 200:
         raise SourceError(f"NPI Registry returned HTTP {resp.status_code}")

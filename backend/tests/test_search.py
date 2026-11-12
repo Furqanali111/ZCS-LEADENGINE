@@ -3,9 +3,11 @@ import json
 from pathlib import Path
 
 import pytest
-from sqlalchemy import event, func, select, update
+from sqlalchemy import delete, event, func, select, update
 
-from app.models import Contact, LeadScore, Location, Organization, SearchJob, SearchJobLead, SourceConfig, SourceRecord
+from app.models import (
+    Contact, LeadScore, Location, Organization, SearchJob, SearchJobLead, SearchProgress, SourceConfig, SourceRecord,
+)
 from app.services.search import run_job
 from app.sources.npi_registry import SourceError, digits
 from app.worker import claim_next, pause_running_jobs, run_next
@@ -27,7 +29,7 @@ def many(n: int, start: int = 1900000000) -> list[dict]:
 
 
 def fake(pages: dict[str, list[list[dict]]], calls: list | None = None):
-    def fetch(client, *, enumeration_type, specialty, state, city, skip):
+    def fetch(client, *, enumeration_type, specialty, state, city, skip, zip_prefix=""):
         if calls is not None:
             calls.append((enumeration_type, skip))
         type_pages = pages.get(enumeration_type, [])
@@ -90,6 +92,8 @@ def test_replaying_a_page_creates_no_duplicates(db, session_factory):
     first = make_job(db, include_solo=False, include_subparts=True)
     run(session_factory, first, fetch)
     orgs, locs, contacts = count(db, Organization), count(db, Location), count(db, Contact)
+    db.execute(delete(SearchProgress))  # start over, so the second search reads the same records again
+    db.commit()
     second = make_job(db, include_solo=False, include_subparts=True)
     run(session_factory, second, fetch)
     a, b = job_of(db, first), job_of(db, second)
@@ -123,6 +127,8 @@ def test_rerun_keeps_crm_status(db, session_factory):
     org.crm_status, org.name = "called", "Edited Locally"
     stamp = db.scalar(select(func.now()))
     org.status_updated_at = stamp
+    db.commit()
+    db.execute(delete(SearchProgress))
     db.commit()
     run(session_factory, make_job(db, include_solo=False, include_subparts=True), fetch)
     db.expire_all()
@@ -178,24 +184,59 @@ def test_solo_skipped_when_phone_matches_known_org(db, session_factory):
     assert count(db, Organization, Organization.npi == str(doctor["number"])) == 0
 
 
-def test_never_requests_skip_above_1000(db, session_factory):
-    # target_count is capped at 1200 by the schema, so inactive records keep both phases paging to the end
+def test_cap_hit_splits_by_zip_prefix_and_never_requests_skip_above_1000(db, session_factory):
+    # target_count allows more than the 1,200 cap, so inactive records keep both phases going; a capped whole-state
+    # query is then split into the 100 two-digit ZIP prefixes (empty here)
     inactive = copy.deepcopy(NPI2[0])
     inactive["basic"]["status"] = "D"
-    full_page = [inactive] * 200
     calls = []
 
-    def fetch(client, *, enumeration_type, specialty, state, city, skip):
-        calls.append((enumeration_type, skip))
-        return copy.deepcopy(full_page)
+    def fetch(client, *, enumeration_type, specialty, state, city, skip, zip_prefix=""):
+        calls.append((enumeration_type, zip_prefix, skip))
+        return [copy.deepcopy(inactive) for _ in range(200)] if not zip_prefix else []
 
     job_id = make_job(db)
     run(session_factory, job_id, fetch)
     job = job_of(db, job_id)
-    skips = [0, 200, 400, 600, 800, 1000]
-    assert calls == [("NPI-2", s) for s in skips] + [("NPI-1", s) for s in skips]
+    whole_state = [("", s) for s in [0, 200, 400, 600, 800, 1000]]
+    prefixes = [(f"{d:02d}", 0) for d in range(100)]
+    assert [(p, s) for t, p, s in calls if t == "NPI-2"] == whole_state + prefixes
+    assert [(p, s) for t, p, s in calls if t == "NPI-1"] == whole_state + prefixes
+    assert max(s for _, _, s in calls) == 1000
     assert job.status == "completed"
-    assert job.counters["skipped_inactive"] == 2400 and job.counters["pages_fetched"] == 12
+    assert job.counters["skipped_inactive"] == 2400 and job.counters["pages_fetched"] == 212
+
+
+def test_second_search_continues_after_the_first_instead_of_repeating_it(db, session_factory):
+    records = many(400)
+    calls = []
+
+    def fetch(client, *, enumeration_type, specialty, state, city, skip, zip_prefix=""):
+        calls.append((enumeration_type, skip))
+        return copy.deepcopy(records[skip:skip + 200])
+
+    first = make_job(db, include_solo=False, target_count=150)
+    run(session_factory, first, fetch)
+    stopped_at = db.scalar(select(SearchProgress)).cursor["practices"]["skip"]  # excluded records are consumed too
+    assert stopped_at >= 150
+    second = make_job(db, include_solo=False, target_count=150)
+    run(session_factory, second, fetch)
+    a, b = job_of(db, first), job_of(db, second)
+    assert a.counters["accepted_new"] == 150 and b.counters["accepted_new"] == 150
+    assert calls == [("NPI-2", 0), ("NPI-2", stopped_at)]  # the second search starts where the first stopped
+    assert count(db, Organization) == 300
+    assert db.scalar(select(SearchProgress.leads_fetched)) == 300
+
+
+def test_finished_search_reads_nothing_new(db, session_factory):
+    calls = []
+    fetch = fake({"NPI-2": [NPI2]}, calls)
+    run(session_factory, make_job(db, include_solo=False, include_subparts=True), fetch)
+    again = make_job(db, include_solo=False, include_subparts=True)
+    run(session_factory, again, fetch)
+    assert len(calls) == 1  # the second search found the phase already walked to the end
+    job = job_of(db, again)
+    assert job.status == "completed" and job.counters.get("accepted_new", 0) == 0
 
 
 def test_cancel_between_pages(db, session_factory):
@@ -349,6 +390,8 @@ def slow_path_calls(monkeypatch):
 
 def statements_for_one_page(db, db_engine, session_factory, n: int, start: int) -> int:
     statements = []
+    db.execute(delete(SearchProgress))  # every measurement is a first search
+    db.commit()
 
     def listener(conn, cursor, statement, *a):
         statements.append(statement)
@@ -368,8 +411,9 @@ def test_page_round_trips_are_few_and_flat(db, db_engine, session_factory, slow_
     big = statements_for_one_page(db, db_engine, session_factory, 200, 1910000000)
     print("statements: 50 records =", small, "200 records =", big)
     assert big < 40
-    # The extra 100-lead chunk costs exactly 13 statements: SAVEPOINT/RELEASE, the batched upserts, and the suppression enforce select.
-    assert big - small == 13
+    # The extra 100-lead chunk costs 13 statements (SAVEPOINT/RELEASE, the batched upserts, the suppression enforce select);
+    # a full 200-record page also reads one more, empty page, which costs 2 (known-NPI lookup and the cursor write).
+    assert big - small == 15
     assert slow_path_calls == []
     assert count(db, Organization) == 250
 
@@ -394,6 +438,8 @@ def test_batched_rerun_keeps_crm_status_and_creates_no_duplicates(db, session_fa
     db.commit()
     models = (Organization, Location, Contact, LeadScore, SourceRecord)
     sizes = [count(db, m) for m in models]
+    db.execute(delete(SearchProgress))  # start over, so the rerun reads the same records
+    db.commit()
     second = make_job(db, include_solo=False, include_subparts=True)
     run(session_factory, second, fetch)
     db.expire_all()
@@ -433,6 +479,8 @@ def test_rerun_replaces_changed_authorized_official(db, session_factory):
     for r in changed:
         r["basic"]["authorized_official_first_name"] = "Zed"
         r["basic"]["authorized_official_last_name"] = "Newperson"
+    db.execute(delete(SearchProgress))
+    db.commit()
     run(session_factory, make_job(db, include_solo=False, include_subparts=True, include_hospitals=True), fake({"NPI-2": [changed]}))
     db.expire_all()
     names = {c.first_name for c in db.scalars(select(Contact).where(Contact.organization_id == org.id))}

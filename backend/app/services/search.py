@@ -11,10 +11,13 @@ import httpx
 from sqlalchemy import delete, func, literal_column, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.config import get_settings
 from app.constants import US_STATES
-from app.models import Contact, LeadScore, Location, Organization, SearchJob, SearchJobLead, SourceConfig, SourceRecord
+from app.models import (
+    Contact, LeadScore, Location, Organization, SearchJob, SearchJobLead, SearchProgress, SourceConfig, SourceRecord,
+)
 from app.services.enrich import COUNTERS as ENRICH_COUNTERS, enrich_job_leads
 from app.services.leads import has_titled_staff, npis_with_titled_staff, save_score
 from app.services.scoring import load_config, score
@@ -203,8 +206,9 @@ def _save_each(session: Session, job: SearchJob, leads: list[NormalizedLead], co
     return outcomes
 
 
-def _process_page(session: Session, job: SearchJob, phase: str, records: list[dict], counters: dict, config: dict) -> bool:
-    """Filters the page in Python, then writes the accepted leads in batches. Returns True once the target is reached."""
+def _process_page(session: Session, job: SearchJob, phase: str, records: list[dict], counters: dict, config: dict) -> tuple[bool, int]:
+    """Filters the page in Python, then writes the accepted leads in batches. Only new leads count toward the target.
+    Returns (target reached, records consumed); records after the one that reached the target are left for the next search."""
     parsed = []  # (NPI, lead or None when the record is malformed)
     for raw in records:
         npi = raw.get("number")
@@ -217,9 +221,12 @@ def _process_page(session: Session, job: SearchJob, phase: str, records: list[di
             parsed.append((npi, None))
     known = _known_org_phones(session, [l for _, l in parsed if l]) if phase == "solo" else set()
 
+    known_npis = set(session.scalars(select(Organization.npi).where(Organization.npi.in_([str(n) for n, _ in parsed if n]))))
     accepted: dict[str, NormalizedLead] = {}  # a repeated NPI in one page keeps its last copy and counts once
-    for _, lead in parsed:
-        if counters["accepted_new"] + counters["accepted_existing"] + len(accepted) >= job.target_count:
+    new_in_page, consumed = 0, len(parsed)
+    for idx, (_, lead) in enumerate(parsed):
+        if counters["accepted_new"] + new_in_page >= job.target_count:
+            consumed = idx
             break
         counters["candidates_seen"] += 1
         if lead is None:
@@ -227,6 +234,8 @@ def _process_page(session: Session, job: SearchJob, phase: str, records: list[di
         elif reason := _skip_reason(job, phase, lead, known):
             counters[reason] += 1
         else:
+            if lead.npi not in accepted and lead.npi not in known_npis:
+                new_in_page += 1
             accepted[lead.npi] = lead
 
     leads = list(accepted.values())
@@ -242,7 +251,23 @@ def _process_page(session: Session, job: SearchJob, phase: str, records: list[di
         for outcome in outcomes:
             if outcome:
                 counters[outcome] += 1
-    return counters["accepted_new"] + counters["accepted_existing"] >= job.target_count
+    return counters["accepted_new"] >= job.target_count, consumed
+
+
+def progress_key(specialty: str, state: str, city: str | None, include_subparts: bool, include_hospitals: bool) -> dict:
+    return dict(specialty=specialty.strip().lower(), state=state, city=(city or "").strip().lower(),
+                include_subparts=include_subparts, include_hospitals=include_hospitals)
+
+
+def _progress_row(session: Session, job: SearchJob) -> SearchProgress:
+    """The saved cursor for this specialty, state, city and filters, created on first use."""
+    key = progress_key(job.specialty, job.state, job.city, job.include_subparts, job.include_hospitals)
+    row = session.scalar(select(SearchProgress).filter_by(**key))
+    if row is None:
+        row = SearchProgress(**key, cursor={}, leads_fetched=0)
+        session.add(row)
+        session.flush()
+    return row
 
 
 def _finish(session: Session, job: SearchJob, status: str, error: str | None = None) -> None:
@@ -309,29 +334,48 @@ def run_job(session_factory, job_id: UUID, *, fetch=fetch_page, sleep=time.sleep
             return done()
         resumed = checkpoint.get("phase") in names
         i = names.index(checkpoint["phase"]) if resumed else 0
-        skip = checkpoint.get("skip", 0) if resumed else 0
+        progress = _progress_row(session, job)
+        cursor = progress.cursor
 
         while i < len(phases):
             phase, enumeration_type = phases[i]
+            if phase not in cursor:  # first walk of this phase: one whole-state query, split by ZIP only if it hits the cap
+                cursor[phase] = {"slices": [""], "skip": checkpoint.get("skip", 0) if resumed and checkpoint["phase"] == phase else 0}
+            cur = cursor[phase]
+            if not cur["slices"]:  # an earlier search already walked this whole phase
+                i += 1
+                continue
             try:
                 records = _fetch(fetch, client, sleep, settings.max_source_retries, enumeration_type=enumeration_type,
-                                 specialty=job.specialty, state=job.state, city=job.city, skip=skip)
+                                 specialty=job.specialty, state=job.state, city=job.city, skip=cur["skip"], zip_prefix=cur["slices"][0])
             except (SourceError, httpx.HTTPError) as e:
-                job.counters, job.checkpoint = dict(counters), {"phase": phase, "skip": skip}
+                job.counters, job.checkpoint = dict(counters), {"phase": phase, "skip": cur["skip"]}
                 return _finish(session, job, "failed", str(e) or type(e).__name__)
 
             counters["pages_fetched"] += 1
-            reached = _process_page(session, job, phase, records, counters, config)
-            skip += PAGE_SIZE
-            job.checkpoint = {"phase": phase, "skip": skip}
-            if not reached and (len(records) < PAGE_SIZE or skip > MAX_SKIP):
-                i, skip = i + 1, 0
+            new_before = counters["accepted_new"]
+            reached, consumed = _process_page(session, job, phase, records, counters, config)
+            progress.leads_fetched += counters["accepted_new"] - new_before
+            cur["skip"] += consumed
+            if consumed == len(records):  # the whole page is used: move on, or split a slice that hit the 1,200 cap
+                prefix = cur["slices"][0]
+                if len(records) < PAGE_SIZE:
+                    cur["slices"].pop(0)
+                    cur["skip"] = 0
+                elif cur["skip"] > MAX_SKIP:
+                    kids = [f"{d:02d}" for d in range(100)] if not prefix else [prefix + str(d) for d in range(10)]
+                    cur["slices"][0:1] = [] if len(prefix) >= 5 else kids  # a single ZIP over the cap cannot be split further
+                    cur["skip"] = 0
+            flag_modified(progress, "cursor")
+            job.checkpoint = {"phase": phase, "skip": cur["skip"]}
+            if not cur["slices"]:
+                i += 1
                 if i < len(phases):
-                    job.checkpoint = {"phase": phases[i][0], "skip": 0}
+                    job.checkpoint = {"phase": names[i], "skip": 0}
             job.counters = dict(counters)
             cancelled = session.scalar(select(SearchJob.cancel_requested).where(SearchJob.id == job.id))
 
-            # one commit per page: rows, counters, checkpoint and any final status together
+            # one commit per page: rows, counters, cursor, checkpoint and any final status together
             if reached or (not cancelled and i == len(phases)):
                 return done()
             if cancelled:
