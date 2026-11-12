@@ -419,7 +419,7 @@ def test_rescore_updates_all(db, session_factory, tmp_path):
 
     assert rescore_all(session_factory) == 1
     db.refresh(org)
-    assert (org.fit_score, org.priority) == (85, "medium")
+    assert (org.fit_score, org.priority) == (81, "medium")
 
     cfg = load_config()
     cfg["version"] = "2"
@@ -428,7 +428,7 @@ def test_rescore_updates_all(db, session_factory, tmp_path):
     p.write_text(json.dumps(cfg))
     assert rescore_all(session_factory, str(p)) == 1
     db.refresh(org)
-    assert (org.fit_score, org.priority, org.score.config_version) == (85, "high", "2")
+    assert (org.fit_score, org.priority, org.score.config_version) == (81, "high", "2")
 
 
 def test_patch_suppressed_lead_cannot_leave_do_not_contact(client, db):
@@ -457,7 +457,7 @@ def test_rescore_passes_staff_with_title(db, session_factory):
     db.commit()
     rescore_all(session_factory)
     db.refresh(org)
-    assert org.score.components["decision_maker"]["points"] == 10
+    assert org.score.components["decision_maker"]["points"] == 6
 
 def test_reject_website_is_idempotent(client, db):
     from app.models import LeadActivity
@@ -484,7 +484,7 @@ def test_reject_website_rescores_without_website_staff(client, db):
     db.commit()
     rescore_org(db, org)
     db.commit()
-    assert org.score.components["decision_maker"]["points"] == 10
+    assert org.score.components["decision_maker"]["points"] == 6
     assert client.patch(f"/api/leads/{org.id}", json={"reject_website": True}).status_code == 200
     db.expire_all()
     assert org.score.components["decision_maker"]["points"] == 0 and org.fit_score == org.score.total

@@ -35,6 +35,20 @@ def npis_with_titled_staff(session: Session, npis: list[str]) -> set[str]:
                                .where(Organization.npi.in_(npis), *_TITLED_STAFF)))
 
 
+_HAS_EMAIL = (Contact.email.is_not(None), Contact.email != "")
+
+
+def has_email(session: Session, org_id) -> bool:
+    return session.scalars(select(Contact.id).where(Contact.organization_id == org_id, *_HAS_EMAIL).limit(1)).first() is not None
+
+
+def npis_with_email(session: Session, npis: list[str]) -> set[str]:
+    if not npis:
+        return set()
+    return set(session.scalars(select(Organization.npi).join(Contact, Contact.organization_id == Organization.id)
+                               .where(Organization.npi.in_(npis), *_HAS_EMAIL)))
+
+
 def rescore_org(session: Session, org: Organization, config: dict | None = None) -> bool:
     """Recomputes the fit score from the stored NPI record plus website staff. False when there is no source record."""
     rec = session.scalars(select(SourceRecord).where(SourceRecord.organization_id == org.id)
@@ -43,7 +57,8 @@ def rescore_org(session: Session, org: Organization, config: dict | None = None)
         return False
     session.flush()
     save_score(session, org, score(normalize(rec.raw), config or load_config(),
-                                   staff_with_title=has_titled_staff(session, org.id)))
+                                   staff_with_title=has_titled_staff(session, org.id),
+                                   email_found=has_email(session, org.id)))
     return True
 
 

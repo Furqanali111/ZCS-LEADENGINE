@@ -24,7 +24,7 @@ def priority_for(total: int, config: dict) -> str:
     return "critical" if total >= t["critical"] else "high" if total >= t["high"] else "medium" if total >= t["medium"] else "low"
 
 
-def score(lead: NormalizedLead, config: dict, *, staff_with_title: bool = False) -> ScoreResult:
+def score(lead: NormalizedLead, config: dict, *, staff_with_title: bool = False, email_found: bool = False) -> ScoreResult:
     pts, mx = config["points"], config["max"]
     code = lead.primary_taxonomy_code
     hospital = lead.organization_type == "hospital" or bool(code and code.startswith(config["hospital_prefix"]))
@@ -57,24 +57,23 @@ def score(lead: NormalizedLead, config: dict, *, staff_with_title: bool = False)
                   "hospital": "hospital or health system"}[kind]
     ind = comp("independence", pts["independence"][kind], ind_reason)
 
-    cp = pts["contactability"]
-    direct = bool(c.get("phone")) and digits(c["phone"]) != digits(lead.phone) and not solo
-    if lead.phone:
-        cpts, why = cp["phone"], "practice phone present"
-    else:
-        cpts, why = 0, "no practice phone"
-    if direct:
-        cpts, why = cpts + cp["direct_phone"], why + ", authorized official has a different direct phone"
-    contact = comp("contactability", cpts, why)
+    contact = comp("contactability", pts["contactability"]["phone"] if lead.phone else 0,
+                   "practice phone present" if lead.phone else "no practice phone")
 
     dp = pts["decision_maker"]
     named = bool(c.get("first_name") or c.get("last_name"))
+    direct = bool(c.get("phone")) and digits(c["phone"]) != digits(lead.phone)  # the office line reaches a receptionist, not the decision-maker
     if solo:
         dm = comp("decision_maker", dp["solo_provider"], "solo doctor is their own decision-maker")
     elif staff_with_title and not (named and c.get("title")):
-        dm = comp("decision_maker", dp["staff_with_title"], "named staff member with title found on practice website")
+        who, reach = "named staff member with title found on practice website", email_found
+        dm = comp("decision_maker", dp["staff_with_title"] + dp["reachable"] * reach,
+                  who + (", email found" if reach else ", no direct way to reach them yet"))
     elif named and c.get("title"):
-        dm = comp("decision_maker", dp["name_and_title"], "authorized official with name and title")
+        reach = direct or email_found
+        how = "direct phone" if direct else "email found"
+        dm = comp("decision_maker", dp["name_and_title"] + dp["reachable"] * reach,
+                  "authorized official with name and title, " + (how if reach else "only the office line to reach them"))
     elif named:
         dm = comp("decision_maker", dp["name_only"], "authorized official with name only")
     else:

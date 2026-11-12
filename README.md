@@ -140,6 +140,8 @@ Scoring weights live in `backend/scoring_config.json`. After changing them:
 cd backend; python -m app.rescore
 ```
 
+Config v4: the decision-maker factor (max 15) pays 6 for a named official with a title and 9 more only when we can reach them directly (their own phone, different from the office line, or a found email). Office line only earns no reachability points.
+
 ## Notes
 
 - Sources are opt-in: only sources marked `available` in `docs/data-sources.md` can be searched.
