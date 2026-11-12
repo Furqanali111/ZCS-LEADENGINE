@@ -177,15 +177,15 @@ Limits: Windows only; the app updates only when it starts (a long-running window
 **Build it** (on your PC, about 2 minutes; stop the dev servers first). From the repo root:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scriptsuild-test-exe.ps1
+powershell -ExecutionPolicy Bypass -File scripts\build-test-exe.ps1 -Port 8005
 ```
 
-This creates `backend\dist\zcs-leadengine.exe`: one file with the UI, the migrations and your `backend\.env` packed inside. It needs Node and the backend `.venv` already set up on your PC.
+`-Port` is the port the app will use on the teammate's PC (default 8005). It is baked into the exe; your own `backend\.env` is not changed. This creates `backend\dist\zcs-leadengine.exe`: one file with the UI, the migrations and your `backend\.env` packed inside. It needs Node and the backend `.venv` already set up on your PC.
 
 **Share it:** send that one file privately (USB, private chat). Never upload it anywhere public, because the database URL is inside it and anyone can extract it. To keep a teammate off the real data, point `backend\.env` at another database before building.
 
 **Teammate steps:**
 1. Double-click `zcs-leadengine.exe`. If Windows SmartScreen warns "unknown publisher", click More info, then Run anyway.
-2. The browser opens `http://127.0.0.1:8005`. Keep the black window open while using the app: closing it stops the app.
+2. The browser opens `http://127.0.0.1:<port>` (8005 unless you built with another `-Port`). Keep the black window open while using the app: closing it stops the app.
 
 **New version later:** pull the latest `develop`, run the build command again, and send the new file. This build does not self-update (only the zipped GitHub release build does).
