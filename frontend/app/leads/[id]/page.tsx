@@ -26,6 +26,7 @@ import { PANEL_CLASS, SELECT_CLASS } from "@/lib/ui";
 import { CRM_STATUSES, ORG_TYPES, PRIORITIES, SCORE_FACTORS } from "@/lib/constants";
 import { formatPhone, hostOf, pagePath, safeHttpUrl } from "@/lib/format";
 import { ContactStrip } from "@/components/contact-strip";
+import { WorkBar } from "@/components/work-bar";
 
 type Factor = { points: number; max: number; reason: string };
 
@@ -180,6 +181,7 @@ function LeadDetail() {
             <Badge variant="outline">{type}</Badge>
             {priority && <ToneBadge tone={priorityTone(lead.priority)}>{priority} priority</ToneBadge>}
             <ToneBadge tone={statusTone(lead.crm_status)}>{CRM_STATUSES.find((s) => s.value === lead.crm_status)?.label ?? lead.crm_status}</ToneBadge>
+            {lead.owner && <ToneBadge tone="warning">Owner: {lead.owner}</ToneBadge>}
             {lead.suppressed && <ToneBadge tone="danger">Suppressed</ToneBadge>}
           </div>
           <p className="text-sm text-muted-foreground">
@@ -241,6 +243,8 @@ function LeadDetail() {
           </span>
         </div>
       </header>
+
+      <WorkBar lead={lead} onChanged={refresh} />
 
       <ContactStrip
         person={contactName}

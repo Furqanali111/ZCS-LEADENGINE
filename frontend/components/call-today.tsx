@@ -63,7 +63,7 @@ export function CallToday() {
       )}
       {!items && !error && <p className="text-sm text-muted-foreground">Loading call list...</p>}
       {items && items.length === 0 && (
-        <p className="text-sm text-muted-foreground">Nobody to call right now. No follow-ups are due and no new lead with a phone is waiting. Run a search to find more.</p>
+        <p className="text-sm text-muted-foreground">Nobody to call right now. No follow-ups are due and no new lead with a phone is among the top 50. Run a search to find more.</p>
       )}
       {items && items.length > 0 && (
         <ul className="divide-y">

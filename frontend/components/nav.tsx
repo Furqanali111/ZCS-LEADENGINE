@@ -3,6 +3,7 @@
 import { HeartPulse, KanbanSquare, LayoutDashboard, MessageSquareText, Search, ShieldBan, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { WhoAmI } from "@/components/who-am-i";
 
 const ITEMS = [
   { href: "/", label: "Dashboard", Icon: LayoutDashboard },
@@ -44,6 +45,7 @@ export function Nav() {
             );
           })}
         </ul>
+        <WhoAmI />
       </nav>
     </header>
   );

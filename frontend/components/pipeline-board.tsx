@@ -66,6 +66,7 @@ export function PipelineBoard() {
         }),
       );
       setError(`Could not move ${card.name} to ${LABELS[to]}: ${msg(e)}`);
+      setTimeout(() => document.getElementById(`move-${card.id}`)?.focus(), 0);
       setBusy((b) => {
         const n = new Set(b);
         n.delete(card.id);
@@ -93,7 +94,7 @@ export function PipelineBoard() {
       // Server-side offset: local moves change leads.length but not what the server has served.
       const offset = serverOffset.current[col.status] ?? col.leads.length;
       const r = await getPipelineColumn(col.status, offset);
-      serverOffset.current[col.status] = offset + r.leads.length;
+      serverOffset.current[col.status] = (serverOffset.current[col.status] ?? offset) + r.leads.length; // add, so a move during the request is kept
       setCols((cs) =>
         cs && cs.map((c) => {
           if (c.status !== col.status) return c;
@@ -136,7 +137,7 @@ export function PipelineBoard() {
           {error}
         </p>
       )}
-      <div className="grid auto-cols-[minmax(15rem,1fr)] grid-flow-col items-start gap-3 overflow-x-auto pb-3">
+      <div className="grid min-h-[26rem] auto-cols-[minmax(15rem,1fr)] grid-flow-col items-start gap-3 overflow-x-auto pb-3">
         {cols.map((col) => (
           <section
             key={col.status}

@@ -78,6 +78,8 @@ def lead_query(filters: LeadFilters) -> Select:
                      (o.priority, filters.priority), (o.crm_status, filters.crm_status)):
         if val is not None:
             stmt = stmt.where(col == val)
+    if filters.owner:
+        stmt = stmt.where(o.owner.is_(None) if filters.owner == "none" else o.owner == filters.owner)
     if filters.min_score is not None:
         stmt = stmt.where(o.fit_score >= filters.min_score)
     if filters.search_job_id is not None:

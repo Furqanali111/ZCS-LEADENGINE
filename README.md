@@ -106,6 +106,23 @@ Route changes:
 | `PATCH /api/leads/{id}` | `reject_website` clears the website and its web contacts |
 | `GET/DELETE /api/search/progress` | How many new leads a search has already fetched, and reset it (Start over). `target_count` now allows up to 50,000 |
 
+## Salespeople, claiming leads (migration 0011)
+
+There are no accounts. Each salesperson types their name once at the top right of the page (kept in that browser, sent as the `X-Salesperson` header). **Claim this lead** sets the owner and moves a new lead to In progress; choosing In progress in the Sales status dropdown claims it too. A claim is atomic: if someone else already owns the lead the server answers 409 `already_claimed` with their name. Owners show in the Leads table, the Pipeline cards and the lead page, and the Leads page has an Owner filter (Mine, Unclaimed, or a name). The name says who did something, it does not prove it: anyone on your network can send any name.
+
+On a lead page, the call-result buttons (No answer, Spoke call back, Interested, Not interested) log the call, set the follow-up date and status, then open the next lead: your own due follow-ups first, else the best unclaimed new lead, claimed for you.
+
+| Route | Change |
+|---|---|
+| `POST /api/leads/{id}/claim`, `POST /api/leads/{id}/release` | Take or give back a lead |
+| `GET /api/owners` | Names that currently own a lead |
+| `GET /api/leads` | New filter `owner` (a name, or `none` for unclaimed) |
+| Activities | Each new activity stores `actor`, the salesperson name |
+
+## Enrich leads you already have
+
+`python -m app.enrich_existing --limit 10 [--state TX] [--priority critical]` takes the best-scored leads that have no website yet, links them to a new job (shown in the Searches list as "Enrich existing leads") and runs the normal enrichment pass. It spends one search query per lead.
+
 ## Tests
 
 ```powershell

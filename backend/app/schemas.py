@@ -96,6 +96,7 @@ class LeadFilters(BaseModel):
     priority: str | None = None
     min_score: int | None = Field(default=None, ge=0, le=100)
     crm_status: str | None = None
+    owner: str | None = None  # a name, or "none" for unclaimed
     search_job_id: uuid.UUID | None = None
     follow_up: Literal["due", "overdue", "none"] | None = None
     has_website: bool | None = None
@@ -200,6 +201,7 @@ class ActivityOut(BaseModel):
     outcome: str | None
     from_status: str | None
     to_status: str | None
+    actor: str | None = None
     created_at: datetime
 
 
@@ -265,6 +267,7 @@ class LeadOut(BaseModel):
     fit_score: int | None
     priority: str | None
     crm_status: str
+    owner: str | None = None
     updated_at: datetime
     last_contacted_at: datetime | None
     next_follow_up_at: date | None
@@ -304,6 +307,7 @@ class PipelineCard(BaseModel):
     organization_type: str
     fit_score: int | None
     priority: str | None
+    owner: str | None = None
     next_follow_up_at: date | None
     last_contacted_at: datetime | None
 

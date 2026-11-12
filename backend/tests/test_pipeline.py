@@ -18,7 +18,7 @@ def test_pipeline_returns_all_columns_with_counts(client, db):
     assert [c["status"] for c in cols] == list(CRM_STATUSES)
     counts = {c["status"]: c["count"] for c in cols}
     assert counts["new"] == 3 and counts["called"] == 1 and counts["converted"] == 0
-    assert all(set(c["leads"][0]) == {"id", "name", "city", "state", "organization_type", "fit_score", "priority",
+    assert all(set(c["leads"][0]) == {"id", "name", "city", "state", "organization_type", "fit_score", "priority", "owner",
                                       "next_follow_up_at", "last_contacted_at"} for c in cols if c["leads"])
 
 
