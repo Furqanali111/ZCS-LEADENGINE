@@ -36,7 +36,7 @@ export function WorkBar({ lead, onChanged }: { lead: Lead; onChanged: () => void
 
   async function run(fn: () => Promise<void>) {
     setBusy(true);
-    setMsg(null);
+    setMsg({ text: "Saving...", error: false });
     try {
       await fn();
     } catch (e) {
