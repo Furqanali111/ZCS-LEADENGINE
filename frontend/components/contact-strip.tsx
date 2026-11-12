@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState } from "react";
 import { Check, Copy, Globe, Mail, Phone, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -79,7 +80,15 @@ export function ContactStrip({ person, title, phone, fax, email, website }: Prop
             </a>
           </>
         ) : (
-          <span className="text-lg text-muted-foreground">No email found yet</span>
+          <>
+            <span className="text-lg text-muted-foreground">No email found yet</span>
+            <span className="mt-1 block text-sm text-muted-foreground">
+              Run a search with &quot;Also find websites and emails&quot; on.{" "}
+              <Link href="/search" className="underline underline-offset-4">
+                Go to search
+              </Link>
+            </span>
+          </>
         )}
       </Item>
       <Item Icon={Globe} label="Website">
@@ -94,7 +103,15 @@ export function ContactStrip({ person, title, phone, fax, email, website }: Prop
             </a>
           </>
         ) : (
-          <span className="text-lg text-muted-foreground">No website found yet</span>
+          <>
+            <span className="text-lg text-muted-foreground">No website found yet</span>
+            <span className="mt-1 block text-sm text-muted-foreground">
+              Run a search with &quot;Also find websites and emails&quot; on.{" "}
+              <Link href="/search" className="underline underline-offset-4">
+                Go to search
+              </Link>
+            </span>
+          </>
         )}
       </Item>
       <p role="status" className="sr-only">
