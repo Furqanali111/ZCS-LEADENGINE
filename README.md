@@ -71,13 +71,15 @@ The search page has an enrichment toggle. When on, after the NPI phases the job 
 
 Setup:
 
-1. Put `BRAVE_API_KEY=...` in `backend/.env`. Never commit it.
+1. Put `TAVILY_API_KEY=...` (or `BRAVE_API_KEY=...`) in `backend/.env`. Never commit it. Tavily is used when its key is set, otherwise Brave.
 2. Run `alembic upgrade head` (migration 0005 adds the website, email and enrichment columns and seeds the sources).
 3. Brave and the practice websites start as `approved_not_built`. After you confirm Brave's storage terms (see `docs/data-sources.md`), run this yourself in the Supabase SQL editor. No code runs it:
 
 ```sql
-update source_configs set status='available' where key in ('brave_search','practice_websites');
+update source_configs set status='available' where key in ('tavily_search','practice_websites');
 ```
+
+Fallback (optional): read DuckDuckGo's acceptable use policy first. If you accept it, run `update source_configs set status='available' where key='duckduckgo_search';` and the job switches to the `ddgs` library once Tavily reports its credits used up. It stays off otherwise.
 
 4. Re-run `python -m app.rescore` once after upgrading (scoring config v2 counts staff contacts as decision-makers).
 

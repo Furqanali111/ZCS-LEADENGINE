@@ -19,7 +19,8 @@ from app.services.enrich import COUNTERS as ENRICH_COUNTERS, enrich_job_leads
 from app.services.leads import has_titled_staff, npis_with_titled_staff, save_score
 from app.services.scoring import load_config, score
 from app.services.suppression import enforce
-from app.sources import brave
+from app.sources import ddg
+from app.sources.provider import search_provider, with_fallback
 from app.sources.npi_registry import MAX_SKIP, PAGE_SIZE, NormalizedLead, SourceError, fetch_page, normalize
 from app.sources.web import Page, PoliteFetcher
 
@@ -30,7 +31,6 @@ BATCH = 100  # leads per multi-row statement, keeps bind parameters far below th
 COUNTERS = ("candidates_seen", "accepted_new", "accepted_existing", "skipped_excluded", "skipped_inactive",
             "skipped_not_sole_proprietor", "skipped_works_at_known_org", "pages_fetched", "source_failures",
             *(k for k in ENRICH_COUNTERS if k != "pages_fetched"))  # web pages add into pages_fetched too, see enrich.py
-ENRICH_SOURCES = ("brave_search", "practice_websites")
 ENRICH_STATUS = {"done": "completed", "cancelled": "cancelled", "paused": "paused"}
 PHASES = (("practices", "NPI-2", "include_practices"), ("solo", "NPI-1", "include_solo"))
 ORG_FIELDS = ("name", "dba_name", "organization_type", "parent_organization_name", "primary_taxonomy_code",
@@ -265,9 +265,13 @@ def _complete(session: Session, job: SearchJob, counters: dict, session_factory,
     with ExitStack() as stack:
         deps = enrich_deps
         if deps is None:  # read the key at run time, never log it
-            brave_client, page_client = stack.enter_context(make_client()), stack.enter_context(make_client())
+            search_key, web_search, api_key = search_provider(settings)
+            if search_key == "tavily_search" and session.scalar(
+                    select(SourceConfig.status).where(SourceConfig.key == "duckduckgo_search")) == "available":
+                web_search = with_fallback(web_search, ddg.search)  # owner opted in: used only once Tavily credits run out
+            search_client, page_client = stack.enter_context(make_client()), stack.enter_context(make_client())
             fetcher = PoliteFetcher(page_client, min_interval=settings.enrich_page_delay_seconds)
-            deps = EnrichDeps(lambda q: brave.search(brave_client, settings.brave_api_key, q), fetcher.get, fetcher.stats)
+            deps = EnrichDeps(lambda q: web_search(search_client, api_key, q), fetcher.get, fetcher.stats)
         status = enrich_job_leads(session_factory, job.id, search=deps.search, fetch=deps.fetch,
                                   fetch_stats=deps.fetch_stats, sleep=sleep)
     session.refresh(job)  # enrichment wrote counters and any pause message from its own sessions
@@ -284,11 +288,12 @@ def run_job(session_factory, job_id: UUID, *, fetch=fetch_page, sleep=time.sleep
         if source != "available":
             return _finish(session, job, "failed", "Source npi_registry is not available")
         if job.enrich:
-            off = [k for k in ENRICH_SOURCES if session.scalar(select(SourceConfig.status).where(SourceConfig.key == k)) != "available"]
+            search_key, _, api_key = search_provider(settings)
+            off = [k for k in (search_key, "practice_websites") if session.scalar(select(SourceConfig.status).where(SourceConfig.key == k)) != "available"]
             if off:
                 return _finish(session, job, "failed", f"Source {', '.join(off)} is not available")
-            if enrich_deps is None and not settings.brave_api_key:
-                return _finish(session, job, "failed", "BRAVE_API_KEY is not set")
+            if enrich_deps is None and not api_key:
+                return _finish(session, job, "failed", "TAVILY_API_KEY or BRAVE_API_KEY is not set")
         if job.cancel_requested:
             return _finish(session, job, "cancelled")
         job.status, job.error, job.finished_at = "running", None, None

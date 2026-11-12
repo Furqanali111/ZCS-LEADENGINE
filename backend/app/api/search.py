@@ -10,6 +10,7 @@ from app.db import get_session
 from app.errors import AppError
 from app.models import SearchJob, SourceConfig
 from app.schemas import JobOut, SearchCreate
+from app.sources.provider import search_provider
 
 router = APIRouter(prefix="/api/search")
 
@@ -33,11 +34,12 @@ def _save(session: Session, job: SearchJob) -> SearchJob:
 @router.post("", response_model=JobOut, status_code=201)
 def create_search(body: SearchCreate, session: Session = Depends(get_session)):
     available = set(session.scalars(select(SourceConfig.key).where(SourceConfig.status == "available")))
-    bad = [k for k in [*body.sources, *(("brave_search", "practice_websites") if body.enrich else ())] if k not in available]
+    search_key, _, api_key = search_provider(get_settings())
+    bad = [k for k in [*body.sources, *((search_key, "practice_websites") if body.enrich else ())] if k not in available]
     if bad:
         raise AppError(422, "source_not_available", f"Source not available: {', '.join(bad)}")
-    if body.enrich and not get_settings().brave_api_key:
-        raise AppError(422, "missing_api_key", "BRAVE_API_KEY is not set in the backend .env")
+    if body.enrich and not api_key:
+        raise AppError(422, "missing_api_key", "TAVILY_API_KEY or BRAVE_API_KEY is not set in the backend .env")
     job = SearchJob(**body.model_dump())
     session.add(job)
     return _save(session, job)
