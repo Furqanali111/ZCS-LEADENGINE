@@ -30,18 +30,19 @@ export const SPECIALTIES = [
   "Obstetrics & Gynecology",
 ];
 
-export const CRM_STATUSES: { value: string; label: string }[] = [
-  { value: "new", label: "New" },
-  { value: "in_progress", label: "In progress" },
-  { value: "researching", label: "Researching" },
-  { value: "email_sent", label: "Email sent" },
-  { value: "called", label: "Called" },
-  { value: "follow_up_required", label: "Follow-up required" },
-  { value: "interested", label: "Interested" },
-  { value: "meeting_scheduled", label: "Meeting scheduled" },
-  { value: "not_interested", label: "Not interested" },
-  { value: "converted", label: "Converted" },
-  { value: "do_not_contact", label: "Do not contact" },
+// Stored values belong to the backend; labels and hints are display only.
+export const CRM_STATUSES: { value: string; label: string; hint: string }[] = [
+  { value: "new", label: "New", hint: "Found by a search, nobody has touched it yet" },
+  { value: "in_progress", label: "Being worked", hint: "Claimed by a salesperson, being worked" },
+  { value: "researching", label: "Researching", hint: "Looking up the practice before the first contact" },
+  { value: "email_sent", label: "Email sent", hint: "First email sent, waiting for a reply" },
+  { value: "called", label: "Called", hint: "Called at least once, no decision yet" },
+  { value: "follow_up_required", label: "Follow-up due", hint: "Contacted, a next step is due" },
+  { value: "interested", label: "Interested", hint: "The practice wants to hear more" },
+  { value: "meeting_scheduled", label: "Meeting booked", hint: "A call or meeting is on the calendar" },
+  { value: "not_interested", label: "Not interested", hint: "The practice said no, closed" },
+  { value: "converted", label: "Converted", hint: "The practice became a client, closed" },
+  { value: "do_not_contact", label: "Do not contact", hint: "Opted out, never contact again, closed" },
 ];
 
 export const ACTIVITY_TYPES: { value: string; label: string }[] = [

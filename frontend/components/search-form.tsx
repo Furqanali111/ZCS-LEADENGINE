@@ -250,7 +250,7 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
               {progress.exhausted
                 ? `All leads for this search are fetched (${progress.leads_fetched} saved). `
                 : `${progress.leads_fetched} already fetched for this search; the next search continues after them. `}
-              <button type="button" onClick={startOver} className="underline underline-offset-2">
+              <button type="button" onClick={startOver} className="-my-1 rounded py-1 underline underline-offset-2 focus-visible:ring-3 focus-visible:ring-ring/50">
                 Start over
               </button>
             </p>

@@ -200,16 +200,20 @@ function LeadDetail() {
               <Label htmlFor="lead-status">Sales status</Label>
               <select
                 id="lead-status"
+                aria-describedby="lead-status-hint"
                 className={SELECT_CLASS}
                 value={lead.crm_status}
                 onChange={(e) => save({ crm_status: e.target.value }, "Status saved.")}
               >
                 {CRM_STATUSES.map((s) => (
-                  <option key={s.value} value={s.value}>
+                  <option key={s.value} value={s.value} title={s.hint}>
                     {s.label}
                   </option>
                 ))}
               </select>
+              <p id="lead-status-hint" className="max-w-56 text-xs text-muted-foreground">
+                {CRM_STATUSES.find((s) => s.value === lead.crm_status)?.hint}
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="lead-follow">Next follow-up</Label>

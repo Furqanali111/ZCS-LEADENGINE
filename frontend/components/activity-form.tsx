@@ -49,7 +49,7 @@ export function ActivityForm({
   useImperativeHandle(handle, () => ({
     logCall() {
       setType("call");
-      card.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      card.current?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
       summaryEl.current?.focus({ preventScroll: true });
     },
   }));

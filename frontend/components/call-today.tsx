@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Check, Copy, PhoneCall } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,12 +10,12 @@ import { getCallList, type CallItem } from "@/lib/call-list";
 import { PRIORITIES } from "@/lib/constants";
 import { formatPhone } from "@/lib/format";
 import { PANEL_CLASS } from "@/lib/ui";
+import { useCopy } from "@/lib/use-copy";
 
 export function CallToday() {
   const [items, setItems] = useState<CallItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState<string | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const { copied, failed, copy } = useCopy();
 
   useEffect(() => {
     let live = true;
@@ -24,26 +24,8 @@ export function CallToday() {
       .catch((e) => live && setError(e instanceof ApiError ? e.message : "Could not load the call list."));
     return () => {
       live = false;
-      clearTimeout(timer.current);
     };
   }, []);
-
-  async function copy(id: string, text: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      // shortcut: older browsers without the clipboard API, fall back to a hidden textarea
-      const t = document.createElement("textarea");
-      t.value = text;
-      document.body.appendChild(t);
-      t.select();
-      document.execCommand("copy");
-      t.remove();
-    }
-    setCopied(id);
-    clearTimeout(timer.current);
-    timer.current = setTimeout(() => setCopied(null), 2000);
-  }
 
   return (
     <section aria-labelledby="call-today" className={`${PANEL_CLASS} space-y-3`} aria-busy={!items && !error}>
@@ -86,7 +68,7 @@ export function CallToday() {
                     <span className="text-xl font-semibold tabular-nums select-all">{phone}</span>
                     <Button type="button" variant="outline" size="sm" aria-label={`Copy phone for ${lead.name}`} onClick={() => copy(lead.id, phone)}>
                       {copied === lead.id ? <Check aria-hidden className="text-emerald-700" /> : <Copy aria-hidden />}
-                      {copied === lead.id ? "Copied" : "Copy"}
+                      {copied === lead.id ? "Copied" : failed === lead.id ? "Copy failed, select the text" : "Copy"}
                     </Button>
                   </div>
                 ) : (
@@ -102,7 +84,7 @@ export function CallToday() {
         </ul>
       )}
       <p role="status" className="sr-only">
-        {copied ? "Phone number copied" : ""}
+        {copied ? "Phone number copied" : failed ? "Copy failed, select the text" : ""}
       </p>
     </section>
   );

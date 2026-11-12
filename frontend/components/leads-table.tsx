@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Globe, Mail } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Columns3, Globe, Mail } from "lucide-react";
 import Link from "next/link";
 import { Fragment, useState } from "react";
 import { LeadRowDetail } from "@/components/lead-row-detail";
@@ -13,7 +13,8 @@ import { ApiError, patchLeadStatus, type Lead, type LeadPage } from "@/lib/api";
 import { CLOSED_STATUSES, CRM_STATUSES, PRIORITIES } from "@/lib/constants";
 import { SELECT_CLASS } from "@/lib/ui";
 import { isOverdue } from "@/lib/dates";
-import { formatPhone, hostOf, safeHttpUrl } from "@/lib/format";
+import { OPTIONAL_COLUMNS, setColumnHidden, useHiddenColumns } from "@/lib/columns";
+import { formatDay, formatPhone, hostOf, safeHttpUrl } from "@/lib/format";
 
 // The select itself is the colored status pill; same tone tokens as ToneBadge.
 const PILL =
@@ -34,11 +35,6 @@ const NONE = (
 );
 
 const closed = new Set(CLOSED_STATUSES.map((s) => s.value));
-// Date-only strings parse as UTC, so format the parts directly.
-const formatDay = (d: string) => {
-  const [y, m, day] = d.split("-");
-  return `${m}/${day}/${y}`;
-};
 
 export const PAGE_SIZES = [25, 50, 100, 200];
 
@@ -94,6 +90,9 @@ export function LeadsTable({
   onMessage: (text: string, error: boolean) => void;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const hidden = useHiddenColumns();
+  const show = (k: string) => !hidden.has(k);
+  const colCount = 4 + OPTIONAL_COLUMNS.filter((c) => show(c.key)).length; // checkbox, organization, score, status
   // Saved or in-flight status values, keyed by lead id; removed on failure so the row reverts to the server value.
   const [statusOverride, setStatusOverride] = useState<Record<string, string>>({});
   // One request per row at a time, so the shown value never has two writers.
@@ -162,6 +161,21 @@ export function LeadsTable({
 
   return (
     <div className="space-y-3">
+      <details className="relative ml-auto w-fit text-sm">
+        <summary className="inline-flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-lg border bg-background px-3 font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+          <Columns3 aria-hidden className="size-4" />
+          Columns
+        </summary>
+        <fieldset className="absolute right-0 z-20 mt-1 w-48 rounded-lg border bg-popover p-2 text-popover-foreground shadow-md">
+          <legend className="sr-only">Visible columns</legend>
+          {OPTIONAL_COLUMNS.map((c) => (
+            <label key={c.key} className="flex min-h-8 cursor-pointer items-center gap-2 rounded px-1.5 hover:bg-muted">
+              <input type="checkbox" className="size-4" checked={show(c.key)} onChange={(e) => setColumnHidden(c.key, !e.target.checked, hidden)} />
+              {c.label}
+            </label>
+          ))}
+        </fieldset>
+      </details>
       <div className="overflow-hidden rounded-xl border bg-card shadow-xs">
         <Table containerClassName="max-h-[calc(100vh-18rem)] min-h-64" className="min-w-[72rem] text-[13px]">
           <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted [&_th]:shadow-[inset_0_-1px_0_var(--border)]">
@@ -175,17 +189,17 @@ export function LeadsTable({
                 />
               </TableHead>
               <SortHead col="name" label="Organization" sort={sort} order={order} onSort={onSort} />
-              <TableHead className="min-w-36">Specialty</TableHead>
-              <TableHead>City, state</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead className="min-w-44">Primary contact</TableHead>
-              <SortHead col="website" label="Website" sort={sort} order={order} onSort={onSort} />
-              <SortHead col="email" label="Email" sort={sort} order={order} onSort={onSort} />
+              {show("specialty") && <TableHead className="min-w-36">Specialty</TableHead>}
+              {show("location") && <TableHead>City, state</TableHead>}
+              {show("phone") && <TableHead>Phone</TableHead>}
+              {show("contact") && <TableHead className="min-w-44">Primary contact</TableHead>}
+              {show("website") && <SortHead col="website" label="Website" sort={sort} order={order} onSort={onSort} />}
+              {show("email") && <SortHead col="email" label="Email" sort={sort} order={order} onSort={onSort} />}
               <SortHead col="score" label="Score" sort={sort} order={order} onSort={onSort} />
-              <TableHead>Priority</TableHead>
+              {show("priority") && <TableHead>Priority</TableHead>}
               <TableHead>Sales status</TableHead>
-              <TableHead>Owner</TableHead>
-              <SortHead col="follow_up" label="Follow-up" sort={sort} order={order} onSort={onSort} />
+              {show("owner") && <TableHead>Owner</TableHead>}
+              {show("follow_up") && <SortHead col="follow_up" label="Follow-up" sort={sort} order={order} onSort={onSort} />}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -218,7 +232,7 @@ export function LeadsTable({
                           aria-controls={detailId}
                           aria-label={`${open ? "Hide" : "Show"} details for ${l.name}`}
                           onClick={() => setExpanded(open ? null : l.id)}
-                          className="mt-0.5 shrink-0 rounded text-muted-foreground hover:text-foreground"
+                          className="-ml-1 shrink-0 rounded p-1 text-muted-foreground hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
                         >
                           {open ? <ChevronDown aria-hidden className="size-4" /> : <ChevronRight aria-hidden className="size-4" />}
                         </button>
@@ -233,46 +247,60 @@ export function LeadsTable({
                         {l.suppressed && <ToneBadge tone="danger" className="ml-1 shrink-0">Suppressed</ToneBadge>}
                       </div>
                     </TableCell>
-                    <TableCell className="min-w-36 whitespace-normal" title={l.primary_taxonomy_desc ?? undefined}>
-                      {l.primary_taxonomy_desc ?? NONE}
-                    </TableCell>
-                    <TableCell className="w-28 whitespace-normal">{[l.city, l.state].filter(Boolean).join(", ") || NONE}</TableCell>
-                    <TableCell className="whitespace-nowrap font-semibold tabular-nums text-foreground">{l.phone ? formatPhone(l.phone) : NONE}</TableCell>
-                    <TableCell className="min-w-44 whitespace-normal" title={contactText || undefined}>
-                      {contactName ? (
-                        <>
-                          {contactName}
-                          {l.contact?.title && <span className="text-muted-foreground">, {l.contact.title}</span>}
-                        </>
-                      ) : (
-                        NONE
-                      )}
-                    </TableCell>
-                    <TableCell className="max-w-28">
-                      {site ? (
-                        <a href={site} target="_blank" rel="noopener noreferrer" title={l.website ?? undefined} className={`flex items-center gap-1.5 ${LINK}`}>
-                          <Globe aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
-                          <span className="truncate">{hostOf(l.website!)}</span>
-                          <span className="sr-only"> (opens in a new tab)</span>
-                        </a>
-                      ) : (
-                        NONE
-                      )}
-                    </TableCell>
-                    <TableCell className="max-w-36">
-                      {l.primary_email ? (
-                        <span className="flex items-center gap-1.5" title={l.primary_email}>
-                          <Mail aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
-                          <span className="truncate">{l.primary_email}</span>
-                        </span>
-                      ) : (
-                        NONE
-                      )}
-                    </TableCell>
+                    {show("specialty") && (
+                      <TableCell className="min-w-36 whitespace-normal" title={l.primary_taxonomy_desc ?? undefined}>
+                        {l.primary_taxonomy_desc ?? NONE}
+                      </TableCell>
+                    )}
+                    {show("location") && (
+                      <TableCell className="w-28 whitespace-normal">{[l.city, l.state].filter(Boolean).join(", ") || NONE}</TableCell>
+                    )}
+                    {show("phone") && (
+                      <TableCell className="whitespace-nowrap font-semibold tabular-nums text-foreground">{l.phone ? formatPhone(l.phone) : NONE}</TableCell>
+                    )}
+                    {show("contact") && (
+                      <TableCell className="min-w-44 whitespace-normal" title={contactText || undefined}>
+                        {contactName ? (
+                          <>
+                            {contactName}
+                            {l.contact?.title && <span className="text-muted-foreground">, {l.contact.title}</span>}
+                          </>
+                        ) : (
+                          NONE
+                        )}
+                      </TableCell>
+                    )}
+                    {show("website") && (
+                      <TableCell className="max-w-28">
+                        {site ? (
+                          <a href={site} target="_blank" rel="noopener noreferrer" title={l.website ?? undefined} className={`flex items-center gap-1.5 ${LINK}`}>
+                            <Globe aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+                            <span className="truncate">{hostOf(l.website!)}</span>
+                            <span className="sr-only"> (opens in a new tab)</span>
+                          </a>
+                        ) : (
+                          NONE
+                        )}
+                      </TableCell>
+                    )}
+                    {show("email") && (
+                      <TableCell className="max-w-36">
+                        {l.primary_email ? (
+                          <span className="flex items-center gap-1.5" title={l.primary_email}>
+                            <Mail aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+                            <span className="truncate">{l.primary_email}</span>
+                          </span>
+                        ) : (
+                          NONE
+                        )}
+                      </TableCell>
+                    )}
                     <TableCell>
                       <Score value={l.fit_score} />
                     </TableCell>
-                    <TableCell>{priority ? <ToneBadge tone={priorityTone(l.priority)}>{priority}</ToneBadge> : NONE}</TableCell>
+                    {show("priority") && (
+                      <TableCell>{priority ? <ToneBadge tone={priorityTone(l.priority)}>{priority}</ToneBadge> : NONE}</TableCell>
+                    )}
                     <TableCell>
                       <select
                         aria-label={`Sales status for ${l.name}`}
@@ -282,27 +310,31 @@ export function LeadsTable({
                         onChange={(e) => changeStatus(l, e.target.value)}
                       >
                         {CRM_STATUSES.map((s) => (
-                          <option key={s.value} value={s.value} className="bg-popover text-popover-foreground">
+                          <option key={s.value} value={s.value} title={s.hint} className="bg-popover text-popover-foreground">
                             {s.label}
                           </option>
                         ))}
                       </select>
                     </TableCell>
-                    <TableCell>{l.owner ? <ToneBadge tone="warning">{l.owner}</ToneBadge> : NONE}</TableCell>
-                    <TableCell>
-                      {l.next_follow_up_at ? (
-                        <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                          {formatDay(l.next_follow_up_at)}
-                          {isOverdue(l.next_follow_up_at) && !closed.has(status) && <ToneBadge tone="danger">Overdue</ToneBadge>}
-                        </span>
-                      ) : (
-                        NONE
-                      )}
-                    </TableCell>
-                  </TableRow>
+                    {show("owner") && (
+                      <TableCell>{l.owner ? <ToneBadge tone="warning">{l.owner}</ToneBadge> : NONE}</TableCell>
+                    )}
+                    {show("follow_up") && (
+                      <TableCell>
+                        {l.next_follow_up_at ? (
+                          <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                            {formatDay(l.next_follow_up_at)}
+                            {isOverdue(l.next_follow_up_at) && !closed.has(status) && <ToneBadge tone="danger">Overdue</ToneBadge>}
+                          </span>
+                        ) : (
+                          NONE
+                        )}
+                      </TableCell>
+                    )}
+                    </TableRow>
                   {open && (
                     <TableRow id={detailId} className="bg-muted/40 hover:bg-muted/40">
-                      <TableCell colSpan={13} className="whitespace-normal p-0">
+                      <TableCell colSpan={colCount} className="whitespace-normal p-0">
                         <LeadRowDetail lead={l} />
                         <p className="px-4 pb-3 text-xs text-muted-foreground">Updated {new Date(l.updated_at).toLocaleDateString()}</p>
                       </TableCell>

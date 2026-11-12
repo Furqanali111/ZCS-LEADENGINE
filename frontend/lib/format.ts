@@ -29,3 +29,9 @@ export const hostOf = (u: string) => {
     return u;
   }
 };
+
+// Date-only strings parse as UTC, so format the parts directly.
+export const formatDay = (d: string) => {
+  const [y, m, day] = d.split("-");
+  return `${m}/${day}/${y}`;
+};

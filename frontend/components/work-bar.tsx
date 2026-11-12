@@ -36,7 +36,7 @@ export function WorkBar({ lead, onChanged }: { lead: Lead; onChanged: () => void
 
   async function run(fn: () => Promise<void>) {
     setBusy(true);
-    setMsg(null);
+    setMsg({ text: "Saving...", error: false });
     try {
       await fn();
     } catch (e) {
@@ -65,13 +65,13 @@ export function WorkBar({ lead, onChanged }: { lead: Lead; onChanged: () => void
       });
       const status = "status" in q ? q.status : ["new", "in_progress", "researching"].includes(lead.crm_status) ? "called" : null;
       if (status) await patchLead(lead.id, { crm_status: status });
-      setMsg({ text: `Saved: ${q.label}.`, error: false });
+      setMsg({ text: `Saved: ${q.label}. Opening the next lead...`, error: false });
       await onChanged();
       await goNext();
     });
 
   return (
-    <section aria-label="Work this lead" className={`${PANEL_CLASS} flex flex-wrap items-center gap-x-6 gap-y-3 p-4`}>
+    <section aria-label="Work this lead" aria-busy={busy} className={`${PANEL_CLASS} flex flex-wrap items-center gap-x-6 gap-y-3 p-4`}>
       {!me ? (
         <p className="text-sm text-muted-foreground">Enter your name at the top right to claim leads and log results.</p>
       ) : theirs ? (
@@ -129,7 +129,7 @@ export function WorkBar({ lead, onChanged }: { lead: Lead; onChanged: () => void
           </Button>
         </div>
       )}
-      <p role="status" className={`basis-full text-sm empty:hidden ${msg?.error ? "text-destructive" : "text-muted-foreground"}`}>
+      <p role={msg?.error ? "alert" : "status"} className={`basis-full text-sm empty:hidden ${msg?.error ? "text-destructive" : "text-muted-foreground"}`}>
         {msg?.text}
       </p>
     </section>
