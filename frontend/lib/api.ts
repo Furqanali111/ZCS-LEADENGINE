@@ -238,6 +238,20 @@ export const patchLeadStatus = (id: string, crm_status: string) => patchLead(id,
 
 export const getLead = (id: string) => json<Lead>(`/api/leads/${id}`);
 
+// related leads
+export type RelatedLead = {
+  id: string;
+  name: string;
+  city: string | null;
+  state: string | null;
+  crm_status: string;
+  owner: string | null;
+  fit_score: number | null;
+  priority: string | null;
+  reasons: string[];
+};
+export const getRelatedLeads = (id: string) => json<RelatedLead[]>(`/api/leads/${id}/related`);
+
 export type Activity = {
   id: string;
   type: string;

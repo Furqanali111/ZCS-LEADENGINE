@@ -270,6 +270,18 @@ class SourceInfoOut(BaseModel):
     collected_at: datetime
 
 
+class RelatedOut(BaseModel):
+    id: uuid.UUID
+    name: str
+    city: str | None
+    state: str | None
+    crm_status: str
+    owner: str | None
+    fit_score: int | None
+    priority: str | None
+    reasons: list[str]
+
+
 class LeadOut(BaseModel):
     id: uuid.UUID
     npi: str

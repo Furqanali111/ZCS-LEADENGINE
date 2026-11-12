@@ -27,6 +27,7 @@ import { CRM_STATUSES, ORG_TYPES, PRIORITIES, SCORE_FACTORS } from "@/lib/consta
 import { formatPhone, hostOf, pagePath, safeHttpUrl } from "@/lib/format";
 import { ContactStrip } from "@/components/contact-strip";
 import { WorkBar } from "@/components/work-bar";
+import { RelatedLeads } from "@/components/related-leads";
 
 type Factor = { points: number; max: number; reason: string };
 
@@ -310,6 +311,7 @@ function LeadDetail() {
             )}
           </section>
           <LeadTemplates lead={lead} />
+          <RelatedLeads leadId={id} />
           <section aria-labelledby="web-h" className={PANEL_CLASS}>
             <h2 id="web-h" ref={webHeading} tabIndex={-1} className="mb-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
               Website and emails

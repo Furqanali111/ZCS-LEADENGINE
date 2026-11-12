@@ -11,8 +11,9 @@ from app.constants import CLOSED_STATUSES
 from app.db import get_session
 from app.errors import AppError
 from app.models import Contact, LeadActivity, Organization, SourceRecord
-from app.schemas import ActivityIn, ActivityOut, ActivityPage, LeadFilters, LeadOut, LeadPage, LeadPatch
+from app.schemas import ActivityIn, ActivityOut, ActivityPage, LeadFilters, LeadOut, LeadPage, LeadPatch, RelatedOut
 from app.services.activities import add_activity, change_status
+from app.services.related import related_leads
 from app.services.leads import lead_query, primary_email, rescore_org, sorted_contacts
 from app.services.suppression import suppressed_ids
 
@@ -101,6 +102,11 @@ def _load(session: Session, lead_id: str, options=()) -> Organization:
 def get_lead(lead_id: str, session: Session = Depends(get_session)):
     org = _load(session, lead_id, LOADS)
     return _out(org, bool(suppressed_ids(session, [org.id])))
+
+
+@router.get("/{lead_id}/related", response_model=list[RelatedOut])
+def get_related(lead_id: str, session: Session = Depends(get_session)):
+    return related_leads(session, _load(session, lead_id))
 
 
 @router.patch("/{lead_id}", response_model=LeadOut)
