@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { ActivityForm } from "@/components/activity-form";
 import { ActivityTimeline } from "@/components/activity-timeline";
+import { LeadTemplates } from "@/components/lead-templates";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -272,6 +273,7 @@ function LeadDetail() {
             <p className="tabular-nums">Phone {formatPhone(lead.contact?.phone ?? lead.phone)}</p>
             <p className="tabular-nums">Fax {formatPhone(lead.fax)}</p>
           </section>
+          <LeadTemplates lead={lead} />
           <section aria-labelledby="web-h">
             <h2 id="web-h" ref={webHeading} tabIndex={-1} className="mb-2 font-semibold outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
               Website and emails

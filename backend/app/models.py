@@ -8,7 +8,7 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.constants import (
-    ACTIVITY_TYPES, CRM_STATUSES, ENRICHMENT_STATUSES, JOB_STATUSES, ORG_TYPES, OUTCOMES, PRIORITIES, SUPPRESSION_KINDS, US_STATES,
+    ACTIVITY_TYPES, CRM_STATUSES, ENRICHMENT_STATUSES, JOB_STATUSES, ORG_TYPES, OUTCOMES, PRIORITIES, SUPPRESSION_KINDS, TEMPLATE_KINDS, US_STATES,
 )
 from app.db import Base
 
@@ -70,6 +70,9 @@ class SearchJob(IdMixin, Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+PHONE_DIGITS = r"regexp_replace(regexp_replace({0}, '\D', '', 'g'), '^1(?=\d{{10}}$)', '')"  # = suppression._digits
+
+
 class Organization(IdMixin, Base):
     __tablename__ = "organizations"
     __table_args__ = (
@@ -84,6 +87,9 @@ class Organization(IdMixin, Base):
         Index("ix_organizations_fit_score", "fit_score"),
         Index("ix_organizations_crm_status", "crm_status"),
         Index("ix_organizations_next_follow_up_at", "next_follow_up_at"),
+        # same expression as services.suppression._digits, so the planner can match it
+        Index("ix_organizations_phone_digits", text(PHONE_DIGITS.format("phone"))),
+        Index("ix_organizations_fax_digits", text(PHONE_DIGITS.format("fax"))),
     )
 
     # The unique constraint on npi already creates the npi index the spec lists.
@@ -145,6 +151,7 @@ class Contact(IdMixin, Base):
         UniqueConstraint("organization_id", "role", "first_name", "last_name", name="uq_contacts_org_role_name"),
         CheckConstraint(in_list("role", CONTACT_ROLES), name="ck_contacts_role"),
         CheckConstraint(f"email_status IS NULL OR {in_list('email_status', EMAIL_STATUSES)}", name="ck_contacts_email_status"),
+        Index("ix_contacts_email_lower", text("lower(email)")),
     )
 
     organization_id: Mapped[uuid.UUID] = org_fk(index=True)
@@ -247,3 +254,15 @@ class SuppressionEntry(Base):
     value: Mapped[str] = mapped_column(Text)
     reason: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class OutreachTemplate(IdMixin, Base):
+    """Text the user copies by hand. The tool never sends anything."""
+
+    __tablename__ = "outreach_templates"
+    __table_args__ = (CheckConstraint(in_list("kind", TEMPLATE_KINDS), name="ck_outreach_templates_kind"),)
+
+    name: Mapped[str] = mapped_column(Text, unique=True)
+    kind: Mapped[str] = mapped_column(Text)
+    subject: Mapped[str | None] = mapped_column(Text)
+    body: Mapped[str] = mapped_column(Text)

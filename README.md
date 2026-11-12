@@ -52,6 +52,7 @@ Open http://localhost:3000.
 | Lead detail | `/leads/[id]` | Status, follow-up, activity log, score, contacts |
 | Pipeline | `/pipeline` | Kanban board by status |
 | Suppression | `/suppression` | Do-not-contact list |
+| Templates | `/templates` | Saved email and call templates, copied by hand from lead detail. Nothing is sent |
 
 New API routes (slice 2):
 
@@ -62,6 +63,7 @@ New API routes (slice 2):
 | `GET /api/pipeline`, `GET /api/pipeline/{status}` | Board columns and paged cards |
 | `GET /api/dashboard/stats` | Dashboard figures for a date range |
 | `GET/POST /api/suppression`, `DELETE /api/suppression/{id}` | Suppression list |
+| `GET/POST /api/templates`, `PATCH/DELETE /api/templates/{id}` | Outreach templates (copy-only, migration 0007) |
 
 Suppression email entries block collected emails (slice 3).
 

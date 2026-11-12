@@ -42,7 +42,8 @@ def test_up_down_up_and_no_model_drift(migrated_url):
     alembic(migrated_url, "upgrade", "head")
     engine = create_engine(migrated_url)
     with engine.connect() as conn:
-        assert compare_metadata(MigrationContext.configure(conn), Base.metadata) == []
+        drift = compare_metadata(MigrationContext.configure(conn), Base.metadata)
+        assert drift == []
         rows = dict(conn.execute(text("select key, status from source_configs")).all())
         npi = conn.execute(text("select rate_limit_per_sec, policy_reviewed_on::text from source_configs where key='npi_registry'")).one()
     engine.dispose()
@@ -63,7 +64,7 @@ def test_rls_enabled_on_every_table_and_removed_on_downgrade(migrated_url):
     alembic(migrated_url, "upgrade", "head")
     with engine.connect() as conn:
         rls = dict(conn.execute(RLS_SQL).all())
-    assert len(rls) == 11 and all(rls.values()), rls
+    assert len(rls) == 12 and all(rls.values()), rls
     alembic(migrated_url, "downgrade", "0002")
     with engine.connect() as conn:
         rls = dict(conn.execute(RLS_SQL).all())
@@ -150,4 +151,30 @@ def test_0006_seeds_tavily_source(migrated_url):
     alembic(migrated_url, "downgrade", "0005")
     with engine.connect() as conn:
         assert conn.execute(q).scalar() is None and conn.execute(ddg_q).scalar() is None
+    engine.dispose()
+
+
+def test_0007_indexes_exist_and_are_dropped_on_downgrade(migrated_url):
+    names = ("ix_contacts_email_lower", "ix_organizations_phone_digits", "ix_organizations_fax_digits")
+    q = text("select indexname from pg_indexes where schemaname = 'public' and indexname = any(:n)")
+    engine = create_engine(migrated_url)
+    alembic(migrated_url, "upgrade", "head")
+    with engine.connect() as conn:
+        assert {r[0] for r in conn.execute(q, {"n": list(names)})} == set(names)
+    alembic(migrated_url, "downgrade", "0006")
+    with engine.connect() as conn:
+        assert conn.execute(q, {"n": list(names)}).all() == []
+    engine.dispose()
+
+
+def test_0008_outreach_templates_table(migrated_url):
+    q = text("select c.relrowsecurity from pg_class c join pg_namespace n on n.oid = c.relnamespace "
+             "where n.nspname = 'public' and c.relname = 'outreach_templates'")
+    engine = create_engine(migrated_url)
+    alembic(migrated_url, "upgrade", "head")
+    with engine.connect() as conn:
+        assert conn.execute(q).scalar() is True
+    alembic(migrated_url, "downgrade", "0007")
+    with engine.connect() as conn:
+        assert conn.execute(q).first() is None
     engine.dispose()
