@@ -2,7 +2,7 @@
 
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Columns3, Globe, Mail } from "lucide-react";
 import Link from "next/link";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { LeadRowDetail } from "@/components/lead-row-detail";
 import { priorityTone, statusTone, ToneBadge } from "@/components/tone-badge";
 import { Badge } from "@/components/ui/badge";
@@ -90,6 +90,16 @@ export function LeadsTable({
   onMessage: (text: string, error: boolean) => void;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const colsMenu = useRef<HTMLDetailsElement>(null);
+  // Native <details> has no dismiss: close on an outside click (Escape and focus-out are handled on the element).
+  useEffect(() => {
+    const away = (e: MouseEvent) => {
+      const d = colsMenu.current;
+      if (d?.open && !d.contains(e.target as Node)) d.open = false;
+    };
+    document.addEventListener("mousedown", away);
+    return () => document.removeEventListener("mousedown", away);
+  }, []);
   const hidden = useHiddenColumns();
   const show = (k: string) => !hidden.has(k);
   const colCount = 4 + OPTIONAL_COLUMNS.filter((c) => show(c.key)).length; // checkbox, organization, score, status
@@ -161,7 +171,18 @@ export function LeadsTable({
 
   return (
     <div className="space-y-3">
-      <details className="relative ml-auto w-fit text-sm">
+      <details
+        ref={colsMenu}
+        className="relative ml-auto w-fit text-sm"
+        onKeyDown={(e) => {
+          if (e.key !== "Escape" || !e.currentTarget.open) return;
+          e.currentTarget.open = false;
+          e.currentTarget.querySelector("summary")?.focus();
+        }}
+        onBlur={(e) => {
+          if (e.currentTarget.open && !e.currentTarget.contains(e.relatedTarget as Node | null)) e.currentTarget.open = false;
+        }}
+      >
         <summary className="inline-flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-lg border bg-background px-3 font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
           <Columns3 aria-hidden className="size-4" />
           Columns

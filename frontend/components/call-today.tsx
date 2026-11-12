@@ -68,8 +68,9 @@ export function CallToday() {
                     <span className="text-xl font-semibold tabular-nums select-all">{phone}</span>
                     <Button type="button" variant="outline" size="sm" aria-label={`Copy phone for ${lead.name}`} onClick={() => copy(lead.id, phone)}>
                       {copied === lead.id ? <Check aria-hidden className="text-emerald-700" /> : <Copy aria-hidden />}
-                      {copied === lead.id ? "Copied" : failed === lead.id ? "Copy failed, select the text" : "Copy"}
+                      {copied === lead.id ? "Copied" : "Copy"}
                     </Button>
+                    {failed === lead.id && <span aria-hidden className="text-xs text-destructive">Copy failed</span>}
                   </div>
                 ) : (
                   <span className="text-sm text-muted-foreground">No phone</span>
