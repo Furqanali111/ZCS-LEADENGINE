@@ -36,16 +36,29 @@ def blocked_host(host: str) -> bool:
     return d in BLOCKED_DOMAINS or d.endswith(".gov")
 
 
+CGNAT = ipaddress.ip_network("100.64.0.0/10")
+
+
+def _is_dotted_quad(h: str) -> bool:
+    try:
+        return isinstance(ipaddress.ip_address(h), ipaddress.IPv4Address)
+    except ValueError:
+        return False
+
+
 def is_public_host(host: str) -> bool:
     # shortcut: names that resolve to private IPs are not caught, add resolution checks if this ever runs on a server
     h = (host or "").strip().lower().rstrip(".")
+    labels = h.split(".")
+    if all(l.isdigit() for l in labels) and not _is_dotted_quad(h) or labels[0].startswith("0x"):
+        return False  # short/octal/hex IPv4 forms: some resolvers read 127.1 or 0177.0.0.1 as loopback
     try:
         ip = ipaddress.ip_address(h)
     except ValueError:
         return "." in h and h != "localhost" and not h.endswith((".localhost", ".local", ".internal"))
     ip = getattr(ip, "ipv4_mapped", None) or ip
     return not (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_reserved
-                or ip.is_unspecified)
+                or ip.is_unspecified or ip in CGNAT)
 
 
 def candidate_roots(urls: list[str], limit: int = 3) -> list[str]:

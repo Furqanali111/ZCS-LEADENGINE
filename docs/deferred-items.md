@@ -30,4 +30,3 @@ Things the docs or code refer to that are intentionally not built yet. If a revi
 | Functional index on `lower(contacts.email)` | Slice 3 | Later | Contact volume grows and suppression email matching gets slow |
 | Email attachment is first-page-wins (an address is attached to the first organization that surfaces it) | Slice 3 | Later | Shared addresses across organizations cause wrong attachments |
 | Contacts do not store which check accepted them (the check is on `website_evidence`) | Final review, Slice 3 | Later | Someone needs per-contact provenance |
-| `is_public_host` accepts dotted hex/octal/short IPv4 forms (`0x7f.0.0.1`, `0177.0.0.1`, `127.1`) and CGNAT `100.64.0.0/10` | Final review, Slice 3 | Before running on Linux/macOS or a server | getaddrinfo there resolves these to loopback; reject any host whose dot-separated labels are all digits or start with `0x` (`backend/app/services/verify.py` ~42) |
