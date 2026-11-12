@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -33,6 +34,18 @@ export function LeadTemplates({ lead }: { lead: Lead }) {
     }
   }
 
+  if (items && items.length === 0 && !failed) {
+    return (
+      <p className="px-1 text-muted-foreground md:col-span-2 xl:col-span-1 2xl:col-span-2">
+        No templates yet.{" "}
+        <Link href="/templates" className="underline underline-offset-4">
+          Add one on the Templates page
+        </Link>
+        .
+      </p>
+    );
+  }
+
   return (
     <section aria-labelledby="tpl-h" className={PANEL_CLASS}>
       <h2 id="tpl-h" className="mb-2">
@@ -40,8 +53,6 @@ export function LeadTemplates({ lead }: { lead: Lead }) {
       </h2>
       {failed ? (
         <p className="text-muted-foreground">Could not load templates.</p>
-      ) : items && items.length === 0 ? (
-        <p className="text-muted-foreground">No templates yet. Add one on the Templates page.</p>
       ) : (
         <div className="space-y-2">
           <Label htmlFor="tpl-select">Template</Label>

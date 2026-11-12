@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useImperativeHandle, useRef, useState, type Ref } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +20,22 @@ function nowLocal() {
 // Status changes are written by the server, so they are not offered here.
 const TYPES = ACTIVITY_TYPES.filter((t) => t.value !== "status_change");
 
-export function ActivityForm({ leadId, onSaved }: { leadId: string; onSaved: () => void }) {
+export type ActivityFormHandle = { logCall: () => void };
+
+// One "Activity" card: the log form on top, the timeline (children) below.
+export function ActivityForm({
+  leadId,
+  onSaved,
+  handle,
+  children,
+}: {
+  leadId: string;
+  onSaved: () => void;
+  handle?: Ref<ActivityFormHandle>;
+  children?: React.ReactNode;
+}) {
+  const card = useRef<HTMLElement>(null);
+  const summaryEl = useRef<HTMLTextAreaElement>(null);
   const [type, setType] = useState("call");
   const [when, setWhen] = useState(nowLocal);
   const [summary, setSummary] = useState("");
@@ -30,6 +45,14 @@ export function ActivityForm({ leadId, onSaved }: { leadId: string; onSaved: () 
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [fields, setFields] = useState<Record<string, string>>({});
+
+  useImperativeHandle(handle, () => ({
+    logCall() {
+      setType("call");
+      card.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      summaryEl.current?.focus({ preventScroll: true });
+    },
+  }));
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -62,8 +85,11 @@ export function ActivityForm({ leadId, onSaved }: { leadId: string; onSaved: () 
   }
 
   return (
-    <form onSubmit={submit} aria-label="Log an activity" className={`${PANEL_CLASS} space-y-3`}>
-      <h2 className="text-sm font-semibold">Log an activity</h2>
+    <section ref={card} aria-labelledby="activity-h" className={`${PANEL_CLASS} scroll-mt-4 space-y-4`}>
+      <h2 id="activity-h" className="text-sm font-semibold">
+        Activity
+      </h2>
+      <form onSubmit={submit} aria-label="Log an activity" className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="act-type">Type</Label>
@@ -84,6 +110,7 @@ export function ActivityForm({ leadId, onSaved }: { leadId: string; onSaved: () 
         <Label htmlFor="act-summary">Summary</Label>
         <textarea
           id="act-summary"
+          ref={summaryEl}
           required
           maxLength={2000}
           rows={3}
@@ -130,6 +157,8 @@ export function ActivityForm({ leadId, onSaved }: { leadId: string; onSaved: () 
           {error ? `Not saved. ${error}` : ""}
         </p>
       </div>
-    </form>
+      </form>
+      <div className="border-t pt-4">{children}</div>
+    </section>
   );
 }
