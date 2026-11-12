@@ -30,7 +30,7 @@ def sparse():
 
 def test_core_independent_practice_full_contact():
     r = score(lead(), CONFIG)
-    assert (r.total, r.priority, r.config_version) == (90, "critical", "2")
+    assert (r.total, r.priority, r.config_version) == (90, "high", "3")
 
 
 def test_subspecialty_subpart():
@@ -38,7 +38,7 @@ def test_subspecialty_subpart():
     l = replace(base, primary_taxonomy_code="207RR0500X", organization_type="subpart",
                 contact={**base.contact, "phone": base.phone})
     r = score(l, CONFIG)
-    assert (r.total, r.priority) == (55, "medium")
+    assert (r.total, r.priority) == (55, "low")
 
 
 def test_hospital():
@@ -54,7 +54,7 @@ def test_solo_provider_core():
              contact={"first_name": "Jane", "last_name": "Smith", "title": "MD", "phone": "5551234567",
                       "role": "provider"})
     r = score(l, CONFIG)
-    assert (r.total, r.priority) == (81, "critical")
+    assert (r.total, r.priority) == (81, "medium")
     assert r.components["independence"]["reason"] == "self-reported sole proprietor"
     assert r.components["contactability"]["points"] == 10
 
@@ -74,8 +74,8 @@ def test_missing_everything_scores_independence_only():
     assert all(c["reason"] for c in r.components.values())
 
 
-@pytest.mark.parametrize("total,priority", [(80, "critical"), (79, "high"), (65, "high"),
-                                            (64, "medium"), (45, "medium"), (44, "low")])
+@pytest.mark.parametrize("total,priority", [(95, "critical"), (94, "high"), (90, "high"),
+                                            (89, "medium"), (80, "medium"), (79, "low")])
 def test_priority_boundaries(total, priority):
     assert priority_for(total, CONFIG) == priority
 
@@ -108,5 +108,5 @@ def test_staff_flag_does_not_override_official_or_solo():
     assert score(solo, CONFIG, staff_with_title=True).components["decision_maker"]["reason"].startswith("solo")
 
 
-def test_config_version_is_2():
-    assert CONFIG["version"] == "2"
+def test_config_version_is_3():
+    assert CONFIG["version"] == "3"
