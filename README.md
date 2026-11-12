@@ -83,7 +83,7 @@ update source_configs set status='available' where key in ('tavily_search','prac
 
 Fallback (optional): you accepted DuckDuckGo's [acceptable use policy](https://duckduckgo.com/acceptable-use) risk (it does not mention automated access either way; see `docs/data-sources.md`). To turn the fallback on, run `update source_configs set status='available' where key='duckduckgo_search';` and the job switches to the `ddgs` library once Tavily reports its credits used up. It stays off otherwise.
 
-4. Re-run `python -m app.rescore` once after upgrading (scoring config v2 counts staff contacts as decision-makers).
+4. Re-run `python -m app.rescore` once after upgrading (scoring config v3: staff contacts count as decision-makers, and the priority tiers are critical 95, high 90, medium 80).
 
 Rules:
 
