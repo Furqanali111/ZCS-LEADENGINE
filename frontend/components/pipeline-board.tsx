@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { PipelineCard } from "@/components/pipeline-card";
 import { Button } from "@/components/ui/button";
 import { ApiError, getPipeline, getPipelineColumn, patchLead, type PipelineCard as Card, type PipelineColumn } from "@/lib/api";
@@ -135,7 +136,7 @@ export function PipelineBoard() {
           {error}
         </p>
       )}
-      <div className="grid auto-cols-[minmax(14rem,1fr)] grid-flow-col items-start gap-3 overflow-x-auto pb-3">
+      <div className="grid auto-cols-[minmax(15rem,1fr)] grid-flow-col items-start gap-3 overflow-x-auto pb-3">
         {cols.map((col) => (
           <section
             key={col.status}
@@ -151,7 +152,13 @@ export function PipelineBoard() {
             <h2 id={`col-${col.status}`} className="mb-2 flex items-center gap-2 px-1 text-sm font-semibold">
               <span aria-hidden className={`size-2 shrink-0 rounded-full ${DOT[statusTone(col.status)]}`} />
               {LABELS[col.status] ?? col.status}
-              <span className="ml-auto rounded-full bg-background px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">{col.count}<span className="sr-only"> leads</span></span>
+              <Link
+                href={`/leads?crm_status=${col.status}`}
+                aria-label={`View all ${col.count} ${LABELS[col.status] ?? col.status} leads in the leads list`}
+                className="ml-auto rounded-full bg-background px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground underline-offset-2 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {col.count}
+              </Link>
             </h2>
             <ul className="flex min-h-12 flex-col gap-2">
               {col.leads.map((card) => (
@@ -161,7 +168,7 @@ export function PipelineBoard() {
             {col.leads.length === 0 && <p className="rounded-lg border border-dashed px-2 py-4 text-center text-xs text-muted-foreground">No leads</p>}
             {col.leads.length < col.count && (
               <Button variant="outline" size="sm" className="mt-2 w-full" disabled={loadingMore === col.status} onClick={() => void loadMore(col)}>
-                {loadingMore === col.status ? "Loading..." : `Load more (${col.count - col.leads.length})`}
+                {loadingMore === col.status ? "Loading..." : `Show more (${col.leads.length} of ${col.count} shown)`}
               </Button>
             )}
           </section>
