@@ -49,4 +49,4 @@ jobs:
       - run: npm run build
         env:
           STATIC_EXPORT: "1"
-          NEXT_PUBLIC_API_URL: ""
+          NEXT_PUBLIC_API_URL: same-origin

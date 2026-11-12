@@ -15,9 +15,10 @@ os.chdir(INSTALL)
 from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv(INSTALL / ".env")
+load_dotenv(BUNDLE / ".env")  # fallback: a .env baked into a private test build (scripts/build-test-exe.ps1)
 os.environ.setdefault("ZCS_STATIC_DIR", str(BUNDLE / "static" if FROZEN else BUNDLE.parent / "frontend" / "out"))
 
-PORT = int(os.environ.get("ZCS_PORT", "8000"))
+PORT = int(os.environ.get("ZCS_PORT", "8005"))
 MIGRATION_LOCK = 727001  # Postgres advisory lock: two teammates starting at once migrate one after the other
 
 
@@ -94,7 +95,7 @@ def main() -> None:
     from app.main import create_app
 
     threading.Timer(1.5, lambda: webbrowser.open(f"http://127.0.0.1:{PORT}")).start()
-    say(f"Open http://127.0.0.1:{PORT} (close this window to stop)")
+    say(f"Running at http://127.0.0.1:{PORT}. KEEP THIS WINDOW OPEN while you use the app; closing it stops the app.")
     uvicorn.run(create_app(), host="127.0.0.1", port=PORT, log_level="warning", loop="asyncio", http="h11", ws="none")
 
 

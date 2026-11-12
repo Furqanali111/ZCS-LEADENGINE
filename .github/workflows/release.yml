@@ -25,7 +25,7 @@ jobs:
         shell: bash
         run: |
           npm ci
-          STATIC_EXPORT=1 NEXT_PUBLIC_API_URL="" npm run build
+          STATIC_EXPORT=1 NEXT_PUBLIC_API_URL=same-origin npm run build
 
       - uses: actions/setup-python@v5
         with:
