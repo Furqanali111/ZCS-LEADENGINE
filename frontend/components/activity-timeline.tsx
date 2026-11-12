@@ -25,7 +25,7 @@ export function ActivityTimeline({
   loading: boolean;
   onMore: () => void;
 }) {
-  if (total === 0) return <p className="text-sm text-muted-foreground">No activity yet. Log the first call, email or note above.</p>;
+  if (total === 0) return <p className="text-sm text-muted-foreground">No activity yet.</p>;
   return (
     <div className="space-y-4">
       <ol aria-label="Activity timeline, newest first" className="relative space-y-4 before:absolute before:inset-y-2 before:left-3.5 before:w-px before:bg-border">
