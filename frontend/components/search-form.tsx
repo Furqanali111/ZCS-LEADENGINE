@@ -136,6 +136,8 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
           ? "Practice websites is not marked available yet (see README)."
           : null;
   const visibleSources = sources?.filter((s) => s.status !== "rejected") ?? [];
+  const usable = visibleSources.filter((s) => s.status === "available");
+  const unavailable = visibleSources.filter((s) => s.status !== "available");
 
   return (
     <form onSubmit={submit} className="space-y-6" noValidate>
@@ -247,23 +249,23 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
             Could not load sources: {sourcesError}
           </p>
         )}
-        {visibleSources.map((s) =>
-          s.status === "available" ? (
-            <CheckRow
-              key={s.key}
-              label={s.name}
-              checked={selected.includes(s.key)}
-              onChange={(v) => setSelected((cur) => (v ? [...cur, s.key] : cur.filter((k) => k !== s.key)))}
-            />
-          ) : (
-            <CheckRow
-              key={s.key}
-              label={s.name}
-              checked={false}
-              disabled
-              hint={SOURCE_STATUS_LABELS[s.status] ?? s.status}
-            />
-          ),
+        {usable.map((s) => (
+          <CheckRow
+            key={s.key}
+            label={s.name}
+            checked={selected.includes(s.key)}
+            onChange={(v) => setSelected((cur) => (v ? [...cur, s.key] : cur.filter((k) => k !== s.key)))}
+          />
+        ))}
+        {unavailable.length > 0 && (
+          <details className="rounded-lg border bg-muted/40 px-3 py-2 text-sm">
+            <summary className="cursor-pointer text-muted-foreground">{unavailable.length} more sources, not usable yet</summary>
+            <div className="mt-2 space-y-2">
+              {unavailable.map((s) => (
+                <CheckRow key={s.key} label={s.name} checked={false} disabled hint={SOURCE_STATUS_LABELS[s.status] ?? s.status} />
+              ))}
+            </div>
+          </details>
         )}
         <FieldError id="sources-error" text={fieldErrors.sources} />
       </fieldset>
