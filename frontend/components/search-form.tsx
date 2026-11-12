@@ -136,6 +136,8 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
           ? "Practice websites is not marked available yet (see README)."
           : null;
   const visibleSources = sources?.filter((s) => s.status !== "rejected") ?? [];
+  const usable = visibleSources.filter((s) => s.status === "available");
+  const unavailable = visibleSources.filter((s) => s.status !== "available");
 
   return (
     <form onSubmit={submit} className="space-y-6" noValidate>
