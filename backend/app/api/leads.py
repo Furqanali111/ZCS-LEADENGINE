@@ -5,7 +5,7 @@ from urllib.parse import unquote
 
 from fastapi import APIRouter, Depends, Header, Query
 from sqlalchemy import func, or_, select, update
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.constants import CLOSED_STATUSES
 from app.db import get_session
@@ -51,7 +51,7 @@ SORTS = {"score": Organization.fit_score, "name": Organization.name, "updated": 
          "email": select(func.min(func.lower(Contact.email))).where(
              Contact.organization_id == Organization.id, Contact.email.is_not(None)).scalar_subquery()}
 LOADS = (selectinload(Organization.contacts), selectinload(Organization.locations),
-         selectinload(Organization.score), selectinload(Organization.source_records).defer(SourceRecord.raw))
+         joinedload(Organization.score), selectinload(Organization.source_records).defer(SourceRecord.raw))
 PLAIN = [f for f in LeadOut.model_fields if f not in ("contact", "contacts", "primary_email", "locations", "score", "source", "suppressed")]
 
 
@@ -75,11 +75,14 @@ def list_leads(filters: Annotated[LeadFilters, Query()], session: Session = Depe
                page: int = Query(1, ge=1), page_size: int = Query(50, ge=1, le=200),
                sort: Literal["score", "name", "updated", "follow_up", "email", "website"] = "score", order: Literal["asc", "desc"] = "desc"):
     base = lead_query(filters)
-    total = session.scalar(select(func.count()).select_from(base.subquery()))
     col = SORTS[sort]
     col = col.asc().nulls_last() if order == "asc" else col.desc().nulls_last()
-    stmt = base.options(*LOADS).order_by(col, Organization.id).limit(page_size).offset((page - 1) * page_size)
-    orgs = session.scalars(stmt).all()
+    # The total rides along as a window count (one round trip fewer); only an empty page needs a separate count.
+    stmt = (base.add_columns(func.count().over()).options(*LOADS).order_by(col, Organization.id)
+            .limit(page_size).offset((page - 1) * page_size))
+    rows = session.execute(stmt).all()
+    orgs = [r[0] for r in rows]
+    total = rows[0][1] if rows else session.scalar(select(func.count()).select_from(base.subquery()))
     hit = suppressed_ids(session, [o.id for o in orgs])
     return LeadPage(items=[_out(o, o.id in hit) for o in orgs], total=total, page=page, page_size=page_size)
 
