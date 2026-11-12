@@ -137,7 +137,7 @@ export function PipelineBoard() {
           {error}
         </p>
       )}
-      <div className="grid min-h-[26rem] auto-cols-[minmax(15rem,1fr)] grid-flow-col items-start gap-3 overflow-x-auto pb-3">
+      <div className="grid min-h-[26rem] auto-cols-[minmax(13.5rem,1fr)] grid-flow-col items-start gap-3 overflow-x-auto pb-3">
         {cols.map((col) => (
           <section
             key={col.status}

@@ -115,7 +115,7 @@ export function LeadFilters({
       {select("f-priority", "Priority", "priority", PRIORITIES)}
       {select("f-status", "Sales status", "crm_status", CRM_STATUSES)}
       {select("f-owner", "Owner", "owner", ownerOptions)}
-      <div className="flex items-end gap-2">
+      <div className="flex items-end justify-end gap-2 sm:col-span-2">
         <Button type="button" variant="ghost" size="sm" aria-expanded={more} aria-controls="more-filters" onClick={() => setMore((m) => !m)}>
           {more ? "Fewer filters" : "More filters"}
         </Button>
