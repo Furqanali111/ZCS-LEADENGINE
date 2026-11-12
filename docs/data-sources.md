@@ -46,6 +46,13 @@ Statuses above match what migration 0005 seeds into `source_configs`. The owner 
 | Brave Search API | `approved_not_built`, with a condition | The terms (updated Feb 2026, read through a search summary because the dashboard page could not be fetched) bar storing, caching or building a database of Search Results beyond transient use, unless the plan grants storage rights. We use results in memory only and store only a URL we fetched and verified on the practice's own page. The owner must confirm the storage terms with Brave support (searchapi-support@brave.com) or pick a plan with storage rights before this becomes `available`, because storing even the verified URL is a gray area. |
 | Official practice websites | `approved_not_built`, then `available` | Public pages of the practice itself. robots.txt honored, including Crawl-delay. About 1 request per second per domain. No logins, no CAPTCHA or anti-bot bypass. User-Agent `ZCSLeadEngine/1.0 (internal prospecting tool)`. |
 
+### Search providers added 2026-11-12
+
+| Source | Status | Why |
+|---|---|---|
+| Tavily Search API (`tavily_search`) | `approved_not_built`, then `available` | Terms (tavily.com/terms): internal business use is the licensed purpose, which is what this tool is. No clause bars keeping a URL we verified ourselves; the terms say nothing clear about caching results, so results stay in memory and only the verified URL is stored. Do not use Output to build a competing product. Free tier: reported 1,000 credits a month (unconfirmed). Key in `backend/.env` as `TAVILY_API_KEY`. When set, it is used instead of Brave. |
+| DuckDuckGo via the `ddgs` library (`duckduckgo_search`) | `approved_not_built`, then `available` (owner accepted the risk 2026-11-12) | No official API. `ddgs` scrapes search pages. The Terms page requires compliance with the Acceptable Use Policy (duckduckgo.com/acceptable-use, read 2026-11-12). That policy does not mention bots, scraping, crawling or rate limits. It bars hacking, interfering with or disrupting the service, selling or reselling the service, and anything against "the spirit" of the conditions, and it says its list is not exhaustive. So automated use is neither allowed nor banned in writing. Low volume (one query per lead, only after Tavily runs out) is the safest reading, and the owner accepted that risk. Used only as a fallback after Tavily reports its key or plan limit exhausted (HTTP 401, 432, 433) and only when the owner sets this row to `available`. A DuckDuckGo rate limit is reported as rate limited and backed off, never worked around. No proxies, no retries to dodge blocks. |
+
 ### Candidate sources checked 2026-11-12 (no connector built)
 
 | Source | Result | Why |

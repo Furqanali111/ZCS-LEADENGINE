@@ -103,12 +103,17 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
     }
   }
 
-  const enrichSources = sources?.filter((s) => s.key === "brave_search" || s.key === "practice_websites") ?? [];
-  const enrichReason = enrichSources.some((s) => s.key === "brave_search" && s.key_missing)
-    ? "BRAVE_API_KEY is not set in backend/.env."
-    : enrichSources.some((s) => s.status !== "available")
-      ? "Brave search or practice websites is not marked available yet (see README)."
-      : null;
+  const searchProviders = sources?.filter((s) => s.key === "brave_search" || s.key === "tavily_search") ?? [];
+  const websites = sources?.find((s) => s.key === "practice_websites");
+  const usableProvider = searchProviders.some((s) => s.status === "available" && !s.key_missing);
+  const enrichReason =
+    sources === null
+      ? null
+      : !usableProvider
+        ? "No search provider is ready: set TAVILY_API_KEY (or BRAVE_API_KEY) in backend/.env and mark the provider available (see README)."
+        : websites?.status !== "available"
+          ? "Practice websites is not marked available yet (see README)."
+          : null;
   const visibleSources = sources?.filter((s) => s.status !== "rejected") ?? [];
 
   return (
