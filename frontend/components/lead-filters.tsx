@@ -60,6 +60,9 @@ export function LeadFilters({
     timers.current[key] = setTimeout(() => onChangeRef.current({ [key]: value.trim() || undefined }), 300);
   };
 
+  const [more, setMore] = useState(() =>
+    Boolean(filters.specialty || filters.organization_type || filters.min_score !== undefined || filters.follow_up || filters.search_job_id || filters.has_website || filters.has_email),
+  );
   const [jobs, setJobs] = useState<Job[]>([]);
   const [jobsError, setJobsError] = useState(false);
   useEffect(() => {
@@ -98,6 +101,29 @@ export function LeadFilters({
         />
       </div>
       {select("f-state", "State", "state", US_STATES.map((s) => ({ value: s.code, label: `${s.name} (${s.code})` })))}
+      {select("f-priority", "Priority", "priority", PRIORITIES)}
+      {select("f-status", "Sales status", "crm_status", CRM_STATUSES)}
+      <div className="flex items-end gap-2">
+        <Button type="button" variant="ghost" size="sm" aria-expanded={more} aria-controls="more-filters" onClick={() => setMore((m) => !m)}>
+          {more ? "Fewer filters" : "More filters"}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            Object.values(timers.current).forEach(clearTimeout);
+            setQ("");
+            setSpecialty("");
+            setMinScore("");
+            onClear();
+          }}
+        >
+          Clear filters
+        </Button>
+      </div>
+      {more && (
+        <div id="more-filters" className="col-span-full grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] items-end gap-x-3 gap-y-2.5 border-t pt-3">
       <div>
         <Label htmlFor="f-specialty">Specialty</Label>
         <Input
@@ -117,7 +143,6 @@ export function LeadFilters({
         </datalist>
       </div>
       {select("f-org", "Organization type", "organization_type", ORG_TYPES)}
-      {select("f-priority", "Priority", "priority", PRIORITIES)}
       <div>
         <Label htmlFor="f-min">Minimum score (0 to 100)</Label>
         <Input
@@ -133,7 +158,6 @@ export function LeadFilters({
           }}
         />
       </div>
-      {select("f-status", "Sales status", "crm_status", CRM_STATUSES)}
       {select("f-follow", "Follow-up", "follow_up", FOLLOW_UP_OPTIONS)}
       <div>
         <Label htmlFor="f-job">Search job</Label>
@@ -156,22 +180,8 @@ export function LeadFilters({
           </label>
         ))}
       </fieldset>
-      <div className="flex items-end justify-end">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            Object.values(timers.current).forEach(clearTimeout);
-            setQ("");
-            setSpecialty("");
-            setMinScore("");
-            onClear();
-          }}
-        >
-          Clear filters
-        </Button>
-      </div>
+        </div>
+      )}
     </form>
   );
 }

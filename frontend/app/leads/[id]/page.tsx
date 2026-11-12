@@ -25,6 +25,7 @@ import {
 import { PANEL_CLASS, SELECT_CLASS } from "@/lib/ui";
 import { CRM_STATUSES, ORG_TYPES, PRIORITIES, SCORE_FACTORS } from "@/lib/constants";
 import { formatPhone, hostOf, pagePath, safeHttpUrl } from "@/lib/format";
+import { ContactStrip } from "@/components/contact-strip";
 
 type Factor = { points: number; max: number; reason: string };
 
@@ -156,6 +157,7 @@ function LeadDetail() {
     : null;
   const found = lead.contacts.filter((c) => c.email || c.source_url);
   const contactName = [lead.contact?.first_name, lead.contact?.last_name].filter(Boolean).join(" ");
+  const primaryEmail = lead.contacts.map((c) => c.email ?? (c.role === "general" ? c.last_name : null)).find(Boolean) ?? null;
 
   return (
     <div className="space-y-5">
@@ -235,6 +237,15 @@ function LeadDetail() {
         </div>
       </header>
 
+      <ContactStrip
+        person={contactName}
+        title={lead.contact?.title ?? null}
+        phone={lead.contact?.phone ?? lead.phone}
+        fax={lead.fax}
+        email={primaryEmail}
+        website={lead.website}
+      />
+
       <div className="grid gap-5 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div className="space-y-5">
           <ActivityForm leadId={id} onSaved={refresh} />
@@ -280,15 +291,6 @@ function LeadDetail() {
             ) : (
               <p className="text-muted-foreground">Not scored yet.</p>
             )}
-          </section>
-          <section className={PANEL_CLASS}>
-            <h2 className="mb-2">Contacts</h2>
-            <p>
-              {contactName || <span className="text-muted-foreground">No named contact.</span>}
-              {lead.contact?.title && <span className="text-muted-foreground">, {lead.contact.title}</span>}
-            </p>
-            <p className="tabular-nums">Phone {formatPhone(lead.contact?.phone ?? lead.phone)}</p>
-            <p className="tabular-nums">Fax {formatPhone(lead.fax)}</p>
           </section>
           <LeadTemplates lead={lead} />
           <section aria-labelledby="web-h" className={PANEL_CLASS}>
