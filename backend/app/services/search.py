@@ -345,6 +345,12 @@ def run_job(session_factory, job_id: UUID, *, fetch=fetch_page, sleep=time.sleep
             if not cur["slices"]:  # an earlier search already walked this whole phase
                 i += 1
                 continue
+            if cur["skip"] > MAX_SKIP:  # the API cannot go deeper in this slice, so split it (also after a search stopped late in a page)
+                prefix = cur["slices"][0]
+                kids = [f"{d:02d}" for d in range(100)] if not prefix else [prefix + str(d) for d in range(10)]
+                cur["slices"][0:1] = [] if len(prefix) >= 5 else kids  # a single ZIP over the cap cannot be split further
+                cur["skip"] = 0
+                continue
             try:
                 records = _fetch(fetch, client, sleep, settings.max_source_retries, enumeration_type=enumeration_type,
                                  specialty=job.specialty, state=job.state, city=job.city, skip=cur["skip"], zip_prefix=cur["slices"][0])
@@ -357,15 +363,9 @@ def run_job(session_factory, job_id: UUID, *, fetch=fetch_page, sleep=time.sleep
             reached, consumed = _process_page(session, job, phase, records, counters, config)
             progress.leads_fetched += counters["accepted_new"] - new_before
             cur["skip"] += consumed
-            if consumed == len(records):  # the whole page is used: move on, or split a slice that hit the 1,200 cap
-                prefix = cur["slices"][0]
-                if len(records) < PAGE_SIZE:
-                    cur["slices"].pop(0)
-                    cur["skip"] = 0
-                elif cur["skip"] > MAX_SKIP:
-                    kids = [f"{d:02d}" for d in range(100)] if not prefix else [prefix + str(d) for d in range(10)]
-                    cur["slices"][0:1] = [] if len(prefix) >= 5 else kids  # a single ZIP over the cap cannot be split further
-                    cur["skip"] = 0
+            if consumed == len(records) and len(records) < PAGE_SIZE:  # a short page is the end of this slice
+                cur["slices"].pop(0)
+                cur["skip"] = 0
             flag_modified(progress, "cursor")
             job.checkpoint = {"phase": phase, "skip": cur["skip"]}
             if not cur["slices"]:

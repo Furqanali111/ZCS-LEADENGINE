@@ -228,6 +228,25 @@ def test_second_search_continues_after_the_first_instead_of_repeating_it(db, ses
     assert db.scalar(select(SearchProgress.leads_fetched)) == 300
 
 
+def test_search_stopped_deep_in_a_capped_slice_splits_instead_of_crashing(db, session_factory):
+    # a previous search stopped mid-page at offset 1100, past what the API can read; the next one must split by ZIP
+    from app.services.search import progress_key
+
+    db.add(SearchProgress(**progress_key("Internal Medicine", "TX", None, False, False),
+                          cursor={"practices": {"slices": [""], "skip": 1100}}, leads_fetched=1100))
+    db.commit()
+    calls = []
+
+    def fetch(client, *, enumeration_type, specialty, state, city, skip, zip_prefix=""):
+        calls.append((zip_prefix, skip))
+        return []
+
+    job_id = make_job(db, include_solo=False)
+    run(session_factory, job_id, fetch)
+    assert job_of(db, job_id).status == "completed"
+    assert calls == [(f"{d:02d}", 0) for d in range(100)]
+
+
 def test_finished_search_reads_nothing_new(db, session_factory):
     calls = []
     fetch = fake({"NPI-2": [NPI2]}, calls)
