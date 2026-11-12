@@ -88,7 +88,7 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
         include_subparts: subparts,
         include_hospitals: hospitals,
         sources: selected,
-        ...(enrich && { enrich: true }),
+        ...(enrich && !enrichReason && { enrich: true }),
       });
       onCreated();
     } catch (err) {
@@ -103,6 +103,12 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
     }
   }
 
+  const enrichSources = sources?.filter((s) => s.key === "brave_search" || s.key === "practice_websites") ?? [];
+  const enrichReason = enrichSources.some((s) => s.key === "brave_search" && s.key_missing)
+    ? "BRAVE_API_KEY is not set in backend/.env."
+    : enrichSources.some((s) => s.status !== "available")
+      ? "Brave search or practice websites is not marked available yet (see README)."
+      : null;
   const visibleSources = sources?.filter((s) => s.status !== "rejected") ?? [];
 
   return (
@@ -228,9 +234,9 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
 
       <fieldset className="space-y-2">
         <legend className="mb-1 text-sm font-medium">Enrichment</legend>
-        <CheckRow label="Also find websites and emails" checked={enrich} onChange={setEnrich} describedBy="enrich-hint" />
+        <CheckRow label="Also find websites and emails" checked={enrich && !enrichReason} onChange={setEnrich} disabled={!!enrichReason} describedBy="enrich-hint" />
         <p id="enrich-hint" className="text-sm text-muted-foreground">
-          Uses your search API key, one query per lead
+          {enrichReason ? `Unavailable: ${enrichReason} ` : ""}Uses your search API key, one query per lead
           {targetValid ? `, so about ${targetNum} ${targetNum === 1 ? "query" : "queries"} for this search` : ""}.
         </p>
       </fieldset>

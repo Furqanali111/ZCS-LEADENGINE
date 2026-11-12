@@ -76,7 +76,16 @@ def test_sources_list_available_first(client, db):
     r = client.get("/api/sources")
     assert r.status_code == 200
     assert [s["key"] for s in r.json()] == ["npi_registry", "yelp"]
-    assert set(r.json()[0]) == {"key", "name", "status", "notes"}
+    assert set(r.json()[0]) == {"key", "name", "status", "notes", "key_missing"}
+
+
+def test_sources_flag_missing_brave_key(client, db, monkeypatch):
+    from app.config import get_settings
+
+    add_source(db, "brave_search", "Brave Search", "available")
+    monkeypatch.setattr(get_settings(), "brave_api_key", None)
+    flags = {s["key"]: s["key_missing"] for s in client.get("/api/sources").json()}
+    assert flags["brave_search"] is True
 
 
 def test_create_search_queues_job(client, db):
