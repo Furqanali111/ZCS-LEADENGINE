@@ -238,6 +238,20 @@ export const patchLeadStatus = (id: string, crm_status: string) => patchLead(id,
 
 export const getLead = (id: string) => json<Lead>(`/api/leads/${id}`);
 
+// related leads
+export type RelatedLead = {
+  id: string;
+  name: string;
+  city: string | null;
+  state: string | null;
+  crm_status: string;
+  owner: string | null;
+  fit_score: number | null;
+  priority: string | null;
+  reasons: string[];
+};
+export const getRelatedLeads = (id: string) => json<RelatedLead[]>(`/api/leads/${id}/related`);
+
 export type Activity = {
   id: string;
   type: string;
@@ -355,17 +369,3 @@ export async function exportLeadsFile(body: { filters?: LeadFilters; ids?: strin
   const m = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(res.headers.get("Content-Disposition") ?? "");
   return { blob: await res.blob(), filename: m ? decodeURIComponent(m[1]) : "zcs-leads.xlsx" };
 }
-
-// related leads
-export type RelatedLead = {
-  id: string;
-  name: string;
-  city: string | null;
-  state: string | null;
-  crm_status: string;
-  owner: string | null;
-  fit_score: number | null;
-  priority: string | null;
-  reasons: string[];
-};
-export const getRelatedLeads = (id: string) => json<RelatedLead[]>(`/api/leads/${id}/related`);
