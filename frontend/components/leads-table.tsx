@@ -282,7 +282,7 @@ export function LeadsTable({
                         onChange={(e) => changeStatus(l, e.target.value)}
                       >
                         {CRM_STATUSES.map((s) => (
-                          <option key={s.value} value={s.value} className="bg-popover text-popover-foreground">
+                          <option key={s.value} value={s.value} title={s.hint} className="bg-popover text-popover-foreground">
                             {s.label}
                           </option>
                         ))}

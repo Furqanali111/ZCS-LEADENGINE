@@ -84,6 +84,7 @@ export function PipelineCard({
                   key={s.value}
                   type="button"
                   role="menuitemradio"
+                  title={s.hint}
                   aria-checked={s.value === status}
                   onClick={() => {
                     setOpen(false);
