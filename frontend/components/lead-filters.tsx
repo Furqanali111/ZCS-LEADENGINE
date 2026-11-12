@@ -5,11 +5,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SELECT_CLASS } from "@/lib/ui";
 import { listJobs, type Job, type LeadFilters } from "@/lib/api";
 import { CRM_STATUSES, ORG_TYPES, PRIORITIES, SPECIALTIES, US_STATES } from "@/lib/constants";
 
-const SELECT =
-  "mt-1 h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
+const SELECT = `mt-1 ${SELECT_CLASS}`;
 
 const FOLLOW_UP_OPTIONS = [
   { value: "due", label: "Due (today or earlier)" },
@@ -83,8 +83,8 @@ export function LeadFilters({
   );
 
   return (
-    <form role="search" aria-label="Filter leads" onSubmit={(e) => e.preventDefault()} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <div>
+    <form role="search" aria-label="Filter leads" onSubmit={(e) => e.preventDefault()} className="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] items-end gap-x-3 gap-y-2.5 rounded-xl border bg-card p-3 shadow-xs [&_label]:text-xs [&_label]:text-muted-foreground">
+      <div className="col-span-full sm:col-span-2">
         <Label htmlFor="f-q">Search name or city</Label>
         <Input
           id="f-q"
@@ -147,16 +147,16 @@ export function LeadFilters({
         </select>
         {jobsError && <p className="mt-1 text-xs text-muted-foreground">Search jobs could not be loaded.</p>}
       </div>
-      <fieldset className="flex flex-wrap items-center gap-4 sm:col-span-2 lg:col-span-4">
+      <fieldset className="flex h-8 items-center gap-4">
         <legend className="sr-only">Enrichment</legend>
         {([["has_website", "Has website"], ["has_email", "Has email"]] as const).map(([key, label]) => (
-          <label key={key} className="flex items-center gap-2 text-sm">
+          <label key={key} className="flex items-center gap-2 text-sm! whitespace-nowrap text-foreground!">
             <Checkbox checked={filters[key] === "true"} onCheckedChange={(v) => onChange({ [key]: v ? "true" : undefined })} />
             {label}
           </label>
         ))}
       </fieldset>
-      <div className="sm:col-span-2 lg:col-span-4">
+      <div className="flex items-end justify-end">
         <Button
           type="button"
           variant="outline"
