@@ -15,10 +15,13 @@ export function ContactStrip({ person, title, phone, fax, email, website }: Prop
   const { copied, failed, copy } = useCopy();
 
   const copyButton = (label: string, text: string) => (
+    <>
     <Button type="button" variant="outline" size="sm" className="shrink-0" aria-label={`Copy ${label.toLowerCase()}`} onClick={() => copy(label, text)}>
       {copied === label ? <Check aria-hidden className="text-emerald-700" /> : <Copy aria-hidden />}
-      {copied === label ? "Copied" : failed === label ? "Copy failed, select the text" : "Copy"}
+      {copied === label ? "Copied" : "Copy"}
     </Button>
+    {failed === label && <span aria-hidden className="text-xs text-destructive">Copy failed</span>}
+    </>
   );
 
   const phoneText = phone ? formatPhone(phone) : null;

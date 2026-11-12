@@ -89,7 +89,7 @@ export function PipelineCard({
     >
       <div className="flex items-start gap-1">
         <GripVertical aria-hidden className="mt-0.5 -ml-1 size-4 shrink-0 text-muted-foreground/60" />
-        <Link href={`/leads/${card.id}`} className="min-w-0 flex-1 font-medium underline-offset-4 hover:underline">
+        <Link href={`/leads/${card.id}`} className="min-w-0 flex-1 rounded-sm font-medium underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           {card.name}
         </Link>
         <div ref={wrap} onKeyDown={onMenuKey} className="-mt-1 -mr-1.5 shrink-0">
