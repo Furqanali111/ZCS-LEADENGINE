@@ -4,7 +4,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Globe, Mail
 import Link from "next/link";
 import { Fragment, useState } from "react";
 import { LeadRowDetail } from "@/components/lead-row-detail";
-import { priorityTone, statusTone, TONE_DOT as DOT, ToneBadge } from "@/components/tone-badge";
+import { priorityTone, statusTone, ToneBadge } from "@/components/tone-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -14,8 +14,16 @@ import { CLOSED_STATUSES, CRM_STATUSES, PRIORITIES } from "@/lib/constants";
 import { isOverdue } from "@/lib/dates";
 import { formatPhone, hostOf, safeHttpUrl } from "@/lib/format";
 
-const SELECT =
-  "h-7 w-full min-w-28 rounded-md border border-input bg-surface px-1.5 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
+// The select itself is the colored status pill; same tone tokens as ToneBadge.
+const PILL =
+  "h-7 w-44 cursor-pointer rounded-full border border-transparent px-2.5 text-xs font-medium outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+const PILL_TONE = {
+  danger: "bg-tone-danger-bg text-tone-danger-fg",
+  warning: "bg-tone-warning-bg text-tone-warning-fg",
+  success: "bg-tone-success-bg text-tone-success-fg",
+  info: "bg-tone-info-bg text-tone-info-fg",
+  neutral: "bg-tone-neutral-bg text-tone-neutral-fg",
+} as const;
 const LINK = "rounded-sm underline-offset-4 hover:underline focus-visible:ring-3 focus-visible:ring-ring/50";
 const NONE = (
   <span className="text-muted-foreground">
@@ -142,17 +150,16 @@ export function LeadsTable({
                 />
               </TableHead>
               <SortHead col="name" label="Organization" sort={sort} order={order} onSort={onSort} />
-              <TableHead>Specialty</TableHead>
+              <TableHead className="min-w-36">Specialty</TableHead>
               <TableHead>City, state</TableHead>
               <TableHead>Phone</TableHead>
-              <TableHead>Primary contact</TableHead>
+              <TableHead className="min-w-44">Primary contact</TableHead>
               <TableHead>Website</TableHead>
               <TableHead>Email</TableHead>
               <SortHead col="score" label="Score" sort={sort} order={order} onSort={onSort} />
               <TableHead>Priority</TableHead>
               <TableHead>Sales status</TableHead>
               <SortHead col="follow_up" label="Follow-up" sort={sort} order={order} onSort={onSort} />
-              <TableHead>Updated</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -200,12 +207,12 @@ export function LeadsTable({
                         {l.suppressed && <ToneBadge tone="danger" className="ml-1 shrink-0">Suppressed</ToneBadge>}
                       </div>
                     </TableCell>
-                    <TableCell className="max-w-28 truncate" title={l.primary_taxonomy_desc ?? undefined}>
+                    <TableCell className="min-w-36 whitespace-normal" title={l.primary_taxonomy_desc ?? undefined}>
                       {l.primary_taxonomy_desc ?? NONE}
                     </TableCell>
-                    <TableCell>{[l.city, l.state].filter(Boolean).join(", ") || NONE}</TableCell>
-                    <TableCell className="tabular-nums">{l.phone ? formatPhone(l.phone) : NONE}</TableCell>
-                    <TableCell className="max-w-28 truncate" title={contactText || undefined}>
+                    <TableCell className="w-28 whitespace-normal">{[l.city, l.state].filter(Boolean).join(", ") || NONE}</TableCell>
+                    <TableCell className="whitespace-nowrap font-semibold tabular-nums text-foreground">{l.phone ? formatPhone(l.phone) : NONE}</TableCell>
+                    <TableCell className="min-w-44 whitespace-normal" title={contactText || undefined}>
                       {contactName ? (
                         <>
                           {contactName}
@@ -241,21 +248,18 @@ export function LeadsTable({
                     </TableCell>
                     <TableCell>{priority ? <ToneBadge tone={priorityTone(l.priority)}>{priority}</ToneBadge> : NONE}</TableCell>
                     <TableCell>
-                      <div className="flex min-w-28 items-center gap-1.5">
-                        <span aria-hidden className={`size-2 shrink-0 rounded-full ${DOT[statusTone(status)]}`} />
-                        <select
-                          aria-label={`Sales status for ${l.name}`}
-                          className={SELECT}
-                          value={status}
-                          onChange={(e) => changeStatus(l, e.target.value)}
-                        >
-                          {CRM_STATUSES.map((s) => (
-                            <option key={s.value} value={s.value}>
-                              {s.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                      <select
+                        aria-label={`Sales status for ${l.name}`}
+                        className={`${PILL} ${PILL_TONE[statusTone(status)]}`}
+                        value={status}
+                        onChange={(e) => changeStatus(l, e.target.value)}
+                      >
+                        {CRM_STATUSES.map((s) => (
+                          <option key={s.value} value={s.value} className="bg-popover text-popover-foreground">
+                            {s.label}
+                          </option>
+                        ))}
+                      </select>
                     </TableCell>
                     <TableCell>
                       {l.next_follow_up_at ? (
@@ -267,12 +271,12 @@ export function LeadsTable({
                         NONE
                       )}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap text-muted-foreground">{new Date(l.updated_at).toLocaleDateString()}</TableCell>
                   </TableRow>
                   {open && (
                     <TableRow id={detailId} className="bg-muted/40 hover:bg-muted/40">
-                      <TableCell colSpan={13} className="whitespace-normal p-0">
+                      <TableCell colSpan={12} className="whitespace-normal p-0">
                         <LeadRowDetail lead={l} />
+                        <p className="px-4 pb-3 text-xs text-muted-foreground">Updated {new Date(l.updated_at).toLocaleDateString()}</p>
                       </TableCell>
                     </TableRow>
                   )}
