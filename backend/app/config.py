@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     frontend_origin: str = "http://localhost:3000"
     export_dir: str = "./exports"
     npi_page_delay_seconds: float = 1
+    brave_api_key: str | None = None
+    enrich_page_delay_seconds: float = 1
     max_source_retries: int = 3
     log_level: str = "INFO"
 

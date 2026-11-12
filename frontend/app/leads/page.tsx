@@ -9,13 +9,15 @@ import { ApiError, exportLeadsFile, listLeads, type LeadFilters as Filters, type
 import { CRM_STATUSES, ORG_TYPES, PRIORITIES, US_STATES } from "@/lib/constants";
 
 const PAGE_SIZE = 50;
-const FILTER_KEYS = ["q", "state", "specialty", "organization_type", "priority", "min_score", "crm_status", "search_job_id", "follow_up"] as const;
+const FILTER_KEYS = ["q", "state", "specialty", "organization_type", "priority", "min_score", "crm_status", "search_job_id", "follow_up", "has_website", "has_email"] as const;
 const ALLOWED: Record<string, Set<string>> = {
   state: new Set(US_STATES.map((s) => s.code)),
   priority: new Set(PRIORITIES.map((p) => p.value)),
   crm_status: new Set(CRM_STATUSES.map((s) => s.value)),
   organization_type: new Set(ORG_TYPES.map((o) => o.value)),
   follow_up: new Set(["due", "overdue", "none"]),
+  has_website: new Set(["true"]),
+  has_email: new Set(["true"]),
 };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

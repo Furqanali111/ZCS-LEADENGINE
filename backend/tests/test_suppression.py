@@ -165,3 +165,53 @@ def test_enforce_failure_on_fallback_path_is_counted_and_page_continues(db, sess
     assert job.status == "completed" and calls
     assert job.counters["source_failures"] == 2  # the bad record plus the enforce failure
     assert db.scalars(select(Organization)).all()
+
+
+def add_contact(db, org, email, **kw):
+    from app.models import Contact
+
+    db.add(Contact(organization_id=org.id, role="general", source_key="website", email=email, **kw))
+    db.commit()
+
+
+def test_email_entry_marks_lead_with_that_contact_email(client, db):
+    hit = add_lead(db, "1000000001", "Alpha")
+    miss = add_lead(db, "1000000002", "Beta")
+    add_contact(db, hit, "Boss@Example.com")
+    add_contact(db, miss, "other@example.com", first_name="O")
+    assert post(client, "email", "boss@example.COM").status_code == 201
+    db.expire_all()
+    assert hit.crm_status == "do_not_contact" and miss.crm_status == "new"
+    acts = db.scalars(select(LeadActivity).where(LeadActivity.organization_id == hit.id, LeadActivity.type == "status_change")).all()
+    assert [(a.from_status, a.to_status) for a in acts] == [("new", "do_not_contact")]
+
+
+def test_email_entry_with_no_matching_lead_changes_nothing(client, db):
+    org = add_lead(db, "1000000001", "Alpha")
+    add_contact(db, org, "a@example.com")
+    assert post(client, "email", "nobody@example.com").status_code == 201
+    db.expire_all()
+    assert org.crm_status == "new"
+    assert db.scalars(select(LeadActivity).where(LeadActivity.type == "status_change")).all() == []
+
+
+def test_suppressed_emails_returns_only_listed_case_insensitively(db):
+    from app.services.suppression import suppressed_emails
+
+    db.add_all([SuppressionEntry(kind="email", value="a@x.com"), SuppressionEntry(kind="npi", value="1000000001")])
+    db.commit()
+    assert suppressed_emails(db, ["A@X.com", "b@x.com"]) == {"a@x.com"}
+    assert suppressed_emails(db, []) == set()
+
+
+def test_enforce_catches_contact_email_suppressed_later(db):
+    from app.services.suppression import enforce
+
+    org = add_lead(db, "1000000001", "Alpha")
+    add_contact(db, org, "Late@Example.com")
+    db.add(SuppressionEntry(kind="email", value="late@example.com"))
+    db.commit()
+    enforce(db, [org.id])
+    db.commit()
+    db.expire_all()
+    assert org.crm_status == "do_not_contact"

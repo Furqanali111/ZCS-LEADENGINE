@@ -5,9 +5,10 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.constants import CLOSED_STATUSES
-from app.models import Contact, LeadScore, Organization, SearchJobLead
+from app.models import Contact, LeadScore, Organization, SearchJobLead, SourceRecord
 from app.schemas import LeadFilters
-from app.services.scoring import ScoreResult
+from app.services.scoring import ScoreResult, load_config, score
+from app.sources.npi_registry import normalize
 
 
 def save_score(session: Session, org: Organization, result: ScoreResult) -> None:
@@ -18,6 +19,42 @@ def save_score(session: Session, org: Organization, result: ScoreResult) -> None
     session.execute(stmt.on_conflict_do_update(
         index_elements=[LeadScore.organization_id], set_={**values, "updated_at": func.now()}))
     org.fit_score, org.priority = result.total, result.priority
+
+
+_TITLED_STAFF = (Contact.role == "staff", Contact.title.is_not(None), Contact.title != "")
+
+
+def has_titled_staff(session: Session, org_id) -> bool:
+    return session.scalars(select(Contact.id).where(Contact.organization_id == org_id, *_TITLED_STAFF).limit(1)).first() is not None
+
+
+def npis_with_titled_staff(session: Session, npis: list[str]) -> set[str]:
+    if not npis:
+        return set()
+    return set(session.scalars(select(Organization.npi).join(Contact, Contact.organization_id == Organization.id)
+                               .where(Organization.npi.in_(npis), *_TITLED_STAFF)))
+
+
+def rescore_org(session: Session, org: Organization, config: dict | None = None) -> bool:
+    """Recomputes the fit score from the stored NPI record plus website staff. False when there is no source record."""
+    rec = session.scalars(select(SourceRecord).where(SourceRecord.organization_id == org.id)
+                          .order_by(SourceRecord.collected_at.desc()).limit(1)).first()
+    if rec is None:
+        return False
+    session.flush()
+    save_score(session, org, score(normalize(rec.raw), config or load_config(),
+                                   staff_with_title=has_titled_staff(session, org.id)))
+    return True
+
+
+def sorted_contacts(org: Organization) -> list[Contact]:
+    return sorted(org.contacts, key=lambda c: (c.collected_at is None, c.collected_at or 0, c.id))
+
+
+def primary_email(org: Organization) -> str | None:
+    """Email of the first general contact, else the first contact with an email."""
+    with_email = [c for c in sorted_contacts(org) if c.email]
+    return next((c.email for c in with_email if c.role == "general"), with_email[0].email if with_email else None)
 
 
 def _contains(column, text: str):
@@ -46,6 +83,11 @@ def lead_query(filters: LeadFilters) -> Select:
     if filters.search_job_id is not None:
         stmt = stmt.where(o.id.in_(
             select(SearchJobLead.organization_id).where(SearchJobLead.search_job_id == filters.search_job_id)))
+    if filters.has_website is not None:
+        stmt = stmt.where(o.website.is_not(None) if filters.has_website else o.website.is_(None))
+    if filters.has_email is not None:
+        has = exists().where(Contact.organization_id == o.id, Contact.email.is_not(None))
+        stmt = stmt.where(has if filters.has_email else ~has)
     if filters.follow_up == "none":
         stmt = stmt.where(o.next_follow_up_at.is_(None))
     elif filters.follow_up:

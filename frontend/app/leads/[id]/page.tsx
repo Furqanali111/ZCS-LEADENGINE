@@ -20,7 +20,7 @@ import {
   type LeadPatch,
 } from "@/lib/api";
 import { CRM_STATUSES, ORG_TYPES, PRIORITIES, SCORE_FACTORS } from "@/lib/constants";
-import { formatPhone } from "@/lib/format";
+import { formatPhone, hostOf, pagePath, safeHttpUrl } from "@/lib/format";
 
 const SELECT =
   "h-8 rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
@@ -55,6 +55,7 @@ function LeadDetail() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [followDraft, setFollowDraft] = useState<string | null>(null);
   const refreshSeq = useRef(0);
+  const webHeading = useRef<HTMLHeadingElement>(null);
 
   // Reload the lead and the first page of the timeline (status changes add entries).
   const refresh = useCallback(async () => {
@@ -93,13 +94,16 @@ function LeadDetail() {
   }
 
   async function save(body: LeadPatch, ok: string) {
+    let saved = false;
     try {
       await patchLead(id, body);
       setMessage({ text: ok, error: false });
+      saved = true;
     } catch (e) {
       setMessage({ text: `Not saved. ${msg(e)}`, error: true });
     }
     await refresh(); // on failure this restores the server value in the controls
+    return saved;
   }
 
   // Saves a typed date only when it is empty or complete; otherwise waits for blur.
@@ -107,6 +111,13 @@ function LeadDetail() {
     setFollowDraft(null);
     if (value === (lead?.next_follow_up_at?.slice(0, 10) ?? "")) return;
     void save({ next_follow_up_at: value || null }, "Follow-up date saved.");
+  }
+
+  async function rejectWebsite() {
+    if (!lead?.website) return;
+    if (!window.confirm(`Remove ${hostOf(lead.website)} as the website for ${lead.name}? Its emails and people found there will be removed too.`)) return;
+    if (await save({ reject_website: true }, "Website removed.")) webHeading.current?.focus();
+    // on success the button is gone, so focus moves to the section heading
   }
 
   async function suppress() {
@@ -137,6 +148,12 @@ function LeadDetail() {
   const comps = (lead.score?.components ?? {}) as Record<string, Factor>;
   const priority = PRIORITIES.find((p) => p.value === lead.priority)?.label;
   const type = ORG_TYPES.find((o) => o.value === lead.organization_type)?.label ?? lead.organization_type;
+  const site = safeHttpUrl(lead.website);
+  const ev = lead.website_evidence;
+  const evidence = ev?.check
+    ? `${ev.check === "phone" ? "Phone" : "Name and city"} matched${ev.page_url ? ` on ${pagePath(ev.page_url)}` : ""}`
+    : null;
+  const found = lead.contacts.filter((c) => c.email || c.source_url);
   const contactName = [lead.contact?.first_name, lead.contact?.last_name].filter(Boolean).join(" ");
 
   return (
@@ -254,6 +271,60 @@ function LeadDetail() {
             </p>
             <p className="tabular-nums">Phone {formatPhone(lead.contact?.phone ?? lead.phone)}</p>
             <p className="tabular-nums">Fax {formatPhone(lead.fax)}</p>
+          </section>
+          <section aria-labelledby="web-h">
+            <h2 id="web-h" ref={webHeading} tabIndex={-1} className="mb-2 font-semibold outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+              Website and emails
+            </h2>
+            {lead.website ? (
+              <>
+                <p className="break-all">
+                  {site ? (
+                    <a href={site} target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">
+                      {hostOf(lead.website)}
+                      <span className="sr-only"> (opens in a new tab)</span>
+                    </a>
+                  ) : (
+                    lead.website
+                  )}
+                </p>
+                {evidence && <p className="text-muted-foreground">{evidence}</p>}
+                <Button variant="outline" size="sm" className="mt-2" aria-label={`Not this website: ${hostOf(lead.website)}`} onClick={rejectWebsite}>
+                  Not this website
+                </Button>
+              </>
+            ) : (
+              <p className="text-muted-foreground">
+                {lead.enrichment_status === "no_website_found" ? "No matching website found." : "No website on record."}
+              </p>
+            )}
+            {found.length > 0 && (
+              <ul className="mt-3 space-y-2">
+                {found.map((c, i) => {
+                  const src = safeHttpUrl(c.source_url);
+                  const who = c.role === "general" ? "General address" : [c.first_name, c.last_name].filter(Boolean).join(" ");
+                  const address = c.email ?? (c.role === "general" ? c.last_name : null);
+                  return (
+                    <li key={i}>
+                      {who && <span className="font-medium">{who}</span>}
+                      {c.title && <span className="text-muted-foreground">{who ? ", " : ""}{c.title}</span>}
+                      {address && <p className="break-all">{address}</p>}
+                      <p className="text-muted-foreground">
+                        {c.email && <>Found on page{" | "}</>}
+                        {src ? (
+                          <a href={src} target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">
+                            Source<span className="sr-only"> (opens in a new tab)</span>
+                          </a>
+                        ) : (
+                          "No source link"
+                        )}
+                        {c.collected_at && <> | Collected {new Date(c.collected_at).toLocaleDateString()}</>}
+                      </p>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </section>
           <section>
             <h2 className="mb-2 font-semibold">Locations ({lead.locations.length})</h2>

@@ -24,7 +24,7 @@ def priority_for(total: int, config: dict) -> str:
     return "critical" if total >= t["critical"] else "high" if total >= t["high"] else "medium" if total >= t["medium"] else "low"
 
 
-def score(lead: NormalizedLead, config: dict) -> ScoreResult:
+def score(lead: NormalizedLead, config: dict, *, staff_with_title: bool = False) -> ScoreResult:
     pts, mx = config["points"], config["max"]
     code = lead.primary_taxonomy_code
     hospital = lead.organization_type == "hospital" or bool(code and code.startswith(config["hospital_prefix"]))
@@ -71,6 +71,8 @@ def score(lead: NormalizedLead, config: dict) -> ScoreResult:
     named = bool(c.get("first_name") or c.get("last_name"))
     if solo:
         dm = comp("decision_maker", dp["solo_provider"], "solo doctor is their own decision-maker")
+    elif staff_with_title and not (named and c.get("title")):
+        dm = comp("decision_maker", dp["staff_with_title"], "named staff member with title found on practice website")
     elif named and c.get("title"):
         dm = comp("decision_maker", dp["name_and_title"], "authorized official with name and title")
     elif named:

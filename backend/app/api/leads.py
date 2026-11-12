@@ -11,7 +11,7 @@ from app.errors import AppError
 from app.models import LeadActivity, Organization, SourceRecord
 from app.schemas import ActivityIn, ActivityOut, ActivityPage, LeadFilters, LeadOut, LeadPage, LeadPatch
 from app.services.activities import add_activity, change_status
-from app.services.leads import lead_query
+from app.services.leads import lead_query, primary_email, rescore_org, sorted_contacts
 from app.services.suppression import suppressed_ids
 
 router = APIRouter(prefix="/api/leads")
@@ -20,7 +20,7 @@ SORTS = {"score": Organization.fit_score, "name": Organization.name, "updated": 
          "follow_up": Organization.next_follow_up_at}
 LOADS = (selectinload(Organization.contacts), selectinload(Organization.locations),
          selectinload(Organization.score), selectinload(Organization.source_records).defer(SourceRecord.raw))
-PLAIN = [f for f in LeadOut.model_fields if f not in ("contact", "locations", "score", "source", "suppressed")]
+PLAIN = [f for f in LeadOut.model_fields if f not in ("contact", "contacts", "primary_email", "locations", "score", "source", "suppressed")]
 
 
 def _out(org: Organization, suppressed: bool = False) -> LeadOut:
@@ -29,6 +29,8 @@ def _out(org: Organization, suppressed: bool = False) -> LeadOut:
     return LeadOut.model_validate({
         **{f: getattr(org, f) for f in PLAIN},
         "contact": by_role.get("authorized_official") or by_role.get("provider"),
+        "contacts": sorted_contacts(org),
+        "primary_email": primary_email(org),
         "locations": org.locations,
         "score": org.score,
         "suppressed": suppressed,
@@ -75,6 +77,13 @@ def patch_lead(lead_id: str, body: LeadPatch, session: Session = Depends(get_ses
         change_status(session, org, body.crm_status)
     if "next_follow_up_at" in body.model_fields_set:
         org.next_follow_up_at = body.next_follow_up_at
+    if body.reject_website and not (org.enrichment_status == "rejected_by_user" and org.website is None):
+        for c in [c for c in org.contacts if c.source_key == "practice_website"]:
+            session.delete(c)
+        org.website = org.website_evidence = None
+        org.enrichment_status = "rejected_by_user"
+        rescore_org(session, org)  # website staff points no longer apply
+        add_activity(session, org, type="note", summary="Website rejected")
     session.commit()
     session.refresh(org)  # reload server-side updated_at
     return _out(org, bool(suppressed_ids(session, [org.id])))

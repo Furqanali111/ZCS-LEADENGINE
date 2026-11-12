@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ApiError, patchLeadStatus, type Lead, type LeadPage } from "@/lib/api";
 import { CLOSED_STATUSES, CRM_STATUSES, PRIORITIES } from "@/lib/constants";
 import { isOverdue } from "@/lib/dates";
-import { formatPhone } from "@/lib/format";
+import { formatPhone, hostOf, safeHttpUrl } from "@/lib/format";
 
 const SELECT =
   "h-7 rounded-lg border border-input bg-transparent px-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
@@ -120,6 +120,8 @@ export function LeadsTable({
             <TableHead>City, state</TableHead>
             <TableHead>Phone</TableHead>
             <TableHead>Primary contact</TableHead>
+            <TableHead>Website</TableHead>
+            <TableHead>Email</TableHead>
             <SortHead col="score" label="Score" sort={sort} order={order} onSort={onSort} />
             <TableHead>Priority</TableHead>
             <TableHead>Sales status</TableHead>
@@ -180,6 +182,17 @@ export function LeadsTable({
                       "-"
                     )}
                   </TableCell>
+                  <TableCell className="whitespace-normal">
+                    {safeHttpUrl(l.website) ? (
+                      <a href={safeHttpUrl(l.website)!} target="_blank" rel="noopener noreferrer" className="rounded underline underline-offset-4 outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+                        {hostOf(l.website!)}
+                        <span className="sr-only"> (opens in a new tab)</span>
+                      </a>
+                    ) : (
+                      "-"
+                    )}
+                  </TableCell>
+                  <TableCell className="whitespace-normal break-all">{l.primary_email ?? "-"}</TableCell>
                   <TableCell className="tabular-nums">{l.fit_score ?? "-"}</TableCell>
                   <TableCell>{priority ? <Badge variant={l.priority === "critical" || l.priority === "high" ? "default" : "secondary"}>{priority}</Badge> : "-"}</TableCell>
                   <TableCell>
@@ -215,7 +228,7 @@ export function LeadsTable({
                 </TableRow>
                 {open && (
                   <TableRow id={detailId} className="bg-muted/30 hover:bg-muted/30">
-                    <TableCell colSpan={12} className="whitespace-normal p-0">
+                    <TableCell colSpan={14} className="whitespace-normal p-0">
                       <LeadRowDetail lead={l} />
                     </TableCell>
                   </TableRow>

@@ -71,6 +71,7 @@ Rejected for the MVP: paid enrichment APIs, a cloud-hosted worker, automated ema
 - Ponytail mode, lazy senior dev: the smallest change that fully works. No premature abstraction.
 - Reuse installed dependencies and existing components before adding anything new.
 - Implement one slice and one milestone at a time. Report changed files, tests run, known limits, and the next step at the end of each.
+- Subagent-driven implementation: run independent tasks in parallel whenever possible. Before dispatching, list which tasks share no files and no interfaces, put each parallel task in its own git worktree and branch, and cherry-pick the results onto the feature branch one at a time. Tasks that consume another task's output stay sequential. Never run two implementers in the same checkout.
 - Write the migration and the test with each backend feature.
 - Never use em dashes in any generated text, comments, commit messages, or documentation. Use a comma, colon, or rewrite the sentence.
 - Update the docs when routes, schemas, or environment variables change.

@@ -418,3 +418,154 @@ def test_patch_suppressed_lead_cannot_leave_do_not_contact(client, db):
     assert client.get(f"/api/leads/{org.id}").json()["crm_status"] == "do_not_contact"
     assert client.patch(f"/api/leads/{org.id}", json={"next_follow_up_at": "2026-12-01"}).status_code == 200
     assert client.patch(f"/api/leads/{org.id}", json={"crm_status": "do_not_contact"}).status_code == 200
+
+
+def test_rescore_passes_staff_with_title(db, session_factory):
+    from app.models import Contact, Organization, SourceRecord
+    from app.rescore import rescore_all
+
+    raw = {"number": "3333333333", "enumeration_type": "NPI-2", "basic": {"organization_name": "Staff Co"},
+           "taxonomies": [{"code": "207Q00000X", "desc": "Family Medicine", "primary": True}],
+           "addresses": [{"address_purpose": "LOCATION", "city": "Austin", "state": "TX"}]}
+    org = Organization(npi="3333333333", name="Staff Co", organization_type="practice", state="TX")
+    db.add(org)
+    db.flush()
+    db.add(SourceRecord(organization_id=org.id, source_key="npi_registry", external_id="3333333333", raw=raw))
+    db.add(Contact(organization_id=org.id, first_name="Ann", last_name="Lee", title="Practice Manager",
+                   role="staff", source_key="website"))
+    db.commit()
+    rescore_all(session_factory)
+    db.refresh(org)
+    assert org.score.components["decision_maker"]["points"] == 10
+
+def test_reject_website_is_idempotent(client, db):
+    from app.models import LeadActivity
+
+    org = add_lead(db, "1000000009", "Acme", website="https://acme.example", enrichment_status="enriched")
+    first = client.patch(f"/api/leads/{org.id}", json={"reject_website": True}).json()
+    again = client.patch(f"/api/leads/{org.id}", json={"reject_website": True})
+    assert again.status_code == 200 and again.json() == first
+    db.expire_all()
+    assert db.query(LeadActivity).filter_by(organization_id=org.id, summary="Website rejected").count() == 1
+
+
+def test_reject_website_rescores_without_website_staff(client, db):
+    from app.models import Contact, SourceRecord
+    from app.services.leads import rescore_org
+
+    raw = {"number": "3333333333", "enumeration_type": "NPI-2", "basic": {"organization_name": "Staff Co"},
+           "taxonomies": [{"code": "207Q00000X", "desc": "Family Medicine", "primary": True}],
+           "addresses": [{"address_purpose": "LOCATION", "city": "Austin", "state": "TX"}]}
+    org = add_lead(db, "3333333333", "Staff Co", website="https://staff.example", enrichment_status="enriched")
+    db.query(SourceRecord).filter_by(organization_id=org.id).update({"raw": raw})
+    db.add(Contact(organization_id=org.id, first_name="Ann", last_name="Lee", title="practice manager",
+                   role="staff", source_key="practice_website"))
+    db.commit()
+    rescore_org(db, org)
+    db.commit()
+    assert org.score.components["decision_maker"]["points"] == 10
+    assert client.patch(f"/api/leads/{org.id}", json={"reject_website": True}).status_code == 200
+    db.expire_all()
+    assert org.score.components["decision_maker"]["points"] == 0 and org.fit_score == org.score.total
+
+
+# ---- website and emails ----
+
+def add_web_contacts(db, org):
+    from datetime import datetime, timezone
+
+    from app.models import Contact
+
+    t = datetime(2026, 11, 12, tzinfo=timezone.utc)
+    db.add(Contact(organization_id=org.id, first_name="Jane", last_name="Doe", title="Practice Manager", role="staff",
+                   source_key="practice_website", email="jane@acme.example", email_status="found_on_page",
+                   source_url="https://acme.example/team", collected_at=t))
+    db.add(Contact(organization_id=org.id, first_name="", last_name="", role="general", source_key="practice_website",
+                   email="info@acme.example", email_status="found_on_page",
+                   source_url="https://acme.example/contact", collected_at=t))
+    db.commit()
+
+
+def test_detail_exposes_website_evidence_and_contacts(client, db):
+    org = add_lead(db, "1000000009", "Acme", website="https://acme.example", enrichment_status="enriched",
+                   website_evidence={"matched": ["phone"]})
+    add_web_contacts(db, org)
+    lead = client.get(f"/api/leads/{org.id}").json()
+    assert lead["website"] == "https://acme.example" and lead["enrichment_status"] == "enriched"
+    assert lead["website_evidence"] == {"matched": ["phone"]}
+    assert len(lead["contacts"]) == 4
+    jane = next(c for c in lead["contacts"] if c["email"] == "jane@acme.example")
+    assert jane["source_url"] == "https://acme.example/team" and jane["email_status"] == "found_on_page"
+    assert jane["collected_at"]
+    assert lead["primary_email"] == "info@acme.example"  # first general contact wins over staff
+
+
+def test_primary_email_falls_back_to_staff_then_null(client, db):
+    from app.models import Contact
+
+    org = add_lead(db, "1000000009", "Acme")
+    assert client.get(f"/api/leads/{org.id}").json()["primary_email"] is None
+    db.add(Contact(organization_id=org.id, first_name="Jane", last_name="Doe", role="staff", source_key="practice_website",
+                   email="jane@acme.example"))
+    db.commit()
+    db.expire_all()  # the test and the app share one session
+    assert client.get("/api/leads?q=acme").json()["items"][0]["primary_email"] == "jane@acme.example"
+
+
+def test_reject_website(client, db):
+    from app.models import Contact, LeadActivity
+
+    org = add_lead(db, "1000000009", "Acme", website="https://acme.example", enrichment_status="enriched",
+                   website_evidence={"matched": ["phone"]})
+    add_web_contacts(db, org)
+    r = client.patch(f"/api/leads/{org.id}", json={"reject_website": True})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["website"] is None and body["website_evidence"] is None
+    assert body["enrichment_status"] == "rejected_by_user" and body["primary_email"] is None
+    assert len(body["contacts"]) == 2  # NPI contacts survive
+    db.expire_all()
+    assert {c.source_key for c in db.query(Contact).filter_by(organization_id=org.id)} == {"npi_registry"}
+    assert db.query(LeadActivity).filter_by(organization_id=org.id, type="note", summary="Website rejected").count() == 1
+
+
+def test_reject_website_false_or_alone_validates(client, db):
+    org = add_lead(db, "1000000009", "Acme")
+    assert client.patch(f"/api/leads/{org.id}", json={"reject_website": False}).status_code == 422
+    assert client.patch(f"/api/leads/{org.id}", json={"reject_website": None}).status_code == 422
+    assert client.patch(f"/api/leads/{org.id}", json={}).status_code == 422
+    r = client.patch(f"/api/leads/{org.id}", json={"reject_website": True, "crm_status": "called"})
+    assert r.status_code == 200 and r.json()["crm_status"] == "called"
+
+
+def test_has_website_and_has_email_filters(client, db):
+    from app.models import Contact
+
+    a = add_lead(db, "1000000001", "Alpha", website="https://a.example")
+    b = add_lead(db, "1000000002", "Bravo")
+    db.add(Contact(organization_id=b.id, role="general", source_key="practice_website", email="x@b.example"))
+    db.commit()
+    assert names(client.get("/api/leads?has_website=true")) == ["Alpha"]
+    assert names(client.get("/api/leads?has_email=true")) == ["Bravo"]
+
+
+def test_create_search_enrich_needs_sources_and_key(client, db, monkeypatch):
+    from app.config import get_settings
+
+    add_source(db)
+    body = {**BODY, "enrich": True}
+    monkeypatch.setattr(get_settings(), "brave_api_key", "k")
+    r = client.post("/api/search", json=body)
+    assert r.status_code == 422 and r.json()["error"]["code"] == "source_not_available"
+    add_source(db, "brave_search", "Brave")
+    add_source(db, "practice_websites", "Sites", "not_reviewed")
+    assert client.post("/api/search", json=body).status_code == 422
+    db.execute(__import__("sqlalchemy").text("UPDATE source_configs SET status='available' WHERE key='practice_websites'"))
+    db.commit()
+    monkeypatch.setattr(get_settings(), "brave_api_key", None)
+    r = client.post("/api/search", json=body)
+    assert r.status_code == 422 and r.json()["error"]["code"] == "missing_api_key"
+    monkeypatch.setattr(get_settings(), "brave_api_key", "k")
+    r = client.post("/api/search", json=body)
+    assert r.status_code == 201 and r.json()["enrich"] is True
+    assert client.post("/api/search", json=BODY).json()["enrich"] is False

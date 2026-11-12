@@ -26,6 +26,7 @@ class SearchCreate(BaseModel):
     include_subparts: bool = True
     include_hospitals: bool = False
     sources: list[str] = Field(min_length=1)
+    enrich: bool = False
 
     @field_validator("specialty", mode="before")
     @classmethod
@@ -72,6 +73,7 @@ class JobOut(BaseModel):
     include_subparts: bool
     include_hospitals: bool
     sources: list[str]
+    enrich: bool
     status: str
     counters: dict
     error: str | None
@@ -90,6 +92,8 @@ class LeadFilters(BaseModel):
     crm_status: str | None = None
     search_job_id: uuid.UUID | None = None
     follow_up: Literal["due", "overdue", "none"] | None = None
+    has_website: bool | None = None
+    has_email: bool | None = None
 
     @field_validator("state", mode="before")
     @classmethod
@@ -114,6 +118,7 @@ class LeadPatch(BaseModel):
 
     crm_status: str | None = None
     next_follow_up_at: date | None = None  # explicit null clears it; told apart from missing via model_fields_set
+    reject_website: bool | None = None
 
     @field_validator("crm_status")
     @classmethod
@@ -122,10 +127,17 @@ class LeadPatch(BaseModel):
             raise ValueError(f"must be one of {', '.join(CRM_STATUSES)}")
         return v
 
+    @field_validator("reject_website")
+    @classmethod
+    def only_true(cls, v):
+        if v is not True:  # rejecting is one-way here; also rejects an explicit null
+            raise ValueError("must be true")
+        return v
+
     @model_validator(mode="after")
     def need_a_field(self):
         if not self.model_fields_set:
-            raise ValueError("send crm_status and/or next_follow_up_at")
+            raise ValueError("send crm_status, next_follow_up_at and/or reject_website")
         return self
 
 
@@ -200,6 +212,10 @@ class ContactOut(BaseModel):
     title: str | None
     phone: str | None
     role: str | None
+    email: str | None = None
+    email_status: str | None = None
+    source_url: str | None = None
+    collected_at: datetime | None = None
 
 
 class LocationOut(BaseModel):
@@ -247,7 +263,12 @@ class LeadOut(BaseModel):
     last_contacted_at: datetime | None
     next_follow_up_at: date | None
     suppressed: bool = False
+    website: str | None
+    enrichment_status: str
+    website_evidence: dict | None
+    primary_email: str | None
     contact: ContactOut | None
+    contacts: list[ContactOut]
     locations: list[LocationOut]
     score: ScoreOut | None
     source: SourceInfoOut | None

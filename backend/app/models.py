@@ -8,13 +8,14 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.constants import (
-    ACTIVITY_TYPES, CRM_STATUSES, JOB_STATUSES, ORG_TYPES, OUTCOMES, PRIORITIES, SUPPRESSION_KINDS, US_STATES,
+    ACTIVITY_TYPES, CRM_STATUSES, ENRICHMENT_STATUSES, JOB_STATUSES, ORG_TYPES, OUTCOMES, PRIORITIES, SUPPRESSION_KINDS, US_STATES,
 )
 from app.db import Base
 
 SOURCE_STATUSES = ("available", "approved_not_built", "not_reviewed", "rejected")
 LOCATION_PURPOSES = ("location", "mailing", "practice")
-CONTACT_ROLES = ("authorized_official", "provider")
+CONTACT_ROLES = ("authorized_official", "provider", "staff", "general")
+EMAIL_STATUSES = ("found_on_page",)
 
 
 def in_list(column: str, values) -> str:
@@ -58,6 +59,7 @@ class SearchJob(IdMixin, Base):
     include_hospitals: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     sources: Mapped[list[str]] = mapped_column(ARRAY(Text))
     status: Mapped[str] = mapped_column(Text, default="queued", server_default="queued")
+    enrich: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     cancel_requested: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     checkpoint: Mapped[dict] = mapped_column(
         JSONB, default=lambda: {"phase": None, "skip": 0}, server_default=text('\'{"phase": null, "skip": 0}\'::jsonb')
@@ -75,6 +77,7 @@ class Organization(IdMixin, Base):
         CheckConstraint(in_list("organization_type", ORG_TYPES), name="ck_organizations_organization_type"),
         CheckConstraint(in_list("priority", PRIORITIES), name="ck_organizations_priority"),
         CheckConstraint(in_list("crm_status", CRM_STATUSES), name="ck_organizations_crm_status"),
+        CheckConstraint(in_list("enrichment_status", ENRICHMENT_STATUSES), name="ck_organizations_enrichment_status"),
         Index("ix_organizations_state", "state"),
         Index("ix_organizations_primary_taxonomy_desc", "primary_taxonomy_desc"),
         Index("ix_organizations_priority", "priority"),
@@ -101,6 +104,10 @@ class Organization(IdMixin, Base):
     status_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_contacted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     next_follow_up_at: Mapped[date | None] = mapped_column(Date)
+    website: Mapped[str | None] = mapped_column(Text)
+    website_evidence: Mapped[dict | None] = mapped_column(JSONB)
+    enrichment_status: Mapped[str] = mapped_column(Text, default="not_run", server_default="not_run")
+    enriched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     locations: Mapped[list["Location"]] = relationship(back_populates="organization", cascade="all, delete-orphan", passive_deletes=True)
     contacts: Mapped[list["Contact"]] = relationship(back_populates="organization", cascade="all, delete-orphan", passive_deletes=True)
@@ -137,6 +144,7 @@ class Contact(IdMixin, Base):
     __table_args__ = (
         UniqueConstraint("organization_id", "role", "first_name", "last_name", name="uq_contacts_org_role_name"),
         CheckConstraint(in_list("role", CONTACT_ROLES), name="ck_contacts_role"),
+        CheckConstraint(f"email_status IS NULL OR {in_list('email_status', EMAIL_STATUSES)}", name="ck_contacts_email_status"),
     )
 
     organization_id: Mapped[uuid.UUID] = org_fk(index=True)
@@ -146,6 +154,10 @@ class Contact(IdMixin, Base):
     phone: Mapped[str | None] = mapped_column(Text)
     role: Mapped[str] = mapped_column(Text)
     source_key: Mapped[str] = mapped_column(Text)
+    email: Mapped[str | None] = mapped_column(Text)
+    email_status: Mapped[str | None] = mapped_column(Text)
+    source_url: Mapped[str | None] = mapped_column(Text)
+    collected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     organization: Mapped[Organization] = relationship(back_populates="contacts")
 

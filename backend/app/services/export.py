@@ -11,13 +11,13 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.models import Organization, SourceRecord
 from app.schemas import LeadFilters
-from app.services.leads import lead_query
+from app.services.leads import lead_query, primary_email, sorted_contacts
 from app.services.suppression import suppressed_ids
 
 HEADERS = ["Organization Name", "DBA Name", "Specialty", "Organization Type", "Parent Organization", "Business Phone",
            "Fax", "Contact Person", "Contact Title", "Contact Phone", "Address", "City", "State", "ZIP", "NPI",
            "Lead Score", "Lead Priority", "Outreach Status", "Source", "Collected On",
-           "Last Contacted", "Next Follow-up", "Suppressed"]
+           "Last Contacted", "Next Follow-up", "Suppressed", "Website", "Email", "Decision-maker"]
 CONTACT_HEADERS = ["Organization Name", "NPI", "First Name", "Last Name", "Title", "Phone", "Role"]
 SOURCE_NAMES = {"npi_registry": "CMS NPI Registry"}
 # Light fills with dark text; the label is always in the cell, so colour is never the only signal.
@@ -83,6 +83,8 @@ def build_workbook(session: Session, *, filters: LeadFilters | None, ids: list[U
     for org in orgs:
         by_role = {c.role: c for c in org.contacts}
         person = by_role.get("authorized_official") or by_role.get("provider")
+        staff = next((c for c in sorted_contacts(org) if c.source_key == "practice_website" and c.role == "staff"), None)
+        decision_maker = ", ".join(p for p in (f"{staff.first_name} {staff.last_name}".strip(), staff.title) if p) if staff else None
         loc = next((x for x in org.locations if x.is_primary), org.locations[0] if org.locations else None)
         src = max(org.source_records, key=lambda s: s.collected_at, default=None)  # newest record
         _put(leads, [
@@ -97,6 +99,7 @@ def build_workbook(session: Session, *, filters: LeadFilters | None, ids: list[U
             src.collected_at.replace(tzinfo=None).date() if src else None,  # UTC calendar date
             org.last_contacted_at.astimezone().date() if org.last_contacted_at else None,  # local calendar date
             org.next_follow_up_at, "Yes" if org.id in hit else None,
+            org.website, primary_email(org), decision_maker,
         ])
         row = leads.max_row
         for col in (20, 21, 22):
