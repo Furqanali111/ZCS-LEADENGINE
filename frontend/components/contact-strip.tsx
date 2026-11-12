@@ -1,41 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
 import { Check, Copy, Globe, Mail, Phone, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatPhone, hostOf, safeHttpUrl } from "@/lib/format";
 import { PANEL_CLASS } from "@/lib/ui";
+import { useCopy } from "@/lib/use-copy";
 
 type Props = { person: string; title: string | null; phone: string | null; fax: string | null; email: string | null; website: string | null };
 
 // The facts you need to reach someone, large and dark. Each value selects whole on a click and has a Copy button.
 export function ContactStrip({ person, title, phone, fax, email, website }: Props) {
   const url = safeHttpUrl(website);
-  const [copied, setCopied] = useState<string | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-
-  async function copy(label: string, text: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      // shortcut: older browsers without the clipboard API, fall back to a hidden textarea
-      const t = document.createElement("textarea");
-      t.value = text;
-      document.body.appendChild(t);
-      t.select();
-      document.execCommand("copy");
-      t.remove();
-    }
-    setCopied(label);
-    clearTimeout(timer.current);
-    timer.current = setTimeout(() => setCopied(null), 2000);
-  }
+  const { copied, failed, copy } = useCopy();
 
   const copyButton = (label: string, text: string) => (
     <Button type="button" variant="outline" size="sm" className="shrink-0" aria-label={`Copy ${label.toLowerCase()}`} onClick={() => copy(label, text)}>
       {copied === label ? <Check aria-hidden className="text-emerald-700" /> : <Copy aria-hidden />}
-      {copied === label ? "Copied" : "Copy"}
+      {copied === label ? "Copied" : failed === label ? "Copy failed, select the text" : "Copy"}
     </Button>
   );
 
@@ -115,7 +97,7 @@ export function ContactStrip({ person, title, phone, fax, email, website }: Prop
         )}
       </Item>
       <p role="status" className="sr-only">
-        {copied ? `${copied} copied` : ""}
+        {copied ? `${copied} copied` : failed ? `Copy failed, select the ${failed.toLowerCase()}` : ""}
       </p>
     </section>
   );

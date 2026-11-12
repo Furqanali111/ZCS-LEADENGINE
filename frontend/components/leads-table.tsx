@@ -13,7 +13,7 @@ import { ApiError, patchLeadStatus, type Lead, type LeadPage } from "@/lib/api";
 import { CLOSED_STATUSES, CRM_STATUSES, PRIORITIES } from "@/lib/constants";
 import { SELECT_CLASS } from "@/lib/ui";
 import { isOverdue } from "@/lib/dates";
-import { formatPhone, hostOf, safeHttpUrl } from "@/lib/format";
+import { formatDay, formatPhone, hostOf, safeHttpUrl } from "@/lib/format";
 
 // The select itself is the colored status pill; same tone tokens as ToneBadge.
 const PILL =
@@ -34,11 +34,6 @@ const NONE = (
 );
 
 const closed = new Set(CLOSED_STATUSES.map((s) => s.value));
-// Date-only strings parse as UTC, so format the parts directly.
-const formatDay = (d: string) => {
-  const [y, m, day] = d.split("-");
-  return `${m}/${day}/${y}`;
-};
 
 export const PAGE_SIZES = [25, 50, 100, 200];
 
