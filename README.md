@@ -116,6 +116,7 @@ On a lead page, the call-result buttons (No answer, Spoke call back, Interested,
 |---|---|
 | `POST /api/leads/{id}/claim`, `POST /api/leads/{id}/release` | Take or give back a lead |
 | `GET /api/owners` | Names that currently own a lead |
+| `GET /api/leads/{id}/related` | Up to 20 other leads sharing a phone, normalized name, parent organization, authorized official or website domain, with a `reasons` list each (computed live, no table) |
 | `GET /api/leads` | New filter `owner` (a name, or `none` for unclaimed) |
 | Activities | Each new activity stores `actor`, the salesperson name |
 
