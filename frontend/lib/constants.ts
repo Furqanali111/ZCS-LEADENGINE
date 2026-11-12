@@ -19,6 +19,15 @@ export const SPECIALTIES = [
   "Family Medicine",
   "Geriatric Medicine",
   "General Practice",
+  "Nurse Practitioner",
+  "Pediatrics",
+  "Cardiology",
+  "Endocrinology",
+  "Nephrology",
+  "Pulmonary Disease",
+  "Psychiatry & Neurology",
+  "Orthopaedic Surgery",
+  "Obstetrics & Gynecology",
 ];
 
 export const CRM_STATUSES: { value: string; label: string }[] = [
