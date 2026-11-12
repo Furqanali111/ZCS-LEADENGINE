@@ -611,3 +611,18 @@ def test_create_search_accepts_more_than_1200(client, db):
     r = client.post("/api/search", json={**BODY, "target_count": 5000})
     assert r.status_code == 201 and r.json()["target_count"] == 5000
     assert client.post("/api/search", json={**BODY, "target_count": 50001}).status_code == 422
+
+
+def test_leads_sort_by_email_and_website(client, db):
+    from datetime import datetime, timezone
+    from app.models import Contact, Organization
+    for npi, name, site, email in (("1", "A", "b.com", "z@x.com"), ("2", "B", "a.com", "a@x.com"), ("3", "C", None, None)):
+        o = Organization(npi=npi, name=name, organization_type="practice", state="TX", website=site)
+        db.add(o)
+        db.flush()
+        if email:
+            db.add(Contact(organization_id=o.id, role="general", email=email, source_key="practice_websites", source_url="https://x.com", collected_at=datetime.now(timezone.utc)))
+    db.commit()
+    names = lambda q: [i["name"] for i in client.get(f"/api/leads?{q}").json()["items"]]
+    assert names("sort=email&order=asc") == ["B", "A", "C"]
+    assert names("sort=website&order=desc") == ["A", "B", "C"]

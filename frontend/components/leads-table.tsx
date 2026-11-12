@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ApiError, patchLeadStatus, type Lead, type LeadPage } from "@/lib/api";
 import { CLOSED_STATUSES, CRM_STATUSES, PRIORITIES } from "@/lib/constants";
+import { SELECT_CLASS } from "@/lib/ui";
 import { isOverdue } from "@/lib/dates";
 import { formatPhone, hostOf, safeHttpUrl } from "@/lib/format";
 
@@ -39,7 +40,9 @@ const formatDay = (d: string) => {
   return `${m}/${day}/${y}`;
 };
 
-type SortCol = "score" | "name" | "follow_up";
+export const PAGE_SIZES = [25, 50, 100, 200];
+
+type SortCol = "score" | "name" | "follow_up" | "email" | "website";
 
 function SortHead({ col, label, sort, order, onSort }: { col: SortCol; label: string; sort: string; order: string; onSort: (c: SortCol) => void }) {
   const active = sort === col;
@@ -76,6 +79,7 @@ export function LeadsTable({
   onSelect,
   onSort,
   onPage,
+  onPageSize,
   onMessage,
 }: {
   data: LeadPage;
@@ -86,6 +90,7 @@ export function LeadsTable({
   onSelect: (s: Set<string>) => void;
   onSort: (c: SortCol) => void;
   onPage: (p: number) => void;
+  onPageSize: (n: number) => void;
   onMessage: (text: string, error: boolean) => void;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -154,8 +159,8 @@ export function LeadsTable({
               <TableHead>City, state</TableHead>
               <TableHead>Phone</TableHead>
               <TableHead className="min-w-44">Primary contact</TableHead>
-              <TableHead>Website</TableHead>
-              <TableHead>Email</TableHead>
+              <SortHead col="website" label="Website" sort={sort} order={order} onSort={onSort} />
+              <SortHead col="email" label="Email" sort={sort} order={order} onSort={onSort} />
               <SortHead col="score" label="Score" sort={sort} order={order} onSort={onSort} />
               <TableHead>Priority</TableHead>
               <TableHead>Sales status</TableHead>
@@ -290,7 +295,17 @@ export function LeadsTable({
         <p className="text-muted-foreground">
           {from} to {to} of {data.total}
         </p>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          <label htmlFor="page-size" className="text-muted-foreground">
+            Per page
+          </label>
+          <select id="page-size" className={`${SELECT_CLASS} !h-9 !w-auto`} value={pageSize} onChange={(e) => onPageSize(Number(e.target.value))}>
+            {PAGE_SIZES.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
           <Button variant="outline" size="sm" disabled={data.page <= 1} onClick={() => onPage(data.page - 1)}>
             Previous
           </Button>

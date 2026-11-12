@@ -4,13 +4,12 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Download } from "lucide-react";
 import { LeadFilters } from "@/components/lead-filters";
-import { LeadsTable } from "@/components/leads-table";
+import { LeadsTable, PAGE_SIZES } from "@/components/leads-table";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { ApiError, exportLeadsFile, listLeads, type LeadFilters as Filters, type LeadPage } from "@/lib/api";
 import { CRM_STATUSES, ORG_TYPES, PRIORITIES, US_STATES } from "@/lib/constants";
 
-const PAGE_SIZE = 50;
 const FILTER_KEYS = ["q", "state", "specialty", "organization_type", "priority", "min_score", "crm_status", "search_job_id", "follow_up", "has_website", "has_email"] as const;
 const ALLOWED: Record<string, Set<string>> = {
   state: new Set(US_STATES.map((s) => s.code)),
@@ -42,7 +41,9 @@ function LeadsView() {
   }, [params]);
   const page = Math.max(1, Number(params.get("page")) || 1);
   const sortParam = params.get("sort");
-  const sort = sortParam === "name" || sortParam === "follow_up" ? sortParam : "score";
+  const sort = (["name", "follow_up", "email", "website"] as const).find((s) => s === sortParam) ?? "score";
+  const sizeParam = Number(params.get("size"));
+  const pageSize = PAGE_SIZES.includes(sizeParam) ? sizeParam : 50;
   const order = params.get("order") === "asc" ? "asc" : "desc";
 
   // Every filter, sort and page change goes through the URL, so a refresh keeps it. Page resets unless given.
@@ -72,12 +73,12 @@ function LeadsView() {
   }, [filterSig]);
 
   // The result is keyed by its request, so "loading" is derived and no state is set synchronously in the effect.
-  const reqKey = JSON.stringify({ filters, page, sort, order });
+  const reqKey = JSON.stringify({ filters, page, pageSize, sort, order });
   const [result, setResult] = useState<{ key: string; data?: LeadPage; error?: string } | null>(null);
   useEffect(() => {
     let cancelled = false;
     const t = setTimeout(() => {
-      listLeads({ ...filters, page, page_size: PAGE_SIZE, sort, order })
+      listLeads({ ...filters, page, page_size: pageSize, sort, order })
         .then((data) => !cancelled && setResult({ key: reqKey, data }))
         .catch((e) => !cancelled && setResult({ key: reqKey, error: e instanceof ApiError ? e.message : "Could not load leads." }));
     }, 0);
@@ -151,11 +152,12 @@ function LeadsView() {
             data={data}
             sort={sort}
             order={order}
-            pageSize={PAGE_SIZE}
+            pageSize={pageSize}
             selected={selected}
             onSelect={setSelected}
             onSort={(col) => update({ sort: col, order: col === sort ? (order === "asc" ? "desc" : "asc") : col === "name" || col === "follow_up" ? "asc" : "desc" })}
             onPage={(p) => update({ page: p > 1 ? String(p) : undefined })}
+            onPageSize={(n) => update({ size: n === 50 ? undefined : String(n) })}
             onMessage={(text, error) => setMessage({ text, error })}
           />
         </div>
