@@ -118,6 +118,19 @@ def test_robots_5xx_allows_nothing():
     assert "https://a.com/x" not in log
 
 
+def test_robots_5xx_cached_then_retried_after_ttl():
+    calls = []
+    def robots(req):
+        calls.append(1)
+        return httpx.Response(503) if len(calls) == 1 else httpx.Response(200, text="User-agent: *\nAllow: /")
+    f, log, clock = make({"/robots.txt": robots, "/x": ok(), "/y": ok()})
+    assert f.get("https://a.com/x") is None and f.get("https://a.com/y") is None
+    assert len(calls) == 1  # the failure is remembered, not re-requested per page
+    clock.now += 601
+    assert f.get("https://a.com/x") is not None
+    assert len(calls) == 2
+
+
 def test_robots_cached_per_domain():
     f, log, _ = make({"/a": ok(), "/b": ok(), "/c": ok()})
     for p in "abc":

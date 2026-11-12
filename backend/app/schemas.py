@@ -21,7 +21,7 @@ class SearchCreate(BaseModel):
     specialty: str = Field(min_length=1, max_length=100)
     state: str
     city: str | None = Field(default=None, max_length=100)
-    target_count: int = Field(default=500, ge=1, le=1200)
+    target_count: int = Field(default=500, ge=1, le=50000)
     include_practices: bool = True
     include_solo: bool = True
     include_subparts: bool = True
@@ -59,6 +59,11 @@ class SearchCreate(BaseModel):
         if not (self.include_practices or self.include_solo):
             raise ValueError("include_practices and include_solo cannot both be false")
         return self
+
+
+class ProgressOut(BaseModel):
+    leads_fetched: int
+    exhausted: bool  # every phase walked so far has been read to the end
 
 
 class JobOut(BaseModel):
@@ -362,3 +367,35 @@ class SuppressionOut(BaseModel):
     value: str
     reason: str | None
     created_at: datetime
+
+
+class TemplateIn(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    kind: Literal["email", "call"]
+    subject: str | None = Field(default=None, max_length=200)
+    body: str = Field(min_length=1, max_length=5000)
+
+    @model_validator(mode="after")
+    def subject_only_for_email(self):
+        if self.subject is not None and self.kind != "email":
+            raise ValueError("subject is only allowed for email templates")
+        return self
+
+
+class TemplatePatch(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    kind: Literal["email", "call"] | None = None
+    subject: str | None = Field(default=None, max_length=200)
+    body: str | None = Field(default=None, min_length=1, max_length=5000)
+
+
+class TemplateOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    kind: str
+    subject: str | None
+    body: str
+    created_at: datetime
+    updated_at: datetime

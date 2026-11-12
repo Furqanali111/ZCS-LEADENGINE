@@ -1,8 +1,10 @@
 "use client";
 
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Globe, Mail } from "lucide-react";
 import Link from "next/link";
 import { Fragment, useState } from "react";
 import { LeadRowDetail } from "@/components/lead-row-detail";
+import { priorityTone, statusTone, TONE_DOT as DOT, ToneBadge } from "@/components/tone-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -13,7 +15,14 @@ import { isOverdue } from "@/lib/dates";
 import { formatPhone, hostOf, safeHttpUrl } from "@/lib/format";
 
 const SELECT =
-  "h-7 rounded-lg border border-input bg-transparent px-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
+  "h-7 w-full min-w-28 rounded-md border border-input bg-surface px-1.5 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
+const LINK = "rounded-sm underline-offset-4 hover:underline focus-visible:ring-3 focus-visible:ring-ring/50";
+const NONE = (
+  <span className="text-muted-foreground">
+    <span aria-hidden>-</span>
+    <span className="sr-only">None</span>
+  </span>
+);
 
 const closed = new Set(CLOSED_STATUSES.map((s) => s.value));
 // Date-only strings parse as UTC, so format the parts directly.
@@ -26,13 +35,27 @@ type SortCol = "score" | "name" | "follow_up";
 
 function SortHead({ col, label, sort, order, onSort }: { col: SortCol; label: string; sort: string; order: string; onSort: (c: SortCol) => void }) {
   const active = sort === col;
+  const Icon = !active ? ArrowUpDown : order === "asc" ? ArrowUp : ArrowDown;
   return (
     <TableHead aria-sort={active ? (order === "asc" ? "ascending" : "descending") : "none"}>
-      <button type="button" onClick={() => onSort(col)} className="rounded font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+      <button
+        type="button"
+        onClick={() => onSort(col)}
+        className={`-mx-1 inline-flex items-center gap-1 rounded px-1 py-0.5 font-semibold hover:text-foreground ${active ? "text-foreground" : ""}`}
+      >
         {label}
-        <span aria-hidden="true">{active ? (order === "asc" ? " ▲" : " ▼") : ""}</span>
+        <Icon aria-hidden className={`size-3 ${active ? "" : "opacity-50"}`} />
       </button>
     </TableHead>
+  );
+}
+
+function Score({ value }: { value: number | null }) {
+  if (value === null) return NONE;
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span className="font-semibold tabular-nums">{value}</span>
+    </span>
   );
 }
 
@@ -61,7 +84,9 @@ export function LeadsTable({
   // Saved or in-flight status values, keyed by lead id; removed on failure so the row reverts to the server value.
   const [statusOverride, setStatusOverride] = useState<Record<string, string>>({});
 
-  if (data.total === 0) return <p className="text-sm text-muted-foreground">No leads match these filters.</p>;
+  if (data.total === 0) {
+    return <p className="rounded-xl border border-dashed bg-card p-8 text-center text-sm text-muted-foreground">No leads match these filters.</p>;
+  }
 
   const from = (data.page - 1) * pageSize + 1;
   const to = from + data.items.length - 1;
@@ -104,142 +129,161 @@ export function LeadsTable({
 
   return (
     <div className="space-y-3">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-8">
-              <Checkbox
-                aria-label="Select all leads on this page"
-                checked={allOnPage}
-                indeterminate={someOnPage && !allOnPage}
-                onCheckedChange={(v) => togglePage(v)}
-              />
-            </TableHead>
-            <SortHead col="name" label="Organization" sort={sort} order={order} onSort={onSort} />
-            <TableHead>Specialty</TableHead>
-            <TableHead>City, state</TableHead>
-            <TableHead>Phone</TableHead>
-            <TableHead>Primary contact</TableHead>
-            <TableHead>Website</TableHead>
-            <TableHead>Email</TableHead>
-            <SortHead col="score" label="Score" sort={sort} order={order} onSort={onSort} />
-            <TableHead>Priority</TableHead>
-            <TableHead>Sales status</TableHead>
-            <SortHead col="follow_up" label="Follow-up" sort={sort} order={order} onSort={onSort} />
-            <TableHead>Suppression</TableHead>
-            <TableHead>Updated</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.items.map((l) => {
-            const open = expanded === l.id;
-            const detailId = `detail-${l.id}`;
-            const contactName = [l.contact?.first_name, l.contact?.last_name].filter(Boolean).join(" ");
-            const priority = PRIORITIES.find((p) => p.value === l.priority)?.label;
-            return (
-              <Fragment key={l.id}>
-                <TableRow
-                  className="cursor-pointer"
-                  data-state={selected.has(l.id) ? "selected" : undefined}
-                  onClick={(e) => {
-                    if ((e.target as HTMLElement).closest("a,button,select,input,[role=checkbox],label")) return;
-                    setExpanded(open ? null : l.id);
-                  }}
-                >
-                  <TableCell>
-                    <Checkbox aria-label={`Select ${l.name}`} checked={selected.has(l.id)} onCheckedChange={(v) => toggle(l.id, v)} />
-                  </TableCell>
-                  <TableCell className="whitespace-normal">
-                    <button
-                      type="button"
-                      aria-expanded={open}
-                      aria-controls={detailId}
-                      aria-label={`${open ? "Hide" : "Show"} details for ${l.name}`}
-                      onClick={() => setExpanded(open ? null : l.id)}
-                      className="mr-1 rounded outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-                    >
-                      <span aria-hidden="true">{open ? "▾" : "▸"}</span>
-                    </button>
-                    <Link href={`/leads/${l.id}`} className="rounded font-medium outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50">
-                      {l.name}
-                    </Link>
-                    {l.organization_type === "solo_provider" && (
-                      <Badge variant="outline" className="ml-2">
-                        Solo
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="whitespace-normal">{l.primary_taxonomy_desc ?? "-"}</TableCell>
-                  <TableCell>{[l.city, l.state].filter(Boolean).join(", ") || "-"}</TableCell>
-                  <TableCell className="tabular-nums">{formatPhone(l.phone)}</TableCell>
-                  <TableCell className="whitespace-normal">
-                    {contactName ? (
-                      <>
-                        {contactName}
-                        {l.contact?.title && <span className="text-muted-foreground">, {l.contact.title}</span>}
-                      </>
-                    ) : (
-                      "-"
-                    )}
-                  </TableCell>
-                  <TableCell className="whitespace-normal">
-                    {safeHttpUrl(l.website) ? (
-                      <a href={safeHttpUrl(l.website)!} target="_blank" rel="noopener noreferrer" className="rounded underline underline-offset-4 outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
-                        {hostOf(l.website!)}
-                        <span className="sr-only"> (opens in a new tab)</span>
-                      </a>
-                    ) : (
-                      "-"
-                    )}
-                  </TableCell>
-                  <TableCell className="whitespace-normal break-all">{l.primary_email ?? "-"}</TableCell>
-                  <TableCell className="tabular-nums">{l.fit_score ?? "-"}</TableCell>
-                  <TableCell>{priority ? <Badge variant={l.priority === "critical" || l.priority === "high" ? "default" : "secondary"}>{priority}</Badge> : "-"}</TableCell>
-                  <TableCell>
-                    <select
-                      aria-label={`Sales status for ${l.name}`}
-                      className={SELECT}
-                      value={statusOverride[l.id] ?? l.crm_status}
-                      onChange={(e) => changeStatus(l, e.target.value)}
-                    >
-                      {CRM_STATUSES.map((s) => (
-                        <option key={s.value} value={s.value}>
-                          {s.label}
-                        </option>
-                      ))}
-                    </select>
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    {l.next_follow_up_at ? (
-                      <>
-                        {formatDay(l.next_follow_up_at)}
-                        {isOverdue(l.next_follow_up_at) && !closed.has(l.crm_status) && (
-                          <Badge variant="destructive" className="ml-2">
-                            Overdue
+      <div className="overflow-hidden rounded-xl border bg-card shadow-xs">
+        <Table containerClassName="max-h-[calc(100vh-18rem)] min-h-64" className="min-w-[72rem] text-[13px]">
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted [&_th]:shadow-[inset_0_-1px_0_var(--border)]">
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="w-8">
+                <Checkbox
+                  aria-label="Select all leads on this page"
+                  checked={allOnPage}
+                  indeterminate={someOnPage && !allOnPage}
+                  onCheckedChange={(v) => togglePage(v)}
+                />
+              </TableHead>
+              <SortHead col="name" label="Organization" sort={sort} order={order} onSort={onSort} />
+              <TableHead>Specialty</TableHead>
+              <TableHead>City, state</TableHead>
+              <TableHead>Phone</TableHead>
+              <TableHead>Primary contact</TableHead>
+              <TableHead>Website</TableHead>
+              <TableHead>Email</TableHead>
+              <SortHead col="score" label="Score" sort={sort} order={order} onSort={onSort} />
+              <TableHead>Priority</TableHead>
+              <TableHead>Sales status</TableHead>
+              <SortHead col="follow_up" label="Follow-up" sort={sort} order={order} onSort={onSort} />
+              <TableHead>Updated</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {data.items.map((l) => {
+              const open = expanded === l.id;
+              const detailId = `detail-${l.id}`;
+              const contactName = [l.contact?.first_name, l.contact?.last_name].filter(Boolean).join(" ");
+              const priority = PRIORITIES.find((p) => p.value === l.priority)?.label;
+              const site = safeHttpUrl(l.website);
+              const status = statusOverride[l.id] ?? l.crm_status;
+              const contactText = contactName ? `${contactName}${l.contact?.title ? `, ${l.contact.title}` : ""}` : "";
+              return (
+                <Fragment key={l.id}>
+                  <TableRow
+                    className="cursor-pointer"
+                    data-state={selected.has(l.id) ? "selected" : undefined}
+                    onClick={(e) => {
+                      if ((e.target as HTMLElement).closest("a,button,select,input,[role=checkbox],label")) return;
+                      setExpanded(open ? null : l.id);
+                    }}
+                  >
+                    <TableCell>
+                      <Checkbox aria-label={`Select ${l.name}`} checked={selected.has(l.id)} onCheckedChange={(v) => toggle(l.id, v)} />
+                    </TableCell>
+                    <TableCell className="min-w-44 whitespace-normal">
+                      <div className="flex items-start gap-1">
+                        <button
+                          type="button"
+                          aria-expanded={open}
+                          aria-controls={detailId}
+                          aria-label={`${open ? "Hide" : "Show"} details for ${l.name}`}
+                          onClick={() => setExpanded(open ? null : l.id)}
+                          className="mt-0.5 shrink-0 rounded text-muted-foreground hover:text-foreground"
+                        >
+                          {open ? <ChevronDown aria-hidden className="size-4" /> : <ChevronRight aria-hidden className="size-4" />}
+                        </button>
+                        <Link href={`/leads/${l.id}`} className={`font-medium ${LINK}`}>
+                          {l.name}
+                        </Link>
+                        {l.organization_type === "solo_provider" && (
+                          <Badge variant="outline" className="ml-1 shrink-0">
+                            Solo
                           </Badge>
                         )}
-                      </>
-                    ) : (
-                      "-"
-                    )}
-                  </TableCell>
-                  <TableCell>{l.suppressed ? <Badge variant="outline">Suppressed</Badge> : "-"}</TableCell>
-                  <TableCell className="whitespace-nowrap">{new Date(l.updated_at).toLocaleDateString()}</TableCell>
-                </TableRow>
-                {open && (
-                  <TableRow id={detailId} className="bg-muted/30 hover:bg-muted/30">
-                    <TableCell colSpan={14} className="whitespace-normal p-0">
-                      <LeadRowDetail lead={l} />
+                        {l.suppressed && <ToneBadge tone="danger" className="ml-1 shrink-0">Suppressed</ToneBadge>}
+                      </div>
                     </TableCell>
+                    <TableCell className="max-w-28 truncate" title={l.primary_taxonomy_desc ?? undefined}>
+                      {l.primary_taxonomy_desc ?? NONE}
+                    </TableCell>
+                    <TableCell>{[l.city, l.state].filter(Boolean).join(", ") || NONE}</TableCell>
+                    <TableCell className="tabular-nums">{l.phone ? formatPhone(l.phone) : NONE}</TableCell>
+                    <TableCell className="max-w-28 truncate" title={contactText || undefined}>
+                      {contactName ? (
+                        <>
+                          {contactName}
+                          {l.contact?.title && <span className="text-muted-foreground">, {l.contact.title}</span>}
+                        </>
+                      ) : (
+                        NONE
+                      )}
+                    </TableCell>
+                    <TableCell className="max-w-28">
+                      {site ? (
+                        <a href={site} target="_blank" rel="noopener noreferrer" title={l.website ?? undefined} className={`flex items-center gap-1.5 ${LINK}`}>
+                          <Globe aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+                          <span className="truncate">{hostOf(l.website!)}</span>
+                          <span className="sr-only"> (opens in a new tab)</span>
+                        </a>
+                      ) : (
+                        NONE
+                      )}
+                    </TableCell>
+                    <TableCell className="max-w-36">
+                      {l.primary_email ? (
+                        <span className="flex items-center gap-1.5" title={l.primary_email}>
+                          <Mail aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+                          <span className="truncate">{l.primary_email}</span>
+                        </span>
+                      ) : (
+                        NONE
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Score value={l.fit_score} />
+                    </TableCell>
+                    <TableCell>{priority ? <ToneBadge tone={priorityTone(l.priority)}>{priority}</ToneBadge> : NONE}</TableCell>
+                    <TableCell>
+                      <div className="flex min-w-28 items-center gap-1.5">
+                        <span aria-hidden className={`size-2 shrink-0 rounded-full ${DOT[statusTone(status)]}`} />
+                        <select
+                          aria-label={`Sales status for ${l.name}`}
+                          className={SELECT}
+                          value={status}
+                          onChange={(e) => changeStatus(l, e.target.value)}
+                        >
+                          {CRM_STATUSES.map((s) => (
+                            <option key={s.value} value={s.value}>
+                              {s.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {l.next_follow_up_at ? (
+                        <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                          {formatDay(l.next_follow_up_at)}
+                          {isOverdue(l.next_follow_up_at) && !closed.has(l.crm_status) && <ToneBadge tone="danger">Overdue</ToneBadge>}
+                        </span>
+                      ) : (
+                        NONE
+                      )}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-muted-foreground">{new Date(l.updated_at).toLocaleDateString()}</TableCell>
                   </TableRow>
-                )}
-              </Fragment>
-            );
-          })}
-        </TableBody>
-      </Table>
+                  {open && (
+                    <TableRow id={detailId} className="bg-muted/40 hover:bg-muted/40">
+                      <TableCell colSpan={13} className="whitespace-normal p-0">
+                        <LeadRowDetail lead={l} />
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </Fragment>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
       <nav aria-label="Pagination" className="flex items-center justify-between gap-3 text-sm">
-        <p>
+        <p className="text-muted-foreground">
           {from} to {to} of {data.total}
         </p>
         <div className="flex gap-2">

@@ -13,7 +13,7 @@ function address(l: Lead["locations"][number]) {
 export function LeadRowDetail({ lead }: { lead: Lead }) {
   const comps = (lead.score?.components ?? {}) as Record<string, Factor>;
   return (
-    <div className="grid gap-6 p-4 md:grid-cols-3">
+    <div className="grid gap-6 px-6 py-4 lg:grid-cols-3">
       <section aria-label={`Score breakdown for ${lead.name}`}>
         <h3 className="mb-2 text-sm font-semibold">Score breakdown</h3>
         {lead.score ? (

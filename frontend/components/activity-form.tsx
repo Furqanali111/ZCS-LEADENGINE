@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { addActivity, ApiError } from "@/lib/api";
+import { PANEL_CLASS, SELECT_CLASS, TEXTAREA_CLASS } from "@/lib/ui";
 import { ACTIVITY_TYPES, OUTCOMES } from "@/lib/constants";
 
-const SELECT =
-  "h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
+const SELECT = SELECT_CLASS;
 
 // Local time for datetime-local inputs (not UTC).
 function nowLocal() {
@@ -62,7 +62,7 @@ export function ActivityForm({ leadId, onSaved }: { leadId: string; onSaved: () 
   }
 
   return (
-    <form onSubmit={submit} aria-label="Log an activity" className="space-y-3 rounded-lg border p-4">
+    <form onSubmit={submit} aria-label="Log an activity" className={`${PANEL_CLASS} space-y-3`}>
       <h2 className="text-sm font-semibold">Log an activity</h2>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
@@ -91,7 +91,7 @@ export function ActivityForm({ leadId, onSaved }: { leadId: string; onSaved: () 
           onChange={(e) => setSummary(e.target.value)}
           aria-invalid={fields.summary ? true : undefined}
           aria-describedby={fields.summary ? "act-summary-hint act-summary-err" : "act-summary-hint"}
-          className="w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive dark:bg-input/30"
+          className={TEXTAREA_CLASS}
         />
         <p id="act-summary-hint" className="text-xs text-muted-foreground">
           Business notes only. No patient information.

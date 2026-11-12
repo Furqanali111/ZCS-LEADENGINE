@@ -5,11 +5,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SELECT_CLASS } from "@/lib/ui";
 import { listJobs, type Job, type LeadFilters } from "@/lib/api";
 import { CRM_STATUSES, ORG_TYPES, PRIORITIES, SPECIALTIES, US_STATES } from "@/lib/constants";
 
-const SELECT =
-  "mt-1 h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
+const SELECT = `mt-1 ${SELECT_CLASS}`;
 
 const FOLLOW_UP_OPTIONS = [
   { value: "due", label: "Due (today or earlier)" },
@@ -60,6 +60,9 @@ export function LeadFilters({
     timers.current[key] = setTimeout(() => onChangeRef.current({ [key]: value.trim() || undefined }), 300);
   };
 
+  const [more, setMore] = useState(() =>
+    Boolean(filters.specialty || filters.organization_type || filters.min_score !== undefined || filters.follow_up || filters.search_job_id || filters.has_website || filters.has_email),
+  );
   const [jobs, setJobs] = useState<Job[]>([]);
   const [jobsError, setJobsError] = useState(false);
   useEffect(() => {
@@ -83,8 +86,8 @@ export function LeadFilters({
   );
 
   return (
-    <form role="search" aria-label="Filter leads" onSubmit={(e) => e.preventDefault()} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <div>
+    <form role="search" aria-label="Filter leads" onSubmit={(e) => e.preventDefault()} className="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] items-end gap-x-3 gap-y-2.5 rounded-xl border bg-card p-3 shadow-xs [&_label]:text-xs [&_label]:text-muted-foreground">
+      <div className="col-span-full sm:col-span-2">
         <Label htmlFor="f-q">Search name or city</Label>
         <Input
           id="f-q"
@@ -98,6 +101,29 @@ export function LeadFilters({
         />
       </div>
       {select("f-state", "State", "state", US_STATES.map((s) => ({ value: s.code, label: `${s.name} (${s.code})` })))}
+      {select("f-priority", "Priority", "priority", PRIORITIES)}
+      {select("f-status", "Sales status", "crm_status", CRM_STATUSES)}
+      <div className="flex items-end gap-2">
+        <Button type="button" variant="ghost" size="sm" aria-expanded={more} aria-controls="more-filters" onClick={() => setMore((m) => !m)}>
+          {more ? "Fewer filters" : "More filters"}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            Object.values(timers.current).forEach(clearTimeout);
+            setQ("");
+            setSpecialty("");
+            setMinScore("");
+            onClear();
+          }}
+        >
+          Clear filters
+        </Button>
+      </div>
+      {more && (
+        <div id="more-filters" className="col-span-full grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] items-end gap-x-3 gap-y-2.5 border-t pt-3">
       <div>
         <Label htmlFor="f-specialty">Specialty</Label>
         <Input
@@ -117,7 +143,6 @@ export function LeadFilters({
         </datalist>
       </div>
       {select("f-org", "Organization type", "organization_type", ORG_TYPES)}
-      {select("f-priority", "Priority", "priority", PRIORITIES)}
       <div>
         <Label htmlFor="f-min">Minimum score (0 to 100)</Label>
         <Input
@@ -133,7 +158,6 @@ export function LeadFilters({
           }}
         />
       </div>
-      {select("f-status", "Sales status", "crm_status", CRM_STATUSES)}
       {select("f-follow", "Follow-up", "follow_up", FOLLOW_UP_OPTIONS)}
       <div>
         <Label htmlFor="f-job">Search job</Label>
@@ -147,31 +171,17 @@ export function LeadFilters({
         </select>
         {jobsError && <p className="mt-1 text-xs text-muted-foreground">Search jobs could not be loaded.</p>}
       </div>
-      <fieldset className="flex flex-wrap items-center gap-4 sm:col-span-2 lg:col-span-4">
+      <fieldset className="flex h-8 items-center gap-4">
         <legend className="sr-only">Enrichment</legend>
         {([["has_website", "Has website"], ["has_email", "Has email"]] as const).map(([key, label]) => (
-          <label key={key} className="flex items-center gap-2 text-sm">
+          <label key={key} className="flex items-center gap-2 text-sm! whitespace-nowrap text-foreground!">
             <Checkbox checked={filters[key] === "true"} onCheckedChange={(v) => onChange({ [key]: v ? "true" : undefined })} />
             {label}
           </label>
         ))}
       </fieldset>
-      <div className="sm:col-span-2 lg:col-span-4">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            Object.values(timers.current).forEach(clearTimeout);
-            setQ("");
-            setSpecialty("");
-            setMinScore("");
-            onClear();
-          }}
-        >
-          Clear filters
-        </Button>
-      </div>
+        </div>
+      )}
     </form>
   );
 }

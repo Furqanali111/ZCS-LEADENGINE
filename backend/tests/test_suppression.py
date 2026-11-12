@@ -1,7 +1,7 @@
 import pytest
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
-from app.models import LeadActivity, Organization, SuppressionEntry
+from app.models import LeadActivity, Organization, SearchProgress, SuppressionEntry
 from app.services.suppression import normalize
 from tests.test_api import add_lead
 from tests.test_search import NPI2, fake, make_job, run
@@ -89,8 +89,10 @@ def test_search_rerun_does_not_reset_do_not_contact(db, session_factory):
     org = db.scalars(select(Organization)).first()
     db.add(SuppressionEntry(kind="npi", value=org.npi))
     db.commit()
-    run(session_factory, make_job(db, include_solo=False, include_subparts=True), fetch)
-    run(session_factory, make_job(db, include_solo=False, include_subparts=True), fetch)
+    for _ in range(2):  # start over each time, so both runs read the same records again
+        db.execute(delete(SearchProgress))
+        db.commit()
+        run(session_factory, make_job(db, include_solo=False, include_subparts=True), fetch)
     db.expire_all()
     assert db.get(Organization, org.id).crm_status == "do_not_contact"
     n = db.scalars(select(LeadActivity).where(LeadActivity.organization_id == org.id, LeadActivity.to_status == "do_not_contact")).all()

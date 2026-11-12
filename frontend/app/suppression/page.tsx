@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PageHeader } from "@/components/page-header";
+import { ERROR_CLASS, PANEL_CLASS, SELECT_CLASS } from "@/lib/ui";
 import { ApiError, addSuppression, listSuppression, removeSuppression, type SuppressionEntry } from "@/lib/api";
 import { SUPPRESSION_KINDS } from "@/lib/constants";
 
-const SELECT =
-  "mt-1 h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
-const ERROR = "text-sm text-red-700 dark:text-red-400";
+const SELECT = `mt-1 ${SELECT_CLASS}`;
+const ERROR = ERROR_CLASS;
 
 export default function SuppressionPage() {
   const [entries, setEntries] = useState<SuppressionEntry[] | null>(null);
@@ -85,14 +86,14 @@ export default function SuppressionPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <h1 ref={h1Ref} tabIndex={-1} className="text-xl font-semibold outline-none">Suppression list</h1>
-      <p className="text-sm text-muted-foreground">
-        Suppressed NPIs and phone numbers are marked on matching leads and never reset by a new search. Email entries are stored now and take effect
-        when emails are collected.
-      </p>
+    <div className="space-y-5">
+      <PageHeader
+        h1Ref={h1Ref}
+        title="Suppression list"
+        description="Suppressed NPIs and phone numbers are marked on matching leads and never reset by a new search. Email entries are stored now and take effect when emails are collected."
+      />
 
-      <form onSubmit={add} aria-label="Add suppression entry" className="grid gap-3 sm:grid-cols-[8rem_1fr_1fr_auto] sm:items-end">
+      <form onSubmit={add} aria-label="Add suppression entry" className={`${PANEL_CLASS} grid gap-3 sm:grid-cols-[8rem_1fr_1fr_auto] sm:items-end`}>
         <div>
           <Label htmlFor="s-kind">Kind</Label>
           <select id="s-kind" className={SELECT} value={kind} onChange={(e) => setKind(e.target.value)}>
@@ -144,10 +145,11 @@ export default function SuppressionPage() {
       ) : !entries ? (
         <p className="text-sm text-muted-foreground">Loading...</p>
       ) : entries.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No suppression entries.</p>
+        <p className="rounded-xl border border-dashed bg-card p-8 text-center text-sm text-muted-foreground">No suppression entries.</p>
       ) : (
+        <div className="overflow-hidden rounded-xl border bg-card shadow-xs">
         <Table>
-          <TableHeader>
+          <TableHeader className="bg-muted">
             <TableRow>
               <TableHead>Kind</TableHead>
               <TableHead>Value</TableHead>
@@ -200,6 +202,7 @@ export default function SuppressionPage() {
             ))}
           </TableBody>
         </Table>
+        </div>
       )}
     </div>
   );

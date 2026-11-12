@@ -190,6 +190,20 @@ const post = (body?: unknown): RequestInit => ({
 
 export const getSources = () => json<Source[]>("/api/sources");
 export const createSearch = (input: SearchInput) => json<Job>("/api/search", post(input));
+export type SearchProgress = { leads_fetched: number; exhausted: boolean };
+export type ProgressKey = { specialty: string; state: string; city: string; subparts: boolean; hospitals: boolean };
+const progressQuery = (k: ProgressKey) =>
+  new URLSearchParams({
+    specialty: k.specialty,
+    state: k.state,
+    ...(k.city && { city: k.city }),
+    include_subparts: String(k.subparts),
+    include_hospitals: String(k.hospitals),
+  }).toString();
+export const getSearchProgress = (k: ProgressKey) => json<SearchProgress>(`/api/search/progress?${progressQuery(k)}`);
+export const resetSearchProgress = async (k: ProgressKey) => {
+  await request(`/api/search/progress?${progressQuery(k)}`, { method: "DELETE" });
+};
 export const listJobs = () => json<Job[]>("/api/search");
 export const cancelJob = (id: string) => json<Job>(`/api/search/${id}/cancel`, post());
 export const resumeJob = (id: string) => json<Job>(`/api/search/${id}/resume`, post());
@@ -301,6 +315,27 @@ export const addSuppression = (body: { kind: string; value: string; reason?: str
 
 export const removeSuppression = async (id: string) => {
   await request(`/api/suppression/${id}`, { method: "DELETE" });
+};
+
+export type OutreachTemplate = {
+  id: string;
+  name: string;
+  kind: "email" | "call";
+  subject: string | null;
+  body: string;
+  created_at: string;
+  updated_at: string;
+};
+export type TemplateInput = { name: string; kind: "email" | "call"; subject?: string | null; body: string };
+
+const send = (method: string, body: unknown): RequestInit => ({ ...post(body), method });
+
+export const listTemplates = () => json<OutreachTemplate[]>("/api/templates");
+export const createTemplate = (body: TemplateInput) => json<OutreachTemplate>("/api/templates", post(body));
+export const updateTemplate = (id: string, body: Partial<TemplateInput>) =>
+  json<OutreachTemplate>(`/api/templates/${id}`, send("PATCH", body));
+export const deleteTemplate = async (id: string) => {
+  await request(`/api/templates/${id}`, { method: "DELETE" });
 };
 
 // Returns the blob and the filename from Content-Disposition.

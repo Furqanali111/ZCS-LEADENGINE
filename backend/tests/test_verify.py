@@ -136,13 +136,14 @@ def test_email_found_after_junk():
 
 @pytest.mark.parametrize("host", ["127.0.0.1", "10.0.0.5", "192.168.1.1", "169.254.169.254", "localhost", "::1",
                                   "intranet", "a.localhost", "printer.local", "db.internal", "0.0.0.0", "224.0.0.1",
-                                  "::ffff:127.0.0.1", ""])
+                                  "::ffff:127.0.0.1", "", "127.1", "0177.0.0.1", "0x7f.0.0.1", "0x7f000001", "2130706433",
+                                  "100.64.0.1", "100.127.255.254"])
 def test_non_public_hosts(host):
     assert not v.is_public_host(host)
 
 
 def test_public_hosts():
-    assert v.is_public_host("example.com") and v.is_public_host("8.8.8.8") and v.is_public_host("WWW.Example.com.")
+    assert v.is_public_host("example.com") and v.is_public_host("8.8.8.8") and v.is_public_host("100.128.0.1") and v.is_public_host("WWW.Example.com.")
 
 
 def test_candidate_roots_drops_non_public():
