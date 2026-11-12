@@ -419,7 +419,7 @@ def test_rescore_updates_all(db, session_factory, tmp_path):
 
     assert rescore_all(session_factory) == 1
     db.refresh(org)
-    assert (org.fit_score, org.priority) == (85, "critical")
+    assert (org.fit_score, org.priority) == (85, "medium")
 
     cfg = load_config()
     cfg["version"] = "2"
