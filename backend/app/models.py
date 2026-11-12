@@ -8,7 +8,7 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.constants import (
-    ACTIVITY_TYPES, CRM_STATUSES, ENRICHMENT_STATUSES, JOB_STATUSES, ORG_TYPES, OUTCOMES, PRIORITIES, SUPPRESSION_KINDS, US_STATES,
+    ACTIVITY_TYPES, CRM_STATUSES, ENRICHMENT_STATUSES, JOB_STATUSES, ORG_TYPES, OUTCOMES, PRIORITIES, SUPPRESSION_KINDS, TEMPLATE_KINDS, US_STATES,
 )
 from app.db import Base
 
@@ -263,3 +263,15 @@ class SuppressionEntry(Base):
     value: Mapped[str] = mapped_column(Text)
     reason: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class OutreachTemplate(IdMixin, Base):
+    """Text the user copies by hand. The tool never sends anything."""
+
+    __tablename__ = "outreach_templates"
+    __table_args__ = (CheckConstraint(in_list("kind", TEMPLATE_KINDS), name="ck_outreach_templates_kind"),)
+
+    name: Mapped[str] = mapped_column(Text, unique=True)
+    kind: Mapped[str] = mapped_column(Text)
+    subject: Mapped[str | None] = mapped_column(Text)
+    body: Mapped[str] = mapped_column(Text)

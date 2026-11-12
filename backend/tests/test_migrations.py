@@ -67,7 +67,7 @@ def test_rls_enabled_on_every_table_and_removed_on_downgrade(migrated_url):
     alembic(migrated_url, "upgrade", "head")
     with engine.connect() as conn:
         rls = dict(conn.execute(RLS_SQL).all())
-    assert len(rls) == 11 and all(rls.values()), rls
+    assert len(rls) == 12 and all(rls.values()), rls
     alembic(migrated_url, "downgrade", "0002")
     with engine.connect() as conn:
         rls = dict(conn.execute(RLS_SQL).all())
@@ -170,4 +170,17 @@ def test_0007_indexes_exist_and_are_dropped_on_downgrade(migrated_url):
     alembic(migrated_url, "downgrade", "0006")
     with engine.connect() as conn:
         assert conn.execute(q, {"n": list(names)}).all() == []
+    engine.dispose()
+
+
+def test_0008_outreach_templates_table(migrated_url):
+    q = text("select c.relrowsecurity from pg_class c join pg_namespace n on n.oid = c.relnamespace "
+             "where n.nspname = 'public' and c.relname = 'outreach_templates'")
+    engine = create_engine(migrated_url)
+    alembic(migrated_url, "upgrade", "head")
+    with engine.connect() as conn:
+        assert conn.execute(q).scalar() is True
+    alembic(migrated_url, "downgrade", "0007")
+    with engine.connect() as conn:
+        assert conn.execute(q).first() is None
     engine.dispose()
