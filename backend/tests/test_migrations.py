@@ -46,9 +46,9 @@ def test_up_down_up_and_no_model_drift(migrated_url):
         rows = dict(conn.execute(text("select key, status from source_configs")).all())
         npi = conn.execute(text("select rate_limit_per_sec, policy_reviewed_on::text from source_configs where key='npi_registry'")).one()
     engine.dispose()
-    assert len(rows) == 34
+    assert len(rows) == 36
     assert rows["npi_registry"] == "available" and rows["nppes_bulk"] == "approved_not_built"
-    assert sum(s == "not_reviewed" for s in rows.values()) == 29
+    assert sum(s == "not_reviewed" for s in rows.values()) == 30
     assert tuple(npi) == (1.0, "2026-11-11")
 
 
@@ -137,3 +137,17 @@ def test_0005_adds_enrichment_columns_and_source_rows(migrated_url):
     engine.dispose()
     assert [r for r in found if r[0] == "organizations" and r[1] in ("website", "enrichment_status")] == []
     assert rows == {"practice_websites": "not_reviewed", "yelp": "not_reviewed"}
+
+
+def test_0006_seeds_tavily_source(migrated_url):
+    q = text("select status from source_configs where key = 'tavily_search'")
+    ddg_q = text("select status from source_configs where key = 'duckduckgo_search'")
+    engine = create_engine(migrated_url)
+    alembic(migrated_url, "upgrade", "head")
+    with engine.connect() as conn:
+        assert conn.execute(q).scalar() == "approved_not_built"
+        assert conn.execute(ddg_q).scalar() == "not_reviewed"
+    alembic(migrated_url, "downgrade", "0005")
+    with engine.connect() as conn:
+        assert conn.execute(q).scalar() is None and conn.execute(ddg_q).scalar() is None
+    engine.dispose()

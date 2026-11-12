@@ -67,3 +67,10 @@ def client(db):
 def npi_source(db):
     db.add(SourceConfig(key="npi_registry", name="NPI Registry", status="available"))
     db.commit()
+
+
+@pytest.fixture(autouse=True)
+def no_real_search_keys(monkeypatch):
+    """The developer's real .env may hold search keys; tests set their own."""
+    for name in ("tavily_api_key", "brave_api_key"):
+        monkeypatch.setattr(get_settings(), name, None)

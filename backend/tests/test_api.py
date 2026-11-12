@@ -88,6 +88,18 @@ def test_sources_flag_missing_brave_key(client, db, monkeypatch):
     assert flags["brave_search"] is True
 
 
+def test_create_search_uses_tavily_when_its_key_is_set(client, db, monkeypatch):
+    from app.config import get_settings
+
+    add_source(db)
+    add_source(db, "tavily_search", "Tavily", "available")
+    add_source(db, "practice_websites", "Practice websites", "available")
+    monkeypatch.setattr(get_settings(), "tavily_api_key", "t")
+    monkeypatch.setattr(get_settings(), "brave_api_key", None)
+    r = client.post("/api/search", json={**BODY, "enrich": True})
+    assert r.status_code == 201 and r.json()["enrich"] is True
+
+
 def test_create_search_queues_job(client, db):
     from app.models import SearchJob
 
