@@ -232,7 +232,7 @@ export function LeadsTable({
                           aria-controls={detailId}
                           aria-label={`${open ? "Hide" : "Show"} details for ${l.name}`}
                           onClick={() => setExpanded(open ? null : l.id)}
-                          className="mt-0.5 shrink-0 rounded text-muted-foreground hover:text-foreground"
+                          className="-ml-1 shrink-0 rounded p-1 text-muted-foreground hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
                         >
                           {open ? <ChevronDown aria-hidden className="size-4" /> : <ChevronRight aria-hidden className="size-4" />}
                         </button>

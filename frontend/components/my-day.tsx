@@ -63,7 +63,7 @@ export function MyDay() {
   const mine = data?.me === me ? data.mine : undefined;
   const error = data?.me === me ? data.error : undefined;
   return (
-    <section aria-labelledby="myday-h" className={`${PANEL_CLASS} space-y-3`}>
+    <section aria-labelledby="myday-h" aria-busy={!mine && !error} className={`${PANEL_CLASS} space-y-3`}>
       <div className="flex items-center justify-between gap-3">
         <h2 id="myday-h" className="text-sm font-semibold">
           My day, {me}
