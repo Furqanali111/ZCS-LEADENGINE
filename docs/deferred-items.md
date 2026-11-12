@@ -17,16 +17,14 @@ Things the docs or code refer to that are intentionally not built yet. If a revi
 | Automated frontend tests | Plan Phase 10 | Slice 2 | Slice 2 frontend is five pages checked by hand; add a test tool when a frontend bug repeats |
 | Counter updates inside a page (today once per 200-record page, about 5 s per page) | Real run 2026-11-11 after batching | Later | Pages become slow enough that the UI looks stuck |
 | Scoring thresholds tuned on real data | Real runs 2026-11-11: 116 of the Florida internal medicine leads came out critical | After more real searches | Priority does not separate leads usefully |
-| Search index on lead name, city and NPI (trigram) | Code review 2026-11-11 | Later | The leads table gets slow past tens of thousands of rows |
 | Fallback save path shares code with the batch path | Code review 2026-11-11 | Later | Either path changes and the two drift |
 | Rescore with one query instead of one per organization (now also covers the staff lookup) | Code review 2026-11-11, Slice 3 | Later | `python -m app.rescore` takes minutes |
-| Index for phone digit matching in suppression and search saves (regexp scan) | Slice 2 review | Later | Add or save gets slow past tens of thousands of leads |
 | Frontend focus and screen reader behavior verified only by code reading | Slice 2 review | Later | Before wider use or an accessibility complaint |
 | MX or mailbox checks (email status stays `found_on_page`) | Slice 3 spec section 6 | Later | Bounce rate on outreach is a problem |
 | JavaScript-rendered pages (plain HTML fetch only) | Slice 3 spec section 6 | Later | Many practice sites turn out empty to the fetcher |
 | Obfuscated email decoding (`name [at] site`) | Slice 3 spec section 6 | Later | Many sites hide emails this way |
 | Enrichment of leads from older searches (only leads linked to an enrich job are enriched) | Slice 3 | Later | Old leads need websites and emails without a re-search |
 | Brave storage terms confirmation, then set `brave_search` and `practice_websites` to `available` | `docs/data-sources.md` | Before first enrich run | Owner confirms with Brave support or a plan with storage rights |
-| Functional index on `lower(contacts.email)` | Slice 3 | Later | Contact volume grows and suppression email matching gets slow |
 | Email attachment is first-page-wins (an address is attached to the first organization that surfaces it) | Slice 3 | Later | Shared addresses across organizations cause wrong attachments |
 | Contacts do not store which check accepted them (the check is on `website_evidence`) | Final review, Slice 3 | Later | Someone needs per-contact provenance |
+| Trigram indexes are skipped where `pg_trgm` is unavailable (embedded test Postgres), so they are untested in the suite; `search._known_org_phones` uses a plain `regexp_replace` that the phone index (suppression expression) does not match | Package E | Later | Verify on Supabase with `EXPLAIN`, or the search page gets slow past tens of thousands of leads |

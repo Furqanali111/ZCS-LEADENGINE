@@ -70,6 +70,14 @@ class SearchJob(IdMixin, Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+def has_trgm(ddl, target, bind, **kw) -> bool:
+    """The embedded test Postgres (pgserver) ships without pg_trgm; Supabase has it, so the trigram indexes are built where possible."""
+    return bind.execute(text("SELECT 1 FROM pg_available_extensions WHERE name = 'pg_trgm'")).scalar() is not None
+
+
+PHONE_DIGITS = r"regexp_replace(regexp_replace({0}, '\D', '', 'g'), '^1(?=\d{{10}}$)', '')"  # = suppression._digits
+
+
 class Organization(IdMixin, Base):
     __tablename__ = "organizations"
     __table_args__ = (
@@ -84,6 +92,12 @@ class Organization(IdMixin, Base):
         Index("ix_organizations_fit_score", "fit_score"),
         Index("ix_organizations_crm_status", "crm_status"),
         Index("ix_organizations_next_follow_up_at", "next_follow_up_at"),
+        # needs pg_trgm, created in migration 0007 and by the before_create listener below
+        Index("ix_organizations_name_trgm", text("lower(name) gin_trgm_ops"), postgresql_using="gin").ddl_if(callable_=has_trgm),
+        Index("ix_organizations_city_trgm", text("lower(city) gin_trgm_ops"), postgresql_using="gin").ddl_if(callable_=has_trgm),
+        # same expression as services.suppression._digits, so the planner can match it
+        Index("ix_organizations_phone_digits", text(PHONE_DIGITS.format("phone"))),
+        Index("ix_organizations_fax_digits", text(PHONE_DIGITS.format("fax"))),
     )
 
     # The unique constraint on npi already creates the npi index the spec lists.
@@ -145,6 +159,7 @@ class Contact(IdMixin, Base):
         UniqueConstraint("organization_id", "role", "first_name", "last_name", name="uq_contacts_org_role_name"),
         CheckConstraint(in_list("role", CONTACT_ROLES), name="ck_contacts_role"),
         CheckConstraint(f"email_status IS NULL OR {in_list('email_status', EMAIL_STATUSES)}", name="ck_contacts_email_status"),
+        Index("ix_contacts_email_lower", text("lower(email)")),
     )
 
     organization_id: Mapped[uuid.UUID] = org_fk(index=True)
@@ -222,6 +237,7 @@ class LeadActivity(Base):
 
 
 # Mirrors migration 0004 so create_all (used by the test fixtures) gets the same trigger.
+event.listen(Base.metadata, "before_create", DDL("CREATE EXTENSION IF NOT EXISTS pg_trgm").execute_if(callable_=has_trgm))
 event.listen(LeadActivity.__table__, "after_create", DDL(
     "CREATE FUNCTION lead_activities_append_only() RETURNS trigger LANGUAGE plpgsql SET search_path = '' AS "
     "$$ BEGIN RAISE EXCEPTION 'lead_activities is append-only'; END $$"

@@ -13,6 +13,7 @@ from sqlalchemy.engine import make_url
 from app import models  # noqa: F401
 from app.constants import ACTIVITY_TYPES, OUTCOMES, SUPPRESSION_KINDS
 from app.db import Base
+from app.models import has_trgm
 
 BACKEND = Path(__file__).resolve().parent.parent
 
@@ -42,7 +43,10 @@ def test_up_down_up_and_no_model_drift(migrated_url):
     alembic(migrated_url, "upgrade", "head")
     engine = create_engine(migrated_url)
     with engine.connect() as conn:
-        assert compare_metadata(MigrationContext.configure(conn), Base.metadata) == []
+        drift = compare_metadata(MigrationContext.configure(conn), Base.metadata)
+        if not has_trgm(None, None, conn):  # trigram indexes are skipped where pg_trgm is not installable
+            drift = [d for d in drift if not (d[0] == "add_index" and d[1].name.endswith("_trgm"))]
+        assert drift == []
         rows = dict(conn.execute(text("select key, status from source_configs")).all())
         npi = conn.execute(text("select rate_limit_per_sec, policy_reviewed_on::text from source_configs where key='npi_registry'")).one()
     engine.dispose()
@@ -150,4 +154,20 @@ def test_0006_seeds_tavily_source(migrated_url):
     alembic(migrated_url, "downgrade", "0005")
     with engine.connect() as conn:
         assert conn.execute(q).scalar() is None and conn.execute(ddg_q).scalar() is None
+    engine.dispose()
+
+
+def test_0007_indexes_exist_and_are_dropped_on_downgrade(migrated_url):
+    names = ("ix_contacts_email_lower", "ix_organizations_phone_digits", "ix_organizations_fax_digits")
+    trgm = ("ix_organizations_name_trgm", "ix_organizations_city_trgm")
+    q = text("select indexname from pg_indexes where schemaname = 'public' and indexname = any(:n)")
+    engine = create_engine(migrated_url)
+    alembic(migrated_url, "upgrade", "head")
+    with engine.connect() as conn:
+        if has_trgm(None, None, conn):
+            names += trgm
+        assert {r[0] for r in conn.execute(q, {"n": list(names)})} == set(names)
+    alembic(migrated_url, "downgrade", "0006")
+    with engine.connect() as conn:
+        assert conn.execute(q, {"n": list(names)}).all() == []
     engine.dispose()
