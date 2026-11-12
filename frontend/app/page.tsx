@@ -6,6 +6,7 @@ import { CalendarClock, CheckCircle2, Handshake, Sparkles, Star, Users } from "l
 import { PageHeader } from "@/components/page-header";
 import { ToneBadge } from "@/components/tone-badge";
 import { BarList } from "@/components/bar-list";
+import { CallToday } from "@/components/call-today";
 import { StatTile } from "@/components/stat-tile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -107,6 +108,8 @@ export default function DashboardPage() {
             <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-900">{stats.follow_ups_due}</span>
             <span className="ml-auto text-muted-foreground">{stats.follow_ups_due === 0 ? "Nothing due today" : "Open the list"}</span>
           </Link>
+
+          <CallToday />
 
           <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
             <StatTile tone="blue" Icon={Users} label="Total leads" value={stats.total} hint="In the system" />
