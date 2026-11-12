@@ -1,65 +1,122 @@
-import { Globe, Mail, Phone, User } from "lucide-react";
+"use client";
+
+import { useRef, useState } from "react";
+import { Check, Copy, Globe, Mail, Phone, User } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { formatPhone, hostOf, safeHttpUrl } from "@/lib/format";
 import { PANEL_CLASS } from "@/lib/ui";
 
 type Props = { person: string; title: string | null; phone: string | null; fax: string | null; email: string | null; website: string | null };
 
-// The facts you need to reach someone, in large dark text, each one a link you can click.
+// The facts you need to reach someone, large and dark. Each value selects whole on a click and has a Copy button.
 export function ContactStrip({ person, title, phone, fax, email, website }: Props) {
   const url = safeHttpUrl(website);
+  const [copied, setCopied] = useState<string | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  async function copy(label: string, text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // shortcut: older browsers without the clipboard API, fall back to a hidden textarea
+      const t = document.createElement("textarea");
+      t.value = text;
+      document.body.appendChild(t);
+      t.select();
+      document.execCommand("copy");
+      t.remove();
+    }
+    setCopied(label);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setCopied(null), 2000);
+  }
+
+  const copyButton = (label: string, text: string) => (
+    <Button type="button" variant="outline" size="sm" className="shrink-0" aria-label={`Copy ${label.toLowerCase()}`} onClick={() => copy(label, text)}>
+      {copied === label ? <Check aria-hidden className="text-emerald-700" /> : <Copy aria-hidden />}
+      {copied === label ? "Copied" : "Copy"}
+    </Button>
+  );
+
+  const phoneText = phone ? formatPhone(phone) : null;
   return (
-    <section aria-label="How to reach this lead" className={`${PANEL_CLASS} grid gap-x-8 gap-y-4 sm:grid-cols-2 xl:grid-cols-4`}>
+    <section aria-label="How to reach this lead" className={`${PANEL_CLASS} grid gap-x-10 gap-y-6 p-6 md:grid-cols-2 min-[1900px]:grid-cols-4`}>
       <Item Icon={User} label="Contact person">
         {person ? (
           <>
-            <span className="text-lg font-semibold">{person}</span>
-            {title && <span className="block text-sm text-muted-foreground">{title}</span>}
+            <span className="text-2xl font-semibold select-all">{person}</span>
+            {title && <span className="block text-base text-muted-foreground">{title}</span>}
           </>
         ) : (
-          <span className="text-base text-muted-foreground">No named contact</span>
+          <span className="text-lg text-muted-foreground">No named contact</span>
         )}
       </Item>
       <Item Icon={Phone} label="Phone">
-        {phone ? (
-          <a href={`tel:${phone.replace(/\D/g, "")}`} className="text-lg font-semibold tabular-nums underline-offset-4 hover:underline">
-            {formatPhone(phone)}
-          </a>
+        {phoneText && phone ? (
+          <>
+            <Row>
+              <span className="text-2xl font-semibold tabular-nums select-all">{phoneText}</span>
+              {copyButton("Phone", phoneText)}
+            </Row>
+            <a href={`tel:${phone.replace(/\D/g, "")}`} className="mt-1 inline-block text-sm underline underline-offset-4">
+              Call from this device
+            </a>
+          </>
         ) : (
-          <span className="text-base text-muted-foreground">No phone</span>
+          <span className="text-lg text-muted-foreground">No phone</span>
         )}
-        {fax && <span className="block text-sm text-muted-foreground tabular-nums">Fax {formatPhone(fax)}</span>}
+        {fax && <span className="mt-1 block text-sm text-muted-foreground tabular-nums">Fax {formatPhone(fax)}</span>}
       </Item>
       <Item Icon={Mail} label="Email">
         {email ? (
-          <a href={`mailto:${email}`} className="text-lg font-semibold break-all underline-offset-4 hover:underline">
-            {email}
-          </a>
+          <>
+            <Row>
+              <span className="text-2xl font-semibold break-all select-all">{email}</span>
+              {copyButton("Email", email)}
+            </Row>
+            <a href={`mailto:${email}`} className="mt-1 inline-block text-sm underline underline-offset-4">
+              Open in mail app
+            </a>
+          </>
         ) : (
-          <span className="text-base text-muted-foreground">No email found yet</span>
+          <span className="text-lg text-muted-foreground">No email found yet</span>
         )}
       </Item>
       <Item Icon={Globe} label="Website">
         {url && website ? (
-          <a href={url} target="_blank" rel="noopener noreferrer" className="text-lg font-semibold break-all underline-offset-4 hover:underline">
-            {hostOf(website)}
-          </a>
+          <>
+            <Row>
+              <span className="text-2xl font-semibold break-all select-all">{hostOf(website)}</span>
+              {copyButton("Website", url)}
+            </Row>
+            <a href={url} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-sm underline underline-offset-4">
+              Open website
+            </a>
+          </>
         ) : (
-          <span className="text-base text-muted-foreground">No website found yet</span>
+          <span className="text-lg text-muted-foreground">No website found yet</span>
         )}
       </Item>
+      <p role="status" className="sr-only">
+        {copied ? `${copied} copied` : ""}
+      </p>
     </section>
   );
 }
 
+function Row({ children }: { children: React.ReactNode }) {
+  return <div className="flex flex-wrap items-center gap-x-3 gap-y-2">{children}</div>;
+}
+
 function Item({ Icon, label, children }: { Icon: typeof Phone; label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-start gap-3">
-      <span aria-hidden className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
-        <Icon className="size-4" />
+    <div className="flex items-start gap-4">
+      <span aria-hidden className="mt-1 grid size-11 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+        <Icon className="size-5" />
       </span>
       <div className="min-w-0">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-        <div className="mt-0.5">{children}</div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+        <div className="mt-1">{children}</div>
       </div>
     </div>
   );
