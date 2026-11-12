@@ -271,6 +271,31 @@ class OutreachTemplate(IdMixin, Base):
     body: Mapped[str] = mapped_column(Text)
 
 
+class SavedSearch(IdMixin, Base):
+    """A salesperson's reusable search form values. Name is unique ignoring case."""
+
+    __tablename__ = "saved_searches"
+    __table_args__ = (
+        CheckConstraint("char_length(name) BETWEEN 1 AND 60", name="ck_saved_searches_name_len"),
+        CheckConstraint("target_count BETWEEN 1 AND 50000", name="ck_saved_searches_target_count"),
+        Index("uq_saved_searches_name_lower", func.lower(text("name")), unique=True),
+    )
+
+    name: Mapped[str] = mapped_column(Text)
+    specialty: Mapped[str] = mapped_column(Text)
+    state: Mapped[str] = mapped_column(Text)
+    city: Mapped[str | None] = mapped_column(Text)
+    include_practices: Mapped[bool] = mapped_column(Boolean)
+    include_solo: Mapped[bool] = mapped_column(Boolean)
+    include_subparts: Mapped[bool] = mapped_column(Boolean)
+    include_hospitals: Mapped[bool] = mapped_column(Boolean)
+    target_count: Mapped[int] = mapped_column(Integer)
+    enrich: Mapped[bool] = mapped_column(Boolean)
+    sources: Mapped[list[str]] = mapped_column(ARRAY(Text))
+    created_by: Mapped[str | None] = mapped_column(Text)
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class SearchProgress(IdMixin, Base):
     """Where the next search for the same specialty, state, city and filters continues, so leads are never re-fetched."""
 

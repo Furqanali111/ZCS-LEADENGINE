@@ -64,6 +64,7 @@ New API routes (slice 2):
 | `GET /api/dashboard/stats` | Dashboard figures for a date range |
 | `GET/POST /api/suppression`, `DELETE /api/suppression/{id}` | Suppression list |
 | `GET/POST /api/templates`, `PATCH/DELETE /api/templates/{id}` | Outreach templates (copy-only, migration 0007) |
+| `GET/POST /api/saved-searches`, `DELETE /api/saved-searches/{id}`, `POST /api/saved-searches/{id}/touch` | Saved search forms (migration 0012). `X-Salesperson` is stored as `created_by`, `touch` sets `last_run_at` |
 
 Suppression email entries block collected emails (slice 3).
 

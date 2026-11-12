@@ -61,6 +61,24 @@ class SearchCreate(BaseModel):
         return self
 
 
+class SavedSearchIn(SearchCreate):
+    name: str = Field(min_length=1, max_length=60)
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def strip_name(cls, v):
+        return v.strip() if isinstance(v, str) else v
+
+
+class SavedSearchOut(SavedSearchIn):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    created_by: str | None
+    created_at: datetime
+    last_run_at: datetime | None
+
+
 class ProgressOut(BaseModel):
     leads_fetched: int
     exhausted: bool  # every phase walked so far has been read to the end
