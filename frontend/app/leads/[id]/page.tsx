@@ -1,10 +1,12 @@
 "use client";
 
+import { ArrowLeft, Globe, ShieldBan } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { ActivityForm } from "@/components/activity-form";
 import { ActivityTimeline } from "@/components/activity-timeline";
+import { priorityTone, statusTone, ToneBadge } from "@/components/tone-badge";
 import { LeadTemplates } from "@/components/lead-templates";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,11 +22,10 @@ import {
   type Lead,
   type LeadPatch,
 } from "@/lib/api";
+import { PANEL_CLASS, SELECT_CLASS } from "@/lib/ui";
 import { CRM_STATUSES, ORG_TYPES, PRIORITIES, SCORE_FACTORS } from "@/lib/constants";
 import { formatPhone, hostOf, pagePath, safeHttpUrl } from "@/lib/format";
-
-const SELECT =
-  "h-8 rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
+import { ContactStrip } from "@/components/contact-strip";
 
 type Factor = { points: number; max: number; reason: string };
 
@@ -39,7 +40,7 @@ function address(l: Lead["locations"][number]) {
 // Suspense is required: reading route params at request time is dynamic under cacheComponents.
 export default function LeadDetailPage() {
   return (
-    <Suspense fallback={<p className="text-sm">Loading...</p>}>
+    <Suspense fallback={<p className="text-sm text-muted-foreground">Loading...</p>}>
       <LeadDetail />
     </Suspense>
   );
@@ -156,75 +157,99 @@ function LeadDetail() {
     : null;
   const found = lead.contacts.filter((c) => c.email || c.source_url);
   const contactName = [lead.contact?.first_name, lead.contact?.last_name].filter(Boolean).join(" ");
+  const primaryEmail = lead.contacts.map((c) => c.email ?? (c.role === "general" ? c.last_name : null)).find(Boolean) ?? null;
 
   return (
-    <div className="space-y-6">
-      <Link href="/leads" className="text-sm underline underline-offset-4">
+    <div className="space-y-5">
+      <Link href="/leads" className="inline-flex items-center gap-1.5 rounded-sm text-sm text-muted-foreground hover:text-foreground">
+        <ArrowLeft aria-hidden className="size-4" />
         Back to leads
       </Link>
-      <div className="min-h-5 text-sm">
-        <p role="status">{message && !message.error ? message.text : ""}</p>
+      <div className="text-sm">
+        <p role="status" className="text-muted-foreground">{message && !message.error ? message.text : ""}</p>
         <p role="alert" className="text-destructive">
           {message?.error ? message.text : ""}
         </p>
       </div>
 
-      <header className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-xl font-semibold">{lead.name}</h1>
-          <Badge variant="outline">{type}</Badge>
-          {priority && <Badge variant={lead.priority === "critical" || lead.priority === "high" ? "default" : "secondary"}>{priority}</Badge>}
-          {lead.suppressed && <Badge variant="destructive">Suppressed</Badge>}
+      <header className={`${PANEL_CLASS} flex flex-wrap items-start justify-between gap-x-8 gap-y-4 p-5`}>
+        <div className="min-w-0 space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-semibold tracking-tight">{lead.name}</h1>
+            <Badge variant="outline">{type}</Badge>
+            {priority && <ToneBadge tone={priorityTone(lead.priority)}>{priority} priority</ToneBadge>}
+            <ToneBadge tone={statusTone(lead.crm_status)}>{CRM_STATUSES.find((s) => s.value === lead.crm_status)?.label ?? lead.crm_status}</ToneBadge>
+            {lead.suppressed && <ToneBadge tone="danger">Suppressed</ToneBadge>}
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {[lead.primary_taxonomy_desc, [lead.city, lead.state].filter(Boolean).join(", ")].filter(Boolean).join(" | ")}
+          </p>
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="lead-status">Sales status</Label>
+              <select
+                id="lead-status"
+                className={SELECT_CLASS}
+                value={lead.crm_status}
+                onChange={(e) => save({ crm_status: e.target.value }, "Status saved.")}
+              >
+                {CRM_STATUSES.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="lead-follow">Next follow-up</Label>
+              <Input
+                id="lead-follow"
+                type="date"
+                className="w-auto"
+                value={followDraft ?? lead.next_follow_up_at?.slice(0, 10) ?? ""}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "" || /^[12]\d{3}-\d{2}-\d{2}$/.test(v)) saveFollow(v);
+                  else setFollowDraft(v);
+                }}
+                onBlur={(e) => {
+                  const v = e.target.value;
+                  if (followDraft !== null && (v === "" || /^[12]\d{3}-\d{2}-\d{2}$/.test(v))) saveFollow(v);
+                  else setFollowDraft(null);
+                }}
+              />
+            </div>
+            <Button variant="outline" disabled={lead.suppressed} onClick={suppress}>
+              <ShieldBan aria-hidden />
+              Add to suppression list
+            </Button>
+          </div>
         </div>
-        <p className="text-sm text-muted-foreground">
-          {[lead.primary_taxonomy_desc, [lead.city, lead.state].filter(Boolean).join(", ")].filter(Boolean).join(" | ")}
-          {" | "}Fit score {lead.fit_score ?? "-"} of 100
-        </p>
-        <div className="flex flex-wrap items-end gap-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="lead-status">Sales status</Label>
-            <select
-              id="lead-status"
-              className={SELECT}
-              value={lead.crm_status}
-              onChange={(e) => save({ crm_status: e.target.value }, "Status saved.")}
-            >
-              {CRM_STATUSES.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="lead-follow">Next follow-up</Label>
-            <Input
-              id="lead-follow"
-              type="date"
-              className="w-auto"
-              value={followDraft ?? lead.next_follow_up_at?.slice(0, 10) ?? ""}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v === "" || /^[12]\d{3}-\d{2}-\d{2}$/.test(v)) saveFollow(v);
-                else setFollowDraft(v);
-              }}
-              onBlur={(e) => {
-                const v = e.target.value;
-                if (followDraft !== null && (v === "" || /^[12]\d{3}-\d{2}-\d{2}$/.test(v))) saveFollow(v);
-                else setFollowDraft(null);
-              }}
-            />
-          </div>
-          <Button variant="outline" disabled={lead.suppressed} onClick={suppress}>
-            Add to suppression list
-          </Button>
+        <div className="min-w-44 space-y-1.5 text-right">
+          <p className="text-sm text-muted-foreground">Fit score</p>
+          <p className="text-4xl font-semibold tracking-tight tabular-nums">
+            {lead.fit_score ?? "-"}
+            <span className="text-base font-normal text-muted-foreground"> of 100</span>
+          </p>
+          <span aria-hidden className="block h-2 overflow-hidden rounded-full bg-muted">
+            <span className="block h-full rounded-full bg-chart-1" style={{ width: `${Math.min(100, Math.max(0, lead.fit_score ?? 0))}%` }} />
+          </span>
         </div>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
+      <ContactStrip
+        person={contactName}
+        title={lead.contact?.title ?? null}
+        phone={lead.contact?.phone ?? lead.phone}
+        fax={lead.fax}
+        email={primaryEmail}
+        website={lead.website}
+      />
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <div className="space-y-5">
           <ActivityForm leadId={id} onSaved={refresh} />
-          <section aria-labelledby="timeline-h" className="space-y-3">
+          <section aria-labelledby="timeline-h" className={`${PANEL_CLASS} space-y-3`}>
             <h2 id="timeline-h" className="text-sm font-semibold">
               Timeline
             </h2>
@@ -232,12 +257,12 @@ function LeadDetail() {
           </section>
         </div>
 
-        <aside aria-label="Lead facts" className="space-y-6 text-sm">
-          <section>
-            <h2 className="mb-2 font-semibold">Score explanation</h2>
+        <aside aria-label="Lead facts" className="grid content-start gap-5 text-sm md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2 [&_h2]:text-sm [&_h2]:font-semibold [&>section]:min-w-0">
+          <section className={`${PANEL_CLASS} md:col-span-2 xl:col-span-1 2xl:col-span-2`}>
+            <h2 className="mb-2">Score explanation</h2>
             {lead.score ? (
               <>
-                <ul className="space-y-1">
+                <ul className="space-y-1.5">
                   {SCORE_FACTORS.map(({ key, label }) => {
                     const f = comps[key];
                     return (
@@ -247,6 +272,9 @@ function LeadDetail() {
                           <>
                             {f.points} of {f.max}
                             <span className="text-muted-foreground">, {f.reason}</span>
+                            <span aria-hidden className="mt-1 block h-1 overflow-hidden rounded-full bg-muted">
+                              <span className="block h-full rounded-full bg-chart-1" style={{ width: `${f.max ? Math.min(100, (f.points / f.max) * 100) : 0}%` }} />
+                            </span>
                           </>
                         ) : (
                           <span className="text-muted-foreground">not scored</span>
@@ -255,7 +283,7 @@ function LeadDetail() {
                     );
                   })}
                 </ul>
-                <p className="mt-2">
+                <p className="mt-3 border-t pt-2">
                   <span className="font-medium">Total:</span> {lead.fit_score ?? "-"} of 100
                   <span className="text-muted-foreground"> (config {lead.score.config_version})</span>
                 </p>
@@ -264,25 +292,17 @@ function LeadDetail() {
               <p className="text-muted-foreground">Not scored yet.</p>
             )}
           </section>
-          <section>
-            <h2 className="mb-2 font-semibold">Contacts</h2>
-            <p>
-              {contactName || <span className="text-muted-foreground">No named contact.</span>}
-              {lead.contact?.title && <span className="text-muted-foreground">, {lead.contact.title}</span>}
-            </p>
-            <p className="tabular-nums">Phone {formatPhone(lead.contact?.phone ?? lead.phone)}</p>
-            <p className="tabular-nums">Fax {formatPhone(lead.fax)}</p>
-          </section>
           <LeadTemplates lead={lead} />
-          <section aria-labelledby="web-h">
-            <h2 id="web-h" ref={webHeading} tabIndex={-1} className="mb-2 font-semibold outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+          <section aria-labelledby="web-h" className={PANEL_CLASS}>
+            <h2 id="web-h" ref={webHeading} tabIndex={-1} className="mb-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
               Website and emails
             </h2>
             {lead.website ? (
               <>
                 <p className="break-all">
                   {site ? (
-                    <a href={site} target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">
+                    <a href={site} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-primary underline underline-offset-4">
+                      <Globe aria-hidden className="size-4 shrink-0" />
                       {hostOf(lead.website)}
                       <span className="sr-only"> (opens in a new tab)</span>
                     </a>
@@ -301,7 +321,7 @@ function LeadDetail() {
               </p>
             )}
             {found.length > 0 && (
-              <ul className="mt-3 space-y-2">
+              <ul className="mt-3 space-y-2 border-t pt-3">
                 {found.map((c, i) => {
                   const src = safeHttpUrl(c.source_url);
                   const who = c.role === "general" ? "General address" : [c.first_name, c.last_name].filter(Boolean).join(" ");
@@ -328,8 +348,8 @@ function LeadDetail() {
               </ul>
             )}
           </section>
-          <section>
-            <h2 className="mb-2 font-semibold">Locations ({lead.locations.length})</h2>
+          <section className={PANEL_CLASS}>
+            <h2 className="mb-2">Locations ({lead.locations.length})</h2>
             {lead.locations.length === 0 ? (
               <p className="text-muted-foreground">No locations on record.</p>
             ) : (
@@ -346,8 +366,8 @@ function LeadDetail() {
               </ul>
             )}
           </section>
-          <section>
-            <h2 className="mb-2 font-semibold">Source</h2>
+          <section className={PANEL_CLASS}>
+            <h2 className="mb-2">Source</h2>
             {lead.source ? (
               <p>
                 {lead.source.source_key}

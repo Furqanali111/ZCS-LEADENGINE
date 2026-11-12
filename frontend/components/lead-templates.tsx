@@ -4,10 +4,9 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { listTemplates, type Lead, type OutreachTemplate } from "@/lib/api";
+import { PANEL_CLASS, SELECT_CLASS, TEXTAREA_CLASS } from "@/lib/ui";
 import { fillTemplate } from "@/lib/templates";
 
-const SELECT =
-  "h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
 
 // Copy-only: fills a saved template from the lead in the browser. Nothing is ever sent.
 export function LeadTemplates({ lead }: { lead: Lead }) {
@@ -35,8 +34,8 @@ export function LeadTemplates({ lead }: { lead: Lead }) {
   }
 
   return (
-    <section aria-labelledby="tpl-h">
-      <h2 id="tpl-h" className="mb-2 font-semibold">
+    <section aria-labelledby="tpl-h" className={PANEL_CLASS}>
+      <h2 id="tpl-h" className="mb-2">
         Templates
       </h2>
       {failed ? (
@@ -48,7 +47,7 @@ export function LeadTemplates({ lead }: { lead: Lead }) {
           <Label htmlFor="tpl-select">Template</Label>
           <select
             id="tpl-select"
-            className={SELECT}
+            className={SELECT_CLASS}
             value={selected}
             onChange={(e) => {
               setSelected(e.target.value);
@@ -70,7 +69,7 @@ export function LeadTemplates({ lead }: { lead: Lead }) {
                 readOnly
                 rows={8}
                 value={text}
-                className="w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+                className={TEXTAREA_CLASS}
               />
               <Button variant="outline" size="sm" onClick={copy}>
                 Copy

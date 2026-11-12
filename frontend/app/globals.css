@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -39,6 +39,19 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-tone-danger-bg: var(--tone-danger-bg);
+  --color-tone-danger-fg: var(--tone-danger-fg);
+  --color-tone-warning-bg: var(--tone-warning-bg);
+  --color-tone-warning-fg: var(--tone-warning-fg);
+  --color-tone-success-bg: var(--tone-success-bg);
+  --color-tone-success-fg: var(--tone-success-fg);
+  --color-tone-info-bg: var(--tone-info-bg);
+  --color-tone-info-fg: var(--tone-info-fg);
+  --color-tone-neutral-bg: var(--tone-neutral-bg);
+  --color-tone-neutral-fg: var(--tone-neutral-fg);
+  --color-surface: var(--surface);
+  --color-header: var(--header);
+  --spacing-gutter: var(--gutter);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -48,31 +61,45 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Cool-neutral surfaces, one blue accent (same hue family as the chart series), tinted status tones. */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --background: oklch(0.975 0.004 250);
+  --foreground: oklch(0.2 0.02 255);
+  --surface: oklch(1 0 0);
+  --header: oklch(1 0 0 / 85%);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.2 0.02 255);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.2 0.02 255);
+  --primary: oklch(0.48 0.16 255);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
+  --secondary: oklch(0.955 0.008 250);
+  --secondary-foreground: oklch(0.28 0.03 255);
+  --muted: oklch(0.955 0.008 250);
+  --muted-foreground: oklch(0.45 0.025 255);
+  --accent: oklch(0.94 0.02 255);
+  --accent-foreground: oklch(0.3 0.08 255);
+  --destructive: oklch(0.52 0.21 27);
+  --border: oklch(0.9 0.008 250);
+  --input: oklch(0.6 0.02 255);
+  --ring: oklch(0.55 0.17 255);
+  --chart-1: #2a78d6;
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  --radius: 0.5rem;
+  --gutter: clamp(1rem, 1.3vw, 1.5rem);
+  --tone-danger-bg: oklch(0.95 0.035 25);
+  --tone-danger-fg: oklch(0.43 0.17 27);
+  --tone-warning-bg: oklch(0.95 0.06 75);
+  --tone-warning-fg: oklch(0.42 0.1 55);
+  --tone-success-bg: oklch(0.945 0.05 155);
+  --tone-success-fg: oklch(0.38 0.09 155);
+  --tone-info-bg: oklch(0.945 0.035 250);
+  --tone-info-fg: oklch(0.4 0.13 255);
+  --tone-neutral-bg: oklch(0.945 0.006 250);
+  --tone-neutral-fg: oklch(0.38 0.02 255);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -84,29 +111,41 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
+  --background: oklch(0.17 0.015 255);
+  --foreground: oklch(0.96 0.005 250);
+  --surface: oklch(0.21 0.018 255);
+  --header: oklch(0.2 0.018 255 / 85%);
+  --card: oklch(0.21 0.018 255);
+  --card-foreground: oklch(0.96 0.005 250);
+  --popover: oklch(0.23 0.018 255);
+  --popover-foreground: oklch(0.96 0.005 250);
+  --primary: oklch(0.72 0.13 250);
+  --primary-foreground: oklch(0.18 0.03 255);
+  --secondary: oklch(0.28 0.02 255);
+  --secondary-foreground: oklch(0.96 0.005 250);
+  --muted: oklch(0.27 0.018 255);
+  --muted-foreground: oklch(0.76 0.02 255);
+  --accent: oklch(0.3 0.04 255);
+  --accent-foreground: oklch(0.96 0.005 250);
+  --destructive: oklch(0.72 0.17 22);
+  --border: oklch(1 0 0 / 11%);
+  --input: oklch(0.58 0.02 255);
+  --ring: oklch(0.72 0.13 250);
+  --chart-1: #3987e5;
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
+  --tone-danger-bg: oklch(0.32 0.08 25);
+  --tone-danger-fg: oklch(0.87 0.08 25);
+  --tone-warning-bg: oklch(0.33 0.07 75);
+  --tone-warning-fg: oklch(0.88 0.1 80);
+  --tone-success-bg: oklch(0.31 0.06 155);
+  --tone-success-fg: oklch(0.87 0.1 155);
+  --tone-info-bg: oklch(0.32 0.07 255);
+  --tone-info-fg: oklch(0.87 0.07 250);
+  --tone-neutral-bg: oklch(0.29 0.015 255);
+  --tone-neutral-fg: oklch(0.86 0.015 255);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);
@@ -126,5 +165,34 @@
   }
   html {
     @apply font-sans;
+  }
+  ::selection {
+    background: color-mix(in oklch, var(--primary) 28%, transparent);
+  }
+  table {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Unlayered so it beats the per-component "outline-none": one solid, high-contrast focus ring everywhere. */
+a:focus-visible,
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+[role="checkbox"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

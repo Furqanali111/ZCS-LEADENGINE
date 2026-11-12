@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { PipelineCard } from "@/components/pipeline-card";
 import { Button } from "@/components/ui/button";
 import { ApiError, getPipeline, getPipelineColumn, patchLead, type PipelineCard as Card, type PipelineColumn } from "@/lib/api";
+import { statusTone, TONE_DOT as DOT } from "@/components/tone-badge";
 import { CRM_STATUSES } from "@/lib/constants";
 
 const LABELS = Object.fromEntries(CRM_STATUSES.map((s) => [s.value, s.label]));
@@ -130,11 +131,11 @@ export function PipelineBoard() {
     <div>
       <p role="status" className="sr-only">{notice}</p>
       {error && (
-        <p role="alert" className="mb-3 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <p role="alert" className="mb-3 rounded-lg border border-destructive/40 bg-tone-danger-bg px-3 py-2 text-sm text-tone-danger-fg">
           {error}
         </p>
       )}
-      <div className="flex gap-3 overflow-x-auto pb-3">
+      <div className="grid auto-cols-[minmax(14rem,1fr)] grid-flow-col items-start gap-3 overflow-x-auto pb-3">
         {cols.map((col) => (
           <section
             key={col.status}
@@ -145,18 +146,19 @@ export function PipelineBoard() {
             }}
             onDragLeave={() => setOver((o) => (o === col.status ? null : o))}
             onDrop={(e) => onDrop(e, col.status)}
-            className={`w-64 shrink-0 rounded-lg border bg-muted/40 p-2 ${over === col.status ? "ring-2 ring-ring" : ""}`}
+            className={`min-w-0 rounded-xl border bg-muted/50 p-2 transition-shadow ${over === col.status ? "ring-2 ring-ring" : ""}`}
           >
-            <h2 id={`col-${col.status}`} className="mb-2 flex items-center justify-between px-1 text-sm font-semibold">
+            <h2 id={`col-${col.status}`} className="mb-2 flex items-center gap-2 px-1 text-sm font-semibold">
+              <span aria-hidden className={`size-2 shrink-0 rounded-full ${DOT[statusTone(col.status)]}`} />
               {LABELS[col.status] ?? col.status}
-              <span className="font-normal text-muted-foreground">{col.count}<span className="sr-only"> leads</span></span>
+              <span className="ml-auto rounded-full bg-background px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">{col.count}<span className="sr-only"> leads</span></span>
             </h2>
             <ul className="flex min-h-12 flex-col gap-2">
               {col.leads.map((card) => (
                 <PipelineCard key={card.id} card={card} status={col.status} busy={busy.has(card.id)} onMove={(c, to) => void move(c, col.status, to)} />
               ))}
             </ul>
-            {col.leads.length === 0 && <p className="px-1 py-2 text-xs text-muted-foreground">No leads</p>}
+            {col.leads.length === 0 && <p className="rounded-lg border border-dashed px-2 py-4 text-center text-xs text-muted-foreground">No leads</p>}
             {col.leads.length < col.count && (
               <Button variant="outline" size="sm" className="mt-2 w-full" disabled={loadingMore === col.status} onClick={() => void loadMore(col)}>
                 {loadingMore === col.status ? "Loading..." : `Load more (${col.count - col.leads.length})`}

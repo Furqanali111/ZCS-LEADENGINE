@@ -2,8 +2,10 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Download } from "lucide-react";
 import { LeadFilters } from "@/components/lead-filters";
 import { LeadsTable } from "@/components/leads-table";
+import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { ApiError, exportLeadsFile, listLeads, type LeadFilters as Filters, type LeadPage } from "@/lib/api";
 import { CRM_STATUSES, ORG_TYPES, PRIORITIES, US_STATES } from "@/lib/constants";
@@ -117,12 +119,16 @@ function LeadsView() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">Leads</h1>
-        <Button onClick={doExport} disabled={exporting || total === 0}>
-          {exporting ? "Exporting..." : selected.size > 0 ? `Export selected (${selected.size})` : `Export filtered (${total})`}
-        </Button>
-      </div>
+      <PageHeader
+        title="Leads"
+        description={data ? `${total.toLocaleString("en-US")} ${total === 1 ? "lead" : "leads"} match the current filters.` : undefined}
+        actions={
+          <Button onClick={doExport} disabled={exporting || total === 0}>
+            <Download aria-hidden />
+            {exporting ? "Exporting..." : selected.size > 0 ? `Export selected (${selected.size})` : `Export filtered (${total})`}
+          </Button>
+        }
+      />
       <LeadFilters
         filters={filters}
         onChange={update}
@@ -130,17 +136,17 @@ function LeadsView() {
           router.replace(pathname, { scroll: false });
         }}
       />
-      <div role="status" aria-live="polite" className={message?.error ? "text-sm text-red-700 dark:text-red-400" : "text-sm text-muted-foreground"}>
+      <div role="status" aria-live="polite" className={message?.error ? "text-sm text-destructive" : "text-sm text-muted-foreground empty:hidden"}>
         {message?.text}
       </div>
       {current?.error ? (
-        <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+        <p role="alert" className="rounded-lg border border-destructive/40 bg-tone-danger-bg px-3 py-2 text-sm text-tone-danger-fg">
           {current.error}
         </p>
       ) : !data ? (
         <p className="text-sm text-muted-foreground">Loading leads...</p>
       ) : (
-        <div aria-busy={loading}>
+        <div aria-busy={loading} className={loading ? "opacity-70 transition-opacity" : "transition-opacity"}>
           <LeadsTable
             data={data}
             sort={sort}
