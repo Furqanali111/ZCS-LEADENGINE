@@ -127,7 +127,7 @@ On a lead page, the call-result buttons (No answer, Spoke call back, Interested,
 
 ```powershell
 cd backend; .venv\Scripts\activate; pytest -q
-cd frontend; npm run lint; npx tsc --noEmit; npm run build
+cd frontend; npm test; npm run lint; npx tsc --noEmit; npm run build
 ```
 
 Backend tests start an embedded Postgres (`pgserver`), no Docker and never the real database. Set `TEST_DATABASE_URL` to use another empty database instead.
