@@ -1,10 +1,10 @@
 "use client";
 
-import { ArrowLeft, Globe, ShieldBan } from "lucide-react";
+import { ArrowLeft, Globe, PhoneCall, ShieldBan } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { ActivityForm } from "@/components/activity-form";
+import { ActivityForm, type ActivityFormHandle } from "@/components/activity-form";
 import { ActivityTimeline } from "@/components/activity-timeline";
 import { priorityTone, statusTone, ToneBadge } from "@/components/tone-badge";
 import { LeadTemplates } from "@/components/lead-templates";
@@ -57,6 +57,7 @@ function LeadDetail() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [followDraft, setFollowDraft] = useState<string | null>(null);
   const refreshSeq = useRef(0);
+  const formHandle = useRef<ActivityFormHandle>(null);
   const webHeading = useRef<HTMLHeadingElement>(null);
 
   // Reload the lead and the first page of the timeline (status changes add entries).
@@ -219,6 +220,10 @@ function LeadDetail() {
                 }}
               />
             </div>
+            <Button size="lg" onClick={() => formHandle.current?.logCall()}>
+              <PhoneCall aria-hidden />
+              Log call
+            </Button>
             <Button variant="outline" disabled={lead.suppressed} onClick={suppress}>
               <ShieldBan aria-hidden />
               Add to suppression list
@@ -248,13 +253,9 @@ function LeadDetail() {
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div className="space-y-5">
-          <ActivityForm leadId={id} onSaved={refresh} />
-          <section aria-labelledby="timeline-h" className={`${PANEL_CLASS} space-y-3`}>
-            <h2 id="timeline-h" className="text-sm font-semibold">
-              Timeline
-            </h2>
+          <ActivityForm leadId={id} onSaved={refresh} handle={formHandle}>
             <ActivityTimeline items={acts} total={total} loading={more} onMore={loadMore} />
-          </section>
+          </ActivityForm>
         </div>
 
         <aside aria-label="Lead facts" className="grid content-start gap-5 text-sm md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2 [&_h2]:text-sm [&_h2]:font-semibold [&>section]:min-w-0">
