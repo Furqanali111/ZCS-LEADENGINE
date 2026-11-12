@@ -24,6 +24,7 @@ const PRIORITY_TONE: Record<string, Tone> = { critical: "danger", high: "warning
 
 const STATUS_TONE: Record<string, Tone> = {
   new: "info",
+  in_progress: "warning",
   researching: "neutral",
   email_sent: "info",
   called: "info",
