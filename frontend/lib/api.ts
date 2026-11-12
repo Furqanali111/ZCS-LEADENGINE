@@ -139,7 +139,7 @@ export type LeadFilters = {
 export type ListLeadsParams = LeadFilters & {
   page?: number;
   page_size?: number;
-  sort?: "score" | "name" | "updated" | "follow_up";
+  sort?: "score" | "name" | "updated" | "follow_up" | "email" | "website";
   order?: "asc" | "desc";
 };
 
