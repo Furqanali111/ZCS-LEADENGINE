@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ToneBadge, type Tone } from "@/components/tone-badge";
 import { PANEL_CLASS } from "@/lib/ui";
@@ -95,6 +96,8 @@ export function JobList({ refreshKey }: { refreshKey: number }) {
       <ul className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
         {jobs?.map((j) => {
           const done = (j.counters.accepted_new ?? 0) + (j.counters.accepted_existing ?? 0);
+          const found = j.counters.accepted_new ?? 0;
+          const canView = j.status === "completed" || ((j.status === "paused" || j.status === "failed") && found > 0);
           const pct = Math.min(100, Math.round((done / j.target_count) * 100));
           return (
             <li key={j.id} className={`${PANEL_CLASS} space-y-2.5`}>
@@ -107,6 +110,11 @@ export function JobList({ refreshKey }: { refreshKey: number }) {
                       Cancel
                     </Button>
                   )}
+                  {canView && (
+                    <Link href={`/leads?search_job_id=${j.id}`} className={buttonVariants({ size: "sm" })}>
+                      View leads
+                    </Link>
+                  )}
                   {(j.status === "paused" || j.status === "failed") && (
                     <Button variant="outline" size="sm" onClick={() => act(resumeJob, j.id)}>
                       Resume
@@ -116,9 +124,11 @@ export function JobList({ refreshKey }: { refreshKey: number }) {
               </div>
               <Progress value={pct} aria-label={`Progress for ${summary(j)}`} className={`[&_[data-slot=progress-track]]:h-1.5 ${BAR[JOB_TONE[j.status] ?? "neutral"]}`} />
               <p className="text-sm">
-                {done} of {j.target_count} leads ({pct}%)
+                {found} new {found === 1 ? "lead" : "leads"} found (target {j.target_count})
               </p>
-              <dl className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
+              <details className="text-xs text-muted-foreground">
+                <summary className="cursor-pointer">Details</summary>
+              <dl className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1">
                 {COUNTER_LABELS.map(([k, label]) => (
                   <div key={k} className="flex gap-1">
                     <dt>{label}:</dt>
@@ -127,7 +137,7 @@ export function JobList({ refreshKey }: { refreshKey: number }) {
                 ))}
               </dl>
               {j.enrich && (
-                <dl aria-label="Enrichment results" className="flex flex-wrap gap-x-5 gap-y-1 border-t pt-2 text-xs text-muted-foreground">
+                <dl aria-label="Enrichment results" className="mt-2 flex flex-wrap gap-x-5 gap-y-1 border-t pt-2">
                   {ENRICH_LABELS.map(([k, label]) => (
                     <div key={k} className="flex gap-1">
                       <dt>{label}:</dt>
@@ -136,6 +146,7 @@ export function JobList({ refreshKey }: { refreshKey: number }) {
                   ))}
                 </dl>
               )}
+              </details>
               {j.error && (
                 <p role={j.status === "paused" ? "status" : undefined} className="text-sm text-destructive">
                   {j.status === "paused" ? `Paused: ${j.error} Resume when fixed.` : `Error: ${j.error}`}

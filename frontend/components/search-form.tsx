@@ -32,6 +32,10 @@ function CheckRow({
   );
 }
 
+const OTHER = "__other";
+const SELECT_CLASS =
+  "mt-1 h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
+
 function FieldError({ id, text }: { id: string; text?: string }) {
   return text ? (
     <p id={id} className="mt-1 text-sm text-red-700 dark:text-red-400">
@@ -41,7 +45,9 @@ function FieldError({ id, text }: { id: string; text?: string }) {
 }
 
 export function SearchForm({ onCreated }: { onCreated: () => void }) {
-  const [specialty, setSpecialty] = useState("Internal Medicine");
+  const [choice, setChoice] = useState<string>("Internal Medicine");
+  const [custom, setCustom] = useState("");
+  const specialty = choice === OTHER ? custom : choice;
   const [state, setState] = useState("");
   const [city, setCity] = useState("");
   const [target, setTarget] = useState("500");
@@ -144,22 +150,47 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor="specialty">Specialty</Label>
-          <Input
+          <select
             id="specialty"
-            list="specialty-options"
-            value={specialty}
-            maxLength={100}
+            value={choice}
             required
             aria-invalid={!!fieldErrors.specialty}
             aria-describedby="specialty-error"
-            onChange={(e) => setSpecialty(e.target.value)}
-            className="mt-1"
-          />
-          <datalist id="specialty-options">
+            onChange={(e) => setChoice(e.target.value)}
+            className={SELECT_CLASS}
+          >
             {SPECIALTIES.map((s) => (
-              <option key={s} value={s} />
+              <option key={s} value={s}>
+                {s}
+              </option>
             ))}
-          </datalist>
+            <option value={OTHER}>Other (type exact NPI taxonomy name)</option>
+          </select>
+          {choice === OTHER && (
+            <>
+              <Input
+                aria-label="NPI taxonomy name"
+                value={custom}
+                maxLength={100}
+                required
+                aria-invalid={!!fieldErrors.specialty}
+                aria-describedby="specialty-hint specialty-error"
+                onChange={(e) => setCustom(e.target.value)}
+                className="mt-2"
+              />
+              <p id="specialty-hint" className="mt-1 text-sm text-muted-foreground">
+                Must match an NPI taxonomy description exactly, otherwise the search finds nothing.{" "}
+                <a
+                  href="https://taxonomy.nucc.org/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline underline-offset-2"
+                >
+                  NPI taxonomy list
+                </a>
+              </p>
+            </>
+          )}
           <FieldError id="specialty-error" text={fieldErrors.specialty} />
         </div>
         <div>
@@ -171,7 +202,7 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
             aria-invalid={!!fieldErrors.state}
             aria-describedby="state-error"
             onChange={(e) => setState(e.target.value)}
-            className="mt-1 h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+            className={SELECT_CLASS}
           >
             <option value="">Select a state</option>
             {US_STATES.map((s) => (
@@ -182,6 +213,9 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
           </select>
           <FieldError id="state-error" text={fieldErrors.state} />
         </div>
+      </div>
+
+      <div className="grid gap-4 border-t pt-5 sm:grid-cols-2">
         <div>
           <Label htmlFor="city">City (optional)</Label>
           <Input
