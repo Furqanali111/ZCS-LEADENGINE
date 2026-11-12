@@ -192,3 +192,14 @@ def test_0009_search_progress_table_and_target_limit(migrated_url):
         assert conn.execute(q).scalar() is None
         assert conn.execute(text("select max(target_count) from search_jobs")).scalar() == 1200
     engine.dispose()
+
+
+def test_0010_in_progress_status_allowed_and_downgrade_maps_it_back(migrated_url):
+    engine = create_engine(migrated_url)
+    alembic(migrated_url, "upgrade", "head")
+    with engine.begin() as conn:
+        conn.execute(text("insert into organizations (npi, name, organization_type, state, crm_status) values ('1', 'A', 'practice', 'TX', 'in_progress')"))
+    alembic(migrated_url, "downgrade", "0009")
+    with engine.connect() as conn:
+        assert conn.execute(text("select crm_status from organizations")).scalar() == "researching"
+    engine.dispose()

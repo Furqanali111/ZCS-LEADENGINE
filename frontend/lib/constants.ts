@@ -23,6 +23,7 @@ export const SPECIALTIES = [
 
 export const CRM_STATUSES: { value: string; label: string }[] = [
   { value: "new", label: "New" },
+  { value: "in_progress", label: "In progress" },
   { value: "researching", label: "Researching" },
   { value: "email_sent", label: "Email sent" },
   { value: "called", label: "Called" },
