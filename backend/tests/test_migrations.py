@@ -48,7 +48,7 @@ def test_up_down_up_and_no_model_drift(migrated_url):
     engine.dispose()
     assert len(rows) == 36
     assert rows["npi_registry"] == "available" and rows["nppes_bulk"] == "approved_not_built"
-    assert sum(s == "not_reviewed" for s in rows.values()) == 30
+    assert sum(s == "not_reviewed" for s in rows.values()) == 29
     assert tuple(npi) == (1.0, "2026-11-11")
 
 
@@ -146,7 +146,7 @@ def test_0006_seeds_tavily_source(migrated_url):
     alembic(migrated_url, "upgrade", "head")
     with engine.connect() as conn:
         assert conn.execute(q).scalar() == "approved_not_built"
-        assert conn.execute(ddg_q).scalar() == "not_reviewed"
+        assert conn.execute(ddg_q).scalar() == "approved_not_built"
     alembic(migrated_url, "downgrade", "0005")
     with engine.connect() as conn:
         assert conn.execute(q).scalar() is None and conn.execute(ddg_q).scalar() is None
