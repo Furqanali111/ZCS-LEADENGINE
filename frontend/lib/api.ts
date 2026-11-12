@@ -303,6 +303,27 @@ export const removeSuppression = async (id: string) => {
   await request(`/api/suppression/${id}`, { method: "DELETE" });
 };
 
+export type OutreachTemplate = {
+  id: string;
+  name: string;
+  kind: "email" | "call";
+  subject: string | null;
+  body: string;
+  created_at: string;
+  updated_at: string;
+};
+export type TemplateInput = { name: string; kind: "email" | "call"; subject?: string | null; body: string };
+
+const send = (method: string, body: unknown): RequestInit => ({ ...post(body), method });
+
+export const listTemplates = () => json<OutreachTemplate[]>("/api/templates");
+export const createTemplate = (body: TemplateInput) => json<OutreachTemplate>("/api/templates", post(body));
+export const updateTemplate = (id: string, body: Partial<TemplateInput>) =>
+  json<OutreachTemplate>(`/api/templates/${id}`, send("PATCH", body));
+export const deleteTemplate = async (id: string) => {
+  await request(`/api/templates/${id}`, { method: "DELETE" });
+};
+
 // Returns the blob and the filename from Content-Disposition.
 export async function exportLeadsFile(body: { filters?: LeadFilters; ids?: string[] }) {
   const res = await request("/api/exports/excel", post(body));
