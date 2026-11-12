@@ -79,7 +79,7 @@ Setup:
 update source_configs set status='available' where key in ('tavily_search','practice_websites');
 ```
 
-Fallback (optional): read DuckDuckGo's acceptable use policy first. If you accept it, run `update source_configs set status='available' where key='duckduckgo_search';` and the job switches to the `ddgs` library once Tavily reports its credits used up. It stays off otherwise.
+Fallback (optional): read DuckDuckGo's [acceptable use policy](https://duckduckgo.com/acceptable-use) first (it does not mention automated access either way; see `docs/data-sources.md`). If you accept the risk, run `update source_configs set status='available' where key='duckduckgo_search';` and the job switches to the `ddgs` library once Tavily reports its credits used up. It stays off otherwise.
 
 4. Re-run `python -m app.rescore` once after upgrading (scoring config v2 counts staff contacts as decision-makers).
 
