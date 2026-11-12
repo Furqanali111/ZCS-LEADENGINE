@@ -12,6 +12,7 @@ from app.services.verify import blocked_host, is_public_host
 USER_AGENT = "ZCSLeadEngine/1.0 (internal prospecting tool)"
 MAX_BYTES = 1_000_000
 ROBOTS_MAX_BYTES = 512_000
+ROBOTS_5XX_TTL = 600.0  # seconds a failing robots.txt stays "block" before it is asked again
 MAX_REDIRECTS = 3
 RETRIES = 2
 CAPTCHA_MAX_BYTES = 5_000
@@ -35,6 +36,7 @@ class PoliteFetcher:
         self.stats = {"pages_fetched": 0, "blocked_by_robots": 0, "skipped": 0}
         self._robots: dict[str, RobotFileParser | None] = {}  # None means allow nothing
         self._last: dict[str, float] = {}
+        self._robots_failed_at: dict[str, float] = {}  # origin -> clock time of a 5xx robots.txt
 
     def _send(self, url: str, delay: float, cap: int) -> tuple[httpx.Response, bytes | None]:
         """One spaced, streamed GET. Body is None when it exceeds cap (reading stops early)."""
@@ -83,7 +85,10 @@ class PoliteFetcher:
                 if not self._allowed(url):
                     return None
                 continue
-            if body is None or resp.status_code >= 500 or resp.status_code in (401, 403) + REDIRECTS:
+            if resp.status_code >= 500:
+                self._robots_failed_at[origin] = self.clock()
+                return None
+            if body is None or resp.status_code in (401, 403) + REDIRECTS:
                 return None
             rp = RobotFileParser()
             rp.parse(body.decode("utf-8", "replace").splitlines() if resp.status_code == 200 else [])
@@ -93,6 +98,10 @@ class PoliteFetcher:
     def _robots_for(self, url: str) -> RobotFileParser | None:
         parts = urlsplit(url)
         origin = f"{parts.scheme}://{parts.netloc.lower()}"
+        failed = self._robots_failed_at.get(origin)
+        if failed is not None and self.clock() - failed >= ROBOTS_5XX_TTL:
+            self._robots.pop(origin, None)  # block expired: ask again
+            del self._robots_failed_at[origin]
         if origin not in self._robots:
             self._robots[origin] = self._load_robots(origin)
         return self._robots[origin]
