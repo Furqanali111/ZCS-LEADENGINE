@@ -5,13 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PageHeader } from "@/components/page-header";
+import { ERROR_CLASS, PANEL_CLASS, SELECT_CLASS, TEXTAREA_CLASS } from "@/lib/ui";
 import { ApiError, createTemplate, deleteTemplate, listTemplates, updateTemplate, type OutreachTemplate } from "@/lib/api";
 
-const SELECT =
-  "mt-1 h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
-const TEXTAREA =
-  "mt-1 w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
-const ERROR = "text-sm text-red-700 dark:text-red-400";
+const SELECT = `mt-1 ${SELECT_CLASS}`;
+const TEXTAREA = `mt-1 ${TEXTAREA_CLASS}`;
+const ERROR = ERROR_CLASS;
 
 export default function TemplatesPage() {
   const [items, setItems] = useState<OutreachTemplate[] | null>(null);
@@ -95,11 +95,14 @@ export default function TemplatesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <h1 ref={h1Ref} tabIndex={-1} className="text-xl font-semibold outline-none">Outreach templates</h1>
-      <p className="text-sm text-muted-foreground">Placeholders: {"{practice}, {contact}, {city}, {state}"}. Nothing is ever sent from this tool.</p>
-
-      <form onSubmit={save} aria-label={editId ? "Edit template" : "Add template"} className="grid gap-3 sm:grid-cols-[1fr_8rem]">
+    <div>
+      <PageHeader
+        h1Ref={h1Ref}
+        title="Outreach templates"
+        description={<>Placeholders: {"{practice}, {contact}, {city}, {state}"}. Nothing is ever sent from this tool.</>}
+      />
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(24rem,32rem)_minmax(0,1fr)]">
+      <form onSubmit={save} aria-label={editId ? "Edit template" : "Add template"} className={`${PANEL_CLASS} grid gap-3 sm:grid-cols-[1fr_8rem] xl:sticky xl:top-20`}>
         <div>
           <Label htmlFor="t-name">Name</Label>
           <Input id="t-name" ref={nameRef} className="mt-1" maxLength={100} value={name} onChange={(e) => setName(e.target.value)} />
@@ -147,7 +150,8 @@ export default function TemplatesPage() {
         </div>
       </form>
 
-      <div role="status" aria-live="polite" className={message?.error ? ERROR : "text-sm text-muted-foreground"}>
+      <div className="space-y-3">
+      <div role="status" aria-live="polite" className={message?.error ? ERROR : "text-sm text-muted-foreground empty:hidden"}>
         {message?.text}
       </div>
 
@@ -158,11 +162,11 @@ export default function TemplatesPage() {
       ) : !items ? (
         <p className="text-sm text-muted-foreground">Loading...</p>
       ) : items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No templates yet.</p>
+        <p className="rounded-xl border border-dashed bg-card p-8 text-center text-sm text-muted-foreground">No templates yet.</p>
       ) : (
-        <ul className="space-y-4">
+        <ul className="grid gap-4 2xl:grid-cols-2">
           {items.map((t) => (
-            <li key={t.id} className="space-y-1 rounded-lg border p-3 text-sm">
+            <li key={t.id} className={`${PANEL_CLASS} space-y-2 text-sm`}>
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="font-semibold">{t.name}</h2>
                 <Badge variant="outline">{t.kind === "email" ? "Email" : "Call script"}</Badge>
@@ -181,6 +185,8 @@ export default function TemplatesPage() {
           ))}
         </ul>
       )}
+      </div>
+      </div>
     </div>
   );
 }

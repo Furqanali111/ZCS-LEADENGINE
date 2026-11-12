@@ -1,13 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { ToneBadge, type Tone } from "@/components/tone-badge";
+import { PANEL_CLASS } from "@/lib/ui";
 import { ApiError, cancelJob, listJobs, resumeJob, type Job } from "@/lib/api";
 import { JOB_STATUS_LABELS } from "@/lib/constants";
 
 const ACTIVE = ["queued", "running"];
+const JOB_TONE: Record<string, Tone> = { queued: "neutral", running: "info", paused: "warning", completed: "success", cancelled: "neutral", failed: "danger" };
 
 const COUNTER_LABELS: [keyof Job["counters"], string][] = [
   ["candidates_seen", "Records checked"],
@@ -74,24 +76,22 @@ export function JobList({ refreshKey }: { refreshKey: number }) {
   return (
     <div className="space-y-4">
       {error && (
-        <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       )}
       <div aria-live="polite">
         {jobs?.length === 0 && <p className="text-sm text-muted-foreground">No searches yet.</p>}
       </div>
-      <ul className="space-y-4">
+      <ul className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
         {jobs?.map((j) => {
           const done = (j.counters.accepted_new ?? 0) + (j.counters.accepted_existing ?? 0);
           const pct = Math.min(100, Math.round((done / j.target_count) * 100));
           return (
-            <li key={j.id} className="space-y-2 rounded-lg border p-4">
+            <li key={j.id} className={`${PANEL_CLASS} space-y-2.5`}>
               <div className="flex flex-wrap items-center gap-3">
                 <span className="font-medium">{summary(j)}</span>
-                <Badge variant={j.status === "failed" ? "destructive" : "secondary"}>
-                  {JOB_STATUS_LABELS[j.status] ?? j.status}
-                </Badge>
+                <ToneBadge tone={JOB_TONE[j.status] ?? "neutral"}>{JOB_STATUS_LABELS[j.status] ?? j.status}</ToneBadge>
                 <span className="ml-auto flex gap-2">
                   {ACTIVE.includes(j.status) && (
                     <Button variant="outline" size="sm" onClick={() => act(cancelJob, j.id)}>
@@ -105,11 +105,11 @@ export function JobList({ refreshKey }: { refreshKey: number }) {
                   )}
                 </span>
               </div>
-              <Progress value={pct} aria-label={`Progress for ${summary(j)}`} />
+              <Progress value={pct} aria-label={`Progress for ${summary(j)}`} className="[&_[data-slot=progress-track]]:h-2" />
               <p className="text-sm">
                 {done} of {j.target_count} leads ({pct}%)
               </p>
-              <dl className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
+              <dl className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
                 {COUNTER_LABELS.map(([k, label]) => (
                   <div key={k} className="flex gap-1">
                     <dt>{label}:</dt>
@@ -118,7 +118,7 @@ export function JobList({ refreshKey }: { refreshKey: number }) {
                 ))}
               </dl>
               {j.enrich && (
-                <dl aria-label="Enrichment results" className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
+                <dl aria-label="Enrichment results" className="flex flex-wrap gap-x-5 gap-y-1 border-t pt-2 text-xs text-muted-foreground">
                   {ENRICH_LABELS.map(([k, label]) => (
                     <div key={k} className="flex gap-1">
                       <dt>{label}:</dt>
@@ -128,7 +128,7 @@ export function JobList({ refreshKey }: { refreshKey: number }) {
                 </dl>
               )}
               {j.error && (
-                <p role={j.status === "paused" ? "status" : undefined} className="text-sm text-red-700 dark:text-red-400">
+                <p role={j.status === "paused" ? "status" : undefined} className="text-sm text-destructive">
                   {j.status === "paused" ? `Paused: ${j.error} Resume when fixed.` : `Error: ${j.error}`}
                 </p>
               )}
