@@ -1,5 +1,5 @@
 {
-  "version": "2",
+  "version": "3",
   "core_taxonomy_codes": ["207R00000X", "207Q00000X", "207QG0300X", "207RG0300X", "208D00000X"],
   "subspecialty_prefixes": ["207R", "207Q"],
   "hospital_prefix": "28",
@@ -12,5 +12,5 @@
     "multi_location": {"multiple": 10}
   },
   "max": {"specialty": 25, "independence": 20, "service_fit": 20, "contactability": 15, "decision_maker": 10, "multi_location": 10},
-  "priority_thresholds": {"critical": 80, "high": 65, "medium": 45}
+  "priority_thresholds": {"critical": 95, "high": 90, "medium": 80}
 }
