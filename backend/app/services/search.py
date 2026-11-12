@@ -334,8 +334,8 @@ def run_job(session_factory, job_id: UUID, *, fetch=fetch_page, sleep=time.sleep
             return done()
         resumed = checkpoint.get("phase") in names
         i = names.index(checkpoint["phase"]) if resumed else 0
-        progress = _progress_row(session, job)
-        cursor = progress.cursor
+        progress = _progress_row(session, job) if phases else None  # an enrich-only job has no search to continue
+        cursor = progress.cursor if progress else {}
 
         while i < len(phases):
             phase, enumeration_type = phases[i]

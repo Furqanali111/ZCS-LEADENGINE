@@ -12,7 +12,7 @@ from app.models import Organization, SearchJob, SearchJobLead
 from app.services.search import run_job
 
 
-def enrich_existing(session_factory, *, limit: int, state: str | None = None, priority: str | None = None) -> SearchJob | None:
+def enrich_existing(session_factory, *, limit: int, state: str | None = None, priority: str | None = None, enrich_deps=None) -> SearchJob | None:
     with session_factory() as session:
         stmt = select(Organization).where(Organization.enrichment_status.in_(("not_run", "failed")), Organization.website.is_(None))
         if state:
@@ -30,7 +30,7 @@ def enrich_existing(session_factory, *, limit: int, state: str | None = None, pr
         session.add_all(SearchJobLead(search_job_id=job.id, organization_id=o.id, was_new=False) for o in orgs)
         session.commit()
         job_id = job.id
-    run_job(session_factory, job_id)
+    run_job(session_factory, job_id, enrich_deps=enrich_deps)
     with session_factory() as session:
         return session.get(SearchJob, job_id)
 

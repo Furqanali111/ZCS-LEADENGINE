@@ -660,3 +660,15 @@ def test_real_deps_use_separate_clients_and_key_only_goes_to_brave(db, session_f
     brave_calls = [k for h, k in seen if h == "api.search.brave.com"]
     page_calls = [k for h, k in seen if h != "api.search.brave.com"]
     assert brave_calls == ["KEY123"] and page_calls and all(k is None for k in page_calls)
+
+
+def test_enrich_existing_runs_enrichment_only_and_leaves_no_search_progress(db, session_factory, npi_source, enrich_sources):
+    from app.enrich_existing import enrich_existing
+    from app.models import Organization, SearchProgress
+
+    for n in range(3):
+        db.add(Organization(npi=f"{n:010d}", name=f"Org {n}", organization_type="practice", state="TX", fit_score=90 - n))
+    db.commit()
+    job = enrich_existing(session_factory, limit=2, enrich_deps=deps())
+    assert job.status == "completed" and job.counters["enrich_attempted"] == 2, job.error
+    assert db.query(SearchProgress).count() == 0

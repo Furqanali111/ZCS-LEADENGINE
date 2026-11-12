@@ -59,3 +59,40 @@ def test_activities_record_who_logged_them(client, db):
     lid = make(db)
     client.post(f"/api/leads/{lid}/activities", json={"type": "call", "summary": "hi", "outcome": "spoke"}, headers=as_("Ali"))
     assert db.query(LeadActivity).one().actor == "Ali"
+
+
+def test_claim_refused_for_suppressed_or_closed_leads(client, db):
+    from app.models import SuppressionEntry
+    a, b = make(db, "1"), make(db, "2", status="converted")
+    db.add(SuppressionEntry(kind="npi", value="1", reason="test"))
+    db.commit()
+    assert client.post(f"/api/leads/{a}/claim", headers=as_("Ali")).json()["error"]["code"] == "lead_suppressed"
+    assert client.post(f"/api/leads/{b}/claim", headers=as_("Ali")).json()["error"]["code"] == "lead_closed"
+    assert client.patch(f"/api/leads/{a}", json={"crm_status": "in_progress"}, headers=as_("Ali")).status_code == 409
+
+
+def test_reclaim_keeps_the_original_spelling_and_filter_ignores_case(client, db):
+    lid = make(db)
+    client.post(f"/api/leads/{lid}/claim", headers=as_("Ali"))
+    assert client.post(f"/api/leads/{lid}/claim", headers=as_("ali")).json()["owner"] == "Ali"
+    assert len(client.get("/api/leads?owner=ALI").json()["items"]) == 1
+    assert client.get("/api/owners").json() == ["Ali"]
+
+
+def test_bad_header_values_are_cleaned_not_500(client, db):
+    lid = make(db)
+    r = client.post(f"/api/leads/{lid}/claim", headers={"X-Salesperson": "A%00l%0Ai" + "x" * 80})
+    assert r.status_code == 200 and r.json()["owner"] == ("Ali" + "x" * 80)[:40]
+    other = make(db, "2")
+    assert client.post(f"/api/leads/{other}/claim", headers=as_("none")).status_code == 400  # reserved word
+
+
+def test_only_the_owner_can_release(client, db):
+    lid = make(db)
+    client.post(f"/api/leads/{lid}/claim", headers=as_("Ali"))
+    assert client.post(f"/api/leads/{lid}/release", headers=as_("Sara")).status_code == 409
+    assert client.post(f"/api/leads/{lid}/release").status_code == 400
+    assert client.get(f"/api/leads/{lid}").json()["owner"] == "Ali"
+    notes = [a["summary"] for a in client.post(f"/api/leads/{lid}/release", headers=as_("ali")).json() and client.get(f"/api/leads/{lid}/activities").json()["items"]]
+    assert "Released by Ali" in notes
+

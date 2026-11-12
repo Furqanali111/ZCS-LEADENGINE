@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Header, Query
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session, selectinload
 
+from app.constants import CLOSED_STATUSES
 from app.db import get_session
 from app.errors import AppError
 from app.models import Contact, LeadActivity, Organization, SourceRecord
@@ -22,17 +23,22 @@ OPEN_STATUSES = ("new", "researching")  # claiming moves only these to in_progre
 
 def salesperson(x_salesperson: Annotated[str | None, Header()] = None) -> str | None:
     """The name the browser sends (percent-encoded). No accounts: this says who did it, it does not prove it."""
-    return unquote(x_salesperson or "").strip()[:40] or None
+    name = "".join(c for c in unquote(x_salesperson or "") if c.isprintable()).strip()[:40]  # no NUL or newlines
+    return None if name.lower() == "none" else name or None  # "none" means unclaimed in the owner filter
 
 
 def claim(session: Session, org: Organization, name: str | None) -> None:
     """Atomic: the UPDATE only matches an unclaimed lead or one already ours, so two people cannot both win."""
     if not name:
         raise AppError(400, "name_required", "Enter your name at the top of the page first")
+    if suppressed_ids(session, [org.id]):
+        raise AppError(409, "lead_suppressed", "This lead is on the suppression list")
+    if org.crm_status in CLOSED_STATUSES:
+        raise AppError(409, "lead_closed", "This lead is closed. Change its status first if you want to work it again")
     won = session.execute(update(Organization).where(
         Organization.id == org.id, or_(Organization.owner.is_(None), func.lower(Organization.owner) == name.lower()),
-    ).values(owner=name).execution_options(synchronize_session=False)).rowcount
-    session.refresh(org, ["owner"])
+    ).values(owner=func.coalesce(Organization.owner, name)).execution_options(synchronize_session=False)).rowcount
+    session.refresh(org, ["owner", "crm_status"])
     if not won:
         raise AppError(409, "already_claimed", f"{org.owner} is already working on this lead")
     if org.crm_status in OPEN_STATUSES:
@@ -129,10 +135,15 @@ def claim_lead(lead_id: str, session: Session = Depends(get_session), name: str 
 @router.post("/{lead_id}/release", response_model=LeadOut)
 def release_lead(lead_id: str, session: Session = Depends(get_session), name: str | None = Depends(salesperson)):
     org = _load(session, lead_id, LOADS)
-    org.owner = None
-    if org.crm_status == "in_progress":
-        change_status(session, org, "new", name)
-    add_activity(session, org, type="note", summary=f"Released by {name}" if name else "Released", actor=name)
+    if not name:
+        raise AppError(400, "name_required", "Enter your name at the top of the page first")
+    if org.owner and org.owner.lower() != name.lower():
+        raise AppError(409, "not_your_lead", f"{org.owner} is working on this lead, only they can release it")
+    if org.owner:
+        previous, org.owner = org.owner, None
+        if org.crm_status == "in_progress":
+            change_status(session, org, "new", name)
+        add_activity(session, org, type="note", summary=f"Released by {previous}", actor=name)
     session.commit()
     session.refresh(org)
     return _out(org, bool(suppressed_ids(session, [org.id])))
