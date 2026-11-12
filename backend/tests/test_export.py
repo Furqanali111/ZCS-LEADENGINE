@@ -85,6 +85,7 @@ def test_row_values(db):
     assert ws["Q2"].fill.fgColor.rgb.endswith("F4B6B6")
     contacts = export(db)["Contacts"]
     assert [c.value for c in contacts[2]][:3] == ["Acme Clinic", "1111111111", "Ann"]
+    assert contacts[1][-1].value == "Email"
 
 
 def test_ids_override_filters(db):

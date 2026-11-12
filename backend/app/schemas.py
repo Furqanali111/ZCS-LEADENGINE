@@ -14,6 +14,7 @@ class SourceOut(BaseModel):
     name: str
     status: str
     notes: str | None
+    key_missing: bool = False
 
 
 class SearchCreate(BaseModel):

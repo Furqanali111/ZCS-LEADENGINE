@@ -18,7 +18,7 @@ HEADERS = ["Organization Name", "DBA Name", "Specialty", "Organization Type", "P
            "Fax", "Contact Person", "Contact Title", "Contact Phone", "Address", "City", "State", "ZIP", "NPI",
            "Lead Score", "Lead Priority", "Outreach Status", "Source", "Collected On",
            "Last Contacted", "Next Follow-up", "Suppressed", "Website", "Email", "Decision-maker"]
-CONTACT_HEADERS = ["Organization Name", "NPI", "First Name", "Last Name", "Title", "Phone", "Role"]
+CONTACT_HEADERS = ["Organization Name", "NPI", "First Name", "Last Name", "Title", "Phone", "Role", "Email"]
 SOURCE_NAMES = {"npi_registry": "CMS NPI Registry"}
 # Light fills with dark text; the label is always in the cell, so colour is never the only signal.
 PRIORITY_FILLS = {"Critical": "F4B6B6", "High": "F9D5A7", "Medium": "FFF2A8", "Low": "D9D9D9"}
@@ -107,7 +107,7 @@ def build_workbook(session: Session, *, filters: LeadFilters | None, ids: list[U
         _fill(leads.cell(row, 17), PRIORITY_FILLS)
         _fill(leads.cell(row, 18), STATUS_FILLS)
         for c in org.contacts:
-            _put(contacts, [org.name, org.npi, c.first_name, c.last_name, c.title, c.phone, c.role])
+            _put(contacts, [org.name, org.npi, c.first_name, c.last_name, c.title, c.phone, c.role, c.email])
 
     for ws in (leads, contacts):
         _finish(ws)

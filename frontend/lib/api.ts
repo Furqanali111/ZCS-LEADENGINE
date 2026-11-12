@@ -13,7 +13,7 @@ export class ApiError extends Error {
   }
 }
 
-export type Source = { key: string; name: string; status: string; notes: string | null };
+export type Source = { key: string; name: string; status: string; notes: string | null; key_missing: boolean };
 
 export type Counters = {
   candidates_seen?: number;
