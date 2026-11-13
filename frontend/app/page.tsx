@@ -179,6 +179,37 @@ export default function DashboardPage() {
             <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">{stats.status_changes_today}</span>
           </div>
 
+          <section aria-labelledby="team-today" className={`${PANEL_CLASS} space-y-3`}>
+            <h2 id="team-today" className="text-sm font-semibold">
+              Team activity today
+            </h2>
+            {stats.team_today.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No calls, emails or status changes logged today yet.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-muted-foreground">
+                    <th scope="col" className="py-1 font-medium">Person</th>
+                    <th scope="col" className="py-1 text-right font-medium">Calls</th>
+                    <th scope="col" className="py-1 text-right font-medium">Emails</th>
+                    <th scope="col" className="py-1 text-right font-medium">Status changes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.team_today.map((r) => (
+                    <tr key={r.name} className="border-t">
+                      <th scope="row" className="py-1.5 text-left font-medium">{r.name}</th>
+                      <td className="py-1.5 text-right tabular-nums">{r.calls}</td>
+                      <td className="py-1.5 text-right tabular-nums">{r.emails}</td>
+                      <td className="py-1.5 text-right tabular-nums">{r.status_changes}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            <p className="text-xs text-muted-foreground">Logged activity only, counted per UTC day.</p>
+          </section>
+
           <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
             <StatTile tone="blue" Icon={Users} label="Total leads" href="/leads" value={stats.total} hint="In the system" />
             <StatTile tone="green" Icon={Sparkles} label="New" href="/leads?crm_status=new" value={stats.new_leads} hint="Not contacted yet" />

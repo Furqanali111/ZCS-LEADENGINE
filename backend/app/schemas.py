@@ -375,6 +375,13 @@ class CountItem(BaseModel):
     count: int
 
 
+class TeamRow(BaseModel):
+    name: str
+    calls: int
+    emails: int
+    status_changes: int
+
+
 class Conversion(BaseModel):
     """Recorded outcomes only: never a prediction."""
 
@@ -390,6 +397,7 @@ class DashboardStats(BaseModel):
     critical_high: int
     follow_ups_due: int
     status_changes_today: int
+    team_today: list[TeamRow]
     meetings_scheduled: int
     converted: int
     by_state: list[CountItem]

@@ -131,3 +131,26 @@ def test_dashboard_recent_jobs_newest_first_max_5_and_empty(client, db):
     jobs = stats(client).json()["recent_jobs"]
     assert [j["specialty"] for j in jobs] == ["s5", "s4", "s3", "s2", "s1"]
     assert jobs[0]["sources"] == ["nppes"] and jobs[0]["status"] == "queued" and jobs[0]["counters"] == {}
+
+
+def test_dashboard_team_activity_today_per_person(client, db):
+    o = org(db, 1)
+    now = datetime.now(timezone.utc)
+
+    def add(type, actor, days_ago=0):
+        db.add(LeadActivity(organization_id=o.id, type=type, summary=None if type == "status_change" else "x",
+                            to_status="called" if type == "status_change" else None, actor=actor,
+                            occurred_at=now - timedelta(days=days_ago)))
+
+    for _ in range(3):
+        add("call", "Usman")
+    add("call", "usman")  # same person, other casing
+    add("email", "Usman")
+    add("call", "Michael")
+    add("status_change", "Michael")
+    add("call", "Michael", days_ago=2)  # not today
+    add("note", "Michael")  # not counted
+    db.commit()
+    team = {r["name"].lower(): r for r in stats(client).json()["team_today"]}
+    assert (team["usman"]["calls"], team["usman"]["emails"]) == (4, 1)
+    assert (team["michael"]["calls"], team["michael"]["status_changes"]) == (1, 1) and len(team) == 2

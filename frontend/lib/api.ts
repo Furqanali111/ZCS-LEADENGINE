@@ -315,6 +315,7 @@ export type DashboardStats = {
   critical_high: number;
   follow_ups_due: number;
   status_changes_today: number;
+  team_today: { name: string; calls: number; emails: number; status_changes: number }[];
   meetings_scheduled: number;
   converted: number;
   by_state: CountItem[];
