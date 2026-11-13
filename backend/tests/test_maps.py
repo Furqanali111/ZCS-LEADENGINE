@@ -55,8 +55,14 @@ def test_matches_needs_street_city_and_state(db):
 def test_maps_url_searches_name_plus_address(db):
     o = hospital(db)
     url = maps_url(o, o.locations)
-    assert url.startswith("https://www.google.com/maps/search/?api=1&query=ADVENTHEALTH+PORT+CHARLOTTE+INC+2500+HARBOR+BLVD")
+    assert url.startswith("https://www.google.com/maps/search/?api=1&query=ADVENTHEALTH+PORT+CHARLOTTE+2500+HARBOR+BLVD")
     assert url.endswith("FL+33952")
+
+
+def test_maps_url_drops_the_legal_suffix_from_the_name(db):
+    o = hospital(db)
+    o.name = "ADVENTHEALTH PORT CHARLOTTE, INC."
+    assert "ADVENTHEALTH+PORT+CHARLOTTE+2500" in maps_url(o, o.locations)
 
 
 def test_matched_listing_stores_phone_hours_and_link_and_keeps_npi_phone(db):
