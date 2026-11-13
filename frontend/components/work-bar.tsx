@@ -11,7 +11,7 @@ import { PANEL_CLASS } from "@/lib/ui";
 
 // One-click call results. Each logs a call, sets the follow-up date and (where it applies) the sales status.
 const QUICK = [
-  { label: "No answer", outcome: "no_answer", summary: "Called, no answer", days: 2 },
+  { label: "No answer", outcome: "no_answer", summary: "Called, no answer", days: 2, status: "called_no_answer" },
   { label: "Spoke, call back", outcome: "spoke", summary: "Spoke, will call back", days: 3 },
   { label: "Interested", outcome: "interested", summary: "Spoke, interested", days: 2, status: "interested" },
   { label: "Not interested", outcome: "not_interested", summary: "Spoke, not interested", status: "not_interested" },

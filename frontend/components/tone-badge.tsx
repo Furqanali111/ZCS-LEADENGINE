@@ -28,6 +28,7 @@ const STATUS_TONE: Record<string, Tone> = {
   researching: "neutral",
   email_sent: "info",
   called: "info",
+  called_no_answer: "warning",
   follow_up_required: "warning",
   interested: "success",
   meeting_scheduled: "success",

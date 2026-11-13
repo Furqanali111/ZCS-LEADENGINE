@@ -37,6 +37,7 @@ export const CRM_STATUSES: { value: string; label: string; hint: string }[] = [
   { value: "researching", label: "Researching", hint: "Looking up the practice before the first contact" },
   { value: "email_sent", label: "Email sent", hint: "First email sent, waiting for a reply" },
   { value: "called", label: "Called", hint: "Called at least once, no decision yet" },
+  { value: "called_no_answer", label: "Called, no answer", hint: "Called but nobody picked up, try again" },
   { value: "follow_up_required", label: "Follow-up due", hint: "Contacted, a next step is due" },
   { value: "interested", label: "Interested", hint: "The practice wants to hear more" },
   { value: "meeting_scheduled", label: "Meeting booked", hint: "A call or meeting is on the calendar" },
