@@ -40,12 +40,23 @@ def build_stats(session: Session, start: date, end: date, today: date) -> Dashbo
         A.type == "status_change", A.occurred_at >= day, A.occurred_at < day + timedelta(days=1)).scalar_subquery()
     # Per salesperson, today only. Names are typed, so group ignoring case; no name means "Unknown".
     who = func.lower(func.coalesce(A.actor, "Unknown"))
+    # What each person moved today, as "from to" pairs with counts (jsonb so it can sit in the GROUP BY).
+    B = aliased(LeadActivity)
+    bwho = func.lower(func.coalesce(B.actor, "Unknown"))  # one object, so SELECT and GROUP BY render the same expression
+    pairs = (select(bwho.label("w"), B.from_status.label("frm"), B.to_status.label("to"), func.count().label("n"))
+             .where(B.type == "status_change", B.occurred_at >= day, B.occurred_at < day + timedelta(days=1))
+             .group_by(bwho, B.from_status, B.to_status).subquery("pairs"))
+    chg = (select(pairs.c.w, func.jsonb_agg(aggregate_order_by(func.jsonb_build_object("from", pairs.c.frm, "to", pairs.c.to, "count", pairs.c.n),
+                                                              pairs.c.n.desc(), pairs.c.to)).label("changes"))
+           .group_by(pairs.c.w).subquery("chg"))
     team = (select(func.max(func.coalesce(A.actor, "Unknown")).label("name"),
                    func.count().filter(A.type == "call").label("calls"),
                    func.count().filter(A.type == "email").label("emails"),
-                   func.count().filter(A.type == "status_change").label("status_changes"))
+                   func.count().filter(A.type == "status_change").label("status_changes"),
+                   func.coalesce(chg.c.changes, text("'[]'::jsonb")).label("changes"))
+            .select_from(A.__table__.outerjoin(chg, chg.c.w == who))
             .where(A.type.in_(("call", "email", "status_change")), A.occurred_at >= day, A.occurred_at < day + timedelta(days=1))
-            .group_by(who).subquery("team"))
+            .group_by(who, chg.c.changes).subquery("team"))
     team_rows = select(func.coalesce(func.json_agg(aggregate_order_by(func.row_to_json(literal_column("team")), team.c.calls.desc(), team.c.name)),
                                      text("'[]'::json"))).select_from(team).scalar_subquery()
     J = aliased(SearchJob)
