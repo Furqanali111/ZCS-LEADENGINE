@@ -46,7 +46,8 @@ export function PipelineBoard() {
       }),
     );
     try {
-      await patchLead(card.id, { crm_status: to });
+      const saved = await patchLead(card.id, { crm_status: to });
+      setCols((cs) => cs && cs.map((c) => (c.status === to ? { ...c, leads: c.leads.map((l) => (l.id === card.id ? { ...l, owner: saved.owner } : l)) } : c))); // the server may have set the owner
       // The card left `from`, so the next page there starts one lead earlier.
       serverOffset.current[from] = Math.max(0, (serverOffset.current[from] ?? 0) - 1);
       setNotice(`Moved ${card.name} to ${LABELS[to]}`);

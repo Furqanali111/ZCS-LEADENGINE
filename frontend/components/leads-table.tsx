@@ -106,6 +106,7 @@ export function LeadsTable({
   // Saved or in-flight status values, keyed by lead id; removed on failure so the row reverts to the server value.
   const [sentOverride, setSentOverride] = useState<Record<string, boolean>>({});
   const [statusOverride, setStatusOverride] = useState<Record<string, string>>({});
+  const [ownerOverride, setOwnerOverride] = useState<Record<string, string | null>>({}); // the server may set the owner when a status changes
   // One request per row at a time, so the shown value never has two writers.
   const [pending, setPending] = useState<Set<string>>(new Set());
 
@@ -173,7 +174,8 @@ export function LeadsTable({
     setPending((p) => new Set(p).add(lead.id));
     setStatusOverride((o) => ({ ...o, [lead.id]: value }));
     try {
-      await patchLeadStatus(lead.id, value);
+      const saved = await patchLeadStatus(lead.id, value);
+      setOwnerOverride((o) => ({ ...o, [lead.id]: saved.owner }));
       onMessage(`${lead.name}: status set to ${label}.`, false);
     } catch (e) {
       onMessage(`${lead.name}: status was not saved. ${e instanceof ApiError ? e.message : "Unknown error."}`, true);
@@ -381,7 +383,7 @@ export function LeadsTable({
                       <TableCell>{l.email_sent && l.email_sent_by ? <ToneBadge tone="info">{l.email_sent_by}</ToneBadge> : NONE}</TableCell>
                     )}
                     {show("owner") && (
-                      <TableCell>{l.owner ? <ToneBadge tone="warning">{l.owner}</ToneBadge> : NONE}</TableCell>
+                      <TableCell>{(l.id in ownerOverride ? ownerOverride[l.id] : l.owner) ? <ToneBadge tone="warning">{l.id in ownerOverride ? ownerOverride[l.id] : l.owner}</ToneBadge> : NONE}</TableCell>
                     )}
                     {show("follow_up") && (
                       <TableCell>
