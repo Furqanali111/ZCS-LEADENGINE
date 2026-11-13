@@ -120,12 +120,18 @@ export type Lead = {
   enrichment_status: string;
   website_evidence: { page_url?: string; check?: string; checked_at?: string } | null;
   primary_email: string | null;
+  phones: LeadPhone[];
+  hours: { weekly: { day: string; hours: string }[]; source_key: string; source_url: string | null; collected_at: string } | null;
+  maps_status: string;
+  maps_url: string | null;
   contact: Contact | null;
   contacts: Contact[];
   locations: LeadLocation[];
   score: { components: Record<string, unknown>; config_version: string; calculated_at: string } | null;
   source: { source_key: string; collected_at: string } | null;
 };
+
+export type LeadPhone = { phone: string; source_key: string; source_url: string | null; collected_at: string | null; differs_from_npi: boolean };
 
 export type LeadPage = { items: Lead[]; total: number; page: number; page_size: number };
 
@@ -235,6 +241,7 @@ export const patchLead = (id: string, body: LeadPatch) =>
     body: JSON.stringify(body),
   });
 
+export const lookupMaps = (id: string) => json<Lead>(`/api/leads/${id}/maps`, post());
 export const claimLead = (id: string) => json<Lead>(`/api/leads/${id}/claim`, post());
 export const releaseLead = (id: string) => json<Lead>(`/api/leads/${id}/release`, post());
 export const listOwners = () => json<string[]>("/api/owners");

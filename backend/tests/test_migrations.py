@@ -47,7 +47,7 @@ def test_up_down_up_and_no_model_drift(migrated_url):
         rows = dict(conn.execute(text("select key, status from source_configs")).all())
         npi = conn.execute(text("select rate_limit_per_sec, policy_reviewed_on::text from source_configs where key='npi_registry'")).one()
     engine.dispose()
-    assert len(rows) == 36
+    assert len(rows) == 37
     assert rows["npi_registry"] == "available" and rows["nppes_bulk"] == "approved_not_built"
     assert sum(s == "not_reviewed" for s in rows.values()) == 29
     assert tuple(npi) == (1.0, "2026-11-11")
@@ -64,7 +64,7 @@ def test_rls_enabled_on_every_table_and_removed_on_downgrade(migrated_url):
     alembic(migrated_url, "upgrade", "head")
     with engine.connect() as conn:
         rls = dict(conn.execute(RLS_SQL).all())
-    assert len(rls) == 14 and all(rls.values()), rls
+    assert len(rls) == 15 and all(rls.values()), rls
     alembic(migrated_url, "downgrade", "0002")
     with engine.connect() as conn:
         rls = dict(conn.execute(RLS_SQL).all())

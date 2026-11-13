@@ -18,7 +18,7 @@ Pinned context for every session in this repo. Read first.
 ## What this product IS and ISN'T
 
 - IS: an internal, single-user, local-first tool for ZCS to find, score, prioritize, and track U.S. healthcare practices as sales prospects, and export them to Excel.
-- IS NOT: a public website, a patient system, an outreach sender, or a general web scraper.
+- IS NOT: a public website, a patient system, or an outreach sender.
 - The public marketing website lives in its own repo. Never mix the two.
 
 ## Delivery slices (build in this order)

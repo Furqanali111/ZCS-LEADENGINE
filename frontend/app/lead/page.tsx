@@ -17,6 +17,7 @@ import {
   ApiError,
   getLead,
   listActivities,
+  lookupMaps,
   patchLead,
   type Activity,
   type Lead,
@@ -25,7 +26,7 @@ import {
 import { PANEL_CLASS, SELECT_CLASS } from "@/lib/ui";
 import { CRM_STATUSES, ORG_TYPES, PRIORITIES, SCORE_FACTORS } from "@/lib/constants";
 import { formatPhone, hostOf, pagePath, safeHttpUrl } from "@/lib/format";
-import { ContactStrip } from "@/components/contact-strip";
+import { ContactStrip, type ShownPhone } from "@/components/contact-strip";
 import { WorkBar } from "@/components/work-bar";
 import { RelatedLeads } from "@/components/related-leads";
 
@@ -58,9 +59,23 @@ function LeadDetail() {
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [followDraft, setFollowDraft] = useState<string | null>(null);
+  const [lookingUp, setLookingUp] = useState(false);
+  const [lookupError, setLookupError] = useState<string | null>(null);
   const refreshSeq = useRef(0);
   const formHandle = useRef<ActivityFormHandle>(null);
   const webHeading = useRef<HTMLHeadingElement>(null);
+
+  async function runLookup() {
+    setLookingUp(true);
+    setLookupError(null);
+    try {
+      setLead(await lookupMaps(id));
+    } catch (e) {
+      setLookupError(msg(e));
+    } finally {
+      setLookingUp(false);
+    }
+  }
 
   // Reload the lead and the first page of the timeline (status changes add entries).
   const refresh = useCallback(async () => {
@@ -166,6 +181,13 @@ function LeadDetail() {
     ? `${ev.check === "phone" ? "Phone" : "Name and city"} matched${ev.page_url ? ` on ${pagePath(ev.page_url)}` : ""}`
     : null;
   const found = lead.contacts.filter((c) => c.email || c.source_url);
+  // The NPI official's own line is kept when it is not already listed, so no number the page showed before disappears.
+  const digitsOf = (s: string) => s.replace(/\D/g, "").replace(/^1(?=\d{10}$)/, "");
+  const shownPhones: ShownPhone[] = lead.phones.map((p) => ({ phone: p.phone, source: p.source_key, differs: p.differs_from_npi, collected: p.collected_at }));
+  const official = lead.contact?.phone;
+  if (official && !shownPhones.some((p) => digitsOf(p.phone) === digitsOf(official))) {
+    shownPhones.push({ phone: official, source: "npi_official", differs: false, collected: lead.source?.collected_at ?? null });
+  }
   const contactName = [lead.contact?.first_name, lead.contact?.last_name].filter(Boolean).join(" ");
   const primaryEmail = lead.contacts.map((c) => c.email ?? (c.role === "general" ? c.last_name : null)).find(Boolean) ?? null;
 
@@ -262,7 +284,14 @@ function LeadDetail() {
       <ContactStrip
         person={contactName}
         title={lead.contact?.title ?? null}
-        phone={lead.contact?.phone ?? lead.phone}
+        phones={shownPhones}
+        hours={lead.hours}
+        mapsUrl={lead.maps_url}
+        isHospital={lead.organization_type === "hospital"}
+        mapsStatus={lead.maps_status}
+        lookingUp={lookingUp}
+        lookupError={lookupError}
+        onLookup={runLookup}
         fax={lead.fax}
         email={primaryEmail}
         website={lead.website}

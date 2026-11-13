@@ -11,4 +11,5 @@ ACTIVITY_TYPES = ("call", "email", "meeting", "note", "status_change", "outcome"
 OUTCOMES = ("no_answer", "spoke", "interested", "not_interested", "meeting_booked", "converted", "other")
 SUPPRESSION_KINDS = ("npi", "phone", "email")
 ENRICHMENT_STATUSES = ("not_run", "enriched", "no_website_found", "failed", "rejected_by_user")
+MAPS_STATUSES = ("not_run", "matched", "no_match", "failed")
 TEMPLATE_KINDS = ("email", "call", "message")

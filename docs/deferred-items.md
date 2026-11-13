@@ -4,6 +4,10 @@ Things the docs or code refer to that are intentionally not built yet. If a revi
 
 | Item | Referenced in | Lands in | Trigger to build |
 |---|---|---|---|
+| Website phones saved as sourced phones (the `organization_phones` table already takes any `source_key`; the website enrichment only uses phones to verify a site today) | Maps design 2026-11-14 | Later | Salespeople want the website's phone beside the NPI and Maps ones |
+| Google Maps lookup for non-hospital leads | Maps design 2026-11-14 | Later | Hospitals prove reliable and the owner asks for practices too |
+| Google Maps lookup inside the desktop build (Playwright and Chromium are not bundled by PyInstaller yet) | Maps design 2026-11-14 | Later | The team needs the lookup button in the packaged app, not only from source |
+| Hours not re-checked automatically; Maps hours go stale | Maps design 2026-11-14 | Later | A salesperson reports wrong hours |
 | Business directory connectors (29 listed, Yelp rejected) | `docs/data-sources.md` | Later | Each one only after its terms review |
 | Bulk NPPES file importer | PRD FR-03, Plan Phase 4 | After slice 1 | The 1,200-per-query API cap or missing provider counts hurts real searches |
 | Cross-source deduplication and match review | PRD FR-07 | Later | When a directory source exists. Slices 1 to 3 dedupe by NPI only. |

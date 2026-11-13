@@ -12,6 +12,7 @@ dependencies = [
   "httpx",
   "openpyxl",
   "ddgs",
+  "playwright",
 ]
 
 [project.optional-dependencies]
