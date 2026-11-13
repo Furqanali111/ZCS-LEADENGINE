@@ -31,7 +31,8 @@ def maps_url(org: Organization, locations: list[Location]) -> str | None:
     loc = pick_location(locations)
     if loc is None:
         return None
-    query = " ".join(x for x in (org.dba_name or org.name, loc.address_1, loc.city, loc.state, (loc.zip or "")[:5]) if x)
+    name = re.sub(r"[,.]?\s*\b(inc|llc|l\.l\.c|pc|pllc|pa|corp|ltd|lp)\b\.?", "", org.dba_name or org.name, flags=re.I).strip()  # a legal suffix makes Maps return a list
+    query = " ".join(x for x in (name, loc.address_1, loc.city, loc.state, (loc.zip or "")[:5]) if x)
     return f"https://www.google.com/maps/search/?api=1&query={quote_plus(query)}"
 
 

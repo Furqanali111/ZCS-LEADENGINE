@@ -76,14 +76,23 @@ class MapsBrowser:
         self._browser.close()
         self._pw.stop()
 
+    @staticmethod
+    def _settle(page) -> None:
+        deadline = time.monotonic() + SETTLE_SECONDS
+        while time.monotonic() < deadline and not page.locator('[data-item-id^="phone"]').count():
+            page.wait_for_timeout(500)
+
     def get(self, url: str) -> Listing | None:
         page = self._browser.new_context(locale="en-US", viewport={"width": 1400, "height": 900}).new_page()
         try:
             page.goto(url, wait_until="domcontentloaded", timeout=30000)
-            deadline = time.monotonic() + SETTLE_SECONDS
-            while time.monotonic() < deadline and not page.locator('[data-item-id^="phone"]').count():
-                page.wait_for_timeout(500)
+            self._settle(page)
             _check_blocked(page)
+            if not page.locator('[data-item-id^="phone"]').count() and page.locator("a.hfpxzc").count():
+                # a list of results (common with a legal name): open Maps' first result; the caller still checks its address
+                page.locator("a.hfpxzc").first.click(force=True)
+                self._settle(page)
+                _check_blocked(page)
             return read_listing(page)
         finally:
             page.context.close()
