@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { requireName } from "@/lib/me";
 import { ApiError, patchLead, patchLeadStatus, type Lead, type LeadPage } from "@/lib/api";
 import { CLOSED_STATUSES, CRM_STATUSES, PRIORITIES } from "@/lib/constants";
 import { SELECT_CLASS } from "@/lib/ui";
@@ -169,6 +170,7 @@ export function LeadsTable({
   }
 
   async function changeStatus(lead: Lead, value: string) {
+    if (!(await requireName())) return; // the select is controlled, so it stays on the old status
     const label = CRM_STATUSES.find((s) => s.value === value)?.label ?? value;
     const previous = statusOverride[lead.id]; // last value shown, restored on failure
     setPending((p) => new Set(p).add(lead.id));
