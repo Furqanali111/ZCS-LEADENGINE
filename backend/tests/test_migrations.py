@@ -222,3 +222,14 @@ def test_0012_saved_searches_table_rls_and_case_insensitive_name(migrated_url):
     with engine.connect() as conn:
         assert conn.execute(q).first() is None
     engine.dispose()
+
+
+def test_0016_called_no_answer_allowed_and_downgrade_maps_it_to_called(migrated_url):
+    engine = create_engine(migrated_url)
+    alembic(migrated_url, "upgrade", "head")
+    with engine.begin() as conn:
+        conn.execute(text("insert into organizations (npi, name, organization_type, state, crm_status) values ('1', 'A', 'practice', 'TX', 'called_no_answer')"))
+    alembic(migrated_url, "downgrade", "0015")
+    with engine.connect() as conn:
+        assert conn.execute(text("select crm_status from organizations")).scalar() == "called"
+    engine.dispose()

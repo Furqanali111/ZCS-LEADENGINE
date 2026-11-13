@@ -390,6 +390,7 @@ Each organization must have a current sales status. Suggested statuses:
 -   `researching`
 -   `email_sent`
 -   `called`
+-   `called_no_answer` (called, nobody picked up; the No answer quick button sets it)
 -   `follow_up_required`
 -   `interested`
 -   `meeting_scheduled`
