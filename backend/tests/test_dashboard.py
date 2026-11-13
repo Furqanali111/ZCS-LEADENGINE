@@ -154,3 +154,23 @@ def test_dashboard_team_activity_today_per_person(client, db):
     team = {r["name"].lower(): r for r in stats(client).json()["team_today"]}
     assert (team["usman"]["calls"], team["usman"]["emails"]) == (4, 1)
     assert (team["michael"]["calls"], team["michael"]["status_changes"]) == (1, 1) and len(team) == 2
+
+
+def test_dashboard_team_activity_lists_what_each_person_moved_today(client, db):
+    o = org(db, 1)
+    now = datetime.now(timezone.utc)
+
+    def move(actor, frm, to, days_ago=0):
+        db.add(LeadActivity(organization_id=o.id, type="status_change", from_status=frm, to_status=to, actor=actor,
+                            occurred_at=now - timedelta(days=days_ago)))
+
+    move("Usman", "new", "called")
+    move("usman", "new", "called")  # same person, other casing
+    move("Usman", "called", "follow_up_required")
+    move("Michael", "new", "interested")
+    move("Michael", "new", "called", days_ago=2)  # not today
+    db.commit()
+    team = {r["name"].lower(): r for r in stats(client).json()["team_today"]}
+    assert team["usman"]["changes"] == [{"from": "new", "to": "called", "count": 2}, {"from": "called", "to": "follow_up_required", "count": 1}]
+    assert team["michael"]["changes"] == [{"from": "new", "to": "interested", "count": 1}]
+

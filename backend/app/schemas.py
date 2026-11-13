@@ -389,11 +389,20 @@ class CountItem(BaseModel):
     count: int
 
 
+class StatusMove(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    from_status: str | None = Field(None, alias="from")
+    to_status: str | None = Field(None, alias="to")
+    count: int
+
+
 class TeamRow(BaseModel):
     name: str
     calls: int
     emails: int
     status_changes: int
+    changes: list[StatusMove] = []
 
 
 class Conversion(BaseModel):

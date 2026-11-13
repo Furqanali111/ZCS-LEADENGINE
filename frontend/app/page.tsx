@@ -198,7 +198,20 @@ export default function DashboardPage() {
                 <tbody>
                   {stats.team_today.map((r) => (
                     <tr key={r.name} className="border-t">
-                      <th scope="row" className="py-1.5 text-left font-medium">{r.name}</th>
+                      <th scope="row" className="py-1.5 text-left font-medium">
+                        {r.name}
+                        {r.changes.length > 0 && (
+                          <span className="mt-1 flex flex-wrap gap-1 font-normal">
+                            {r.changes.map((c) => (
+                              <span key={`${c.from}-${c.to}`} className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                                {c.from ? `${STATUS_LABELS[c.from] ?? c.from} to ` : "Set to "}
+                                {c.to ? (STATUS_LABELS[c.to] ?? c.to) : "none"}
+                                {c.count > 1 && ` x${c.count}`}
+                              </span>
+                            ))}
+                          </span>
+                        )}
+                      </th>
                       <td className="py-1.5 text-right tabular-nums">{r.calls}</td>
                       <td className="py-1.5 text-right tabular-nums">{r.emails}</td>
                       <td className="py-1.5 text-right tabular-nums">{r.status_changes}</td>
