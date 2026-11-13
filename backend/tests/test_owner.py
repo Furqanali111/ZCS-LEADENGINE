@@ -40,11 +40,19 @@ def test_changing_status_of_an_unowned_lead_makes_you_the_owner(client, db):
     assert other.status_code == 200 and other.json()["owner"] == "Vanya"  # the first owner stays
 
 
-def test_status_change_does_not_take_the_lead_without_a_name_or_back_to_new_or_when_unchanged(client, db):
-    a, b, c = make(db, "1"), make(db, "2", "called"), make(db, "3", "called")
+def test_status_change_does_not_take_the_lead_without_a_name_or_when_unchanged(client, db):
+    a, c = make(db, "1"), make(db, "3", "called")
     assert client.patch(f"/api/leads/{a}", json={"crm_status": "called"}).json()["owner"] is None
-    assert client.patch(f"/api/leads/{b}", json={"crm_status": "new"}, headers=as_("Vanya")).json()["owner"] is None
     assert client.patch(f"/api/leads/{c}", json={"crm_status": "called"}, headers=as_("Vanya")).json()["owner"] is None
+
+
+def test_moving_back_to_new_clears_the_owner_and_the_next_person_takes_it(client, db):
+    lid = make(db)
+    assert client.patch(f"/api/leads/{lid}", json={"crm_status": "called"}, headers=as_("Ali")).json()["owner"] == "Ali"
+    back = client.patch(f"/api/leads/{lid}", json={"crm_status": "new"}, headers=as_("Sara"))
+    assert back.json()["owner"] is None and back.json()["crm_status"] == "new"
+    assert client.patch(f"/api/leads/{lid}", json={"crm_status": "follow_up_required"}, headers=as_("Vanya")).json()["owner"] == "Vanya"
+    assert client.patch(f"/api/leads/{lid}", json={"crm_status": "interested"}, headers=as_("Ali")).json()["owner"] == "Vanya"
 
 
 def test_closed_unowned_lead_can_still_be_reopened_by_status_change(client, db):
