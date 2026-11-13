@@ -119,6 +119,7 @@ class LeadFilters(BaseModel):
     follow_up: Literal["due", "overdue", "none"] | None = None
     has_website: bool | None = None
     has_email: bool | None = None
+    email_sent: bool | None = None
 
     @field_validator("state", mode="before")
     @classmethod
@@ -144,6 +145,14 @@ class LeadPatch(BaseModel):
     crm_status: str | None = None
     next_follow_up_at: date | None = None  # explicit null clears it; told apart from missing via model_fields_set
     reject_website: bool | None = None
+    email_sent: bool | None = None
+
+    @field_validator("email_sent")
+    @classmethod
+    def not_null(cls, v):
+        if v is None:  # an explicit null is not a value
+            raise ValueError("must be true or false")
+        return v
 
     @field_validator("crm_status")
     @classmethod
@@ -162,7 +171,7 @@ class LeadPatch(BaseModel):
     @model_validator(mode="after")
     def need_a_field(self):
         if not self.model_fields_set:
-            raise ValueError("send crm_status, next_follow_up_at and/or reject_website")
+            raise ValueError("send crm_status, next_follow_up_at, email_sent and/or reject_website")
         return self
 
 
@@ -298,6 +307,8 @@ class LeadOut(BaseModel):
     priority: str | None
     crm_status: str
     owner: str | None = None
+    email_sent: bool = False
+    email_sent_by: str | None = None
     updated_at: datetime
     last_contacted_at: datetime | None
     next_follow_up_at: date | None
@@ -378,6 +389,7 @@ class DashboardStats(BaseModel):
     new_leads: int
     critical_high: int
     follow_ups_due: int
+    status_changes_today: int
     meetings_scheduled: int
     converted: int
     by_state: list[CountItem]
@@ -405,7 +417,7 @@ class SuppressionOut(BaseModel):
 
 class TemplateIn(BaseModel):
     name: str = Field(min_length=1, max_length=100)
-    kind: Literal["email", "call"]
+    kind: Literal["email", "call", "message"]
     subject: str | None = Field(default=None, max_length=200)
     body: str = Field(min_length=1, max_length=5000)
 
@@ -418,7 +430,7 @@ class TemplateIn(BaseModel):
 
 class TemplatePatch(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=100)
-    kind: Literal["email", "call"] | None = None
+    kind: Literal["email", "call", "message"] | None = None
     subject: str | None = Field(default=None, max_length=200)
     body: str | None = Field(default=None, min_length=1, max_length=5000)
 

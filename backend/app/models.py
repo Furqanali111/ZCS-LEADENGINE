@@ -109,6 +109,8 @@ class Organization(IdMixin, Base):
     priority: Mapped[str | None] = mapped_column(Text)
     crm_status: Mapped[str] = mapped_column(Text, default="new", server_default="new")
     owner: Mapped[str | None] = mapped_column(Text)  # salesperson name; set by claim, no accounts yet
+    email_sent: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))  # outreach email sent, tracked apart from crm_status
+    email_sent_by: Mapped[str | None] = mapped_column(Text)  # who sent it; separate from owner (who works the lead)
     status_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_contacted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     next_follow_up_at: Mapped[date | None] = mapped_column(Date)

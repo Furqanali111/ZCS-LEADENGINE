@@ -17,6 +17,8 @@ def add_activity(session: Session, org: Organization, *, type: str, occurred_at:
     act = LeadActivity(organization_id=org.id, type=type, occurred_at=occurred_at, summary=summary,
                        outcome=outcome, from_status=from_status, to_status=to_status, actor=actor)
     session.add(act)
+    if type == "email" and not org.email_sent:
+        org.email_sent, org.email_sent_by = True, actor  # logging an email means one went out; the first sender stays
     if type in CONTACT_TYPES and (org.last_contacted_at is None or occurred_at > org.last_contacted_at):
         org.last_contacted_at = occurred_at
     return act

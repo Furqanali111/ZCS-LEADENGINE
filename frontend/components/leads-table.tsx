@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ApiError, patchLeadStatus, type Lead, type LeadPage } from "@/lib/api";
+import { ApiError, patchLead, patchLeadStatus, type Lead, type LeadPage } from "@/lib/api";
 import { CLOSED_STATUSES, CRM_STATUSES, PRIORITIES } from "@/lib/constants";
 import { SELECT_CLASS } from "@/lib/ui";
 import { isOverdue } from "@/lib/dates";
@@ -104,6 +104,7 @@ export function LeadsTable({
   const show = (k: string) => !hidden.has(k);
   const colCount = 4 + OPTIONAL_COLUMNS.filter((c) => show(c.key)).length; // checkbox, organization, score, status
   // Saved or in-flight status values, keyed by lead id; removed on failure so the row reverts to the server value.
+  const [sentOverride, setSentOverride] = useState<Record<string, boolean>>({});
   const [statusOverride, setStatusOverride] = useState<Record<string, string>>({});
   // One request per row at a time, so the shown value never has two writers.
   const [pending, setPending] = useState<Set<string>>(new Set());
@@ -142,6 +143,28 @@ export function LeadsTable({
       else next.delete(l.id);
     }
     onSelect(next);
+  }
+
+  async function changeSent(lead: Lead, value: boolean) {
+    setPending((p) => new Set(p).add(lead.id));
+    setSentOverride((o) => ({ ...o, [lead.id]: value }));
+    try {
+      await patchLead(lead.id, { email_sent: value });
+      onMessage(`${lead.name}: email marked as ${value ? "sent" : "not sent"}.`, false);
+    } catch (e) {
+      onMessage(`${lead.name}: email status was not saved. ${e instanceof ApiError ? e.message : "Unknown error."}`, true);
+      setSentOverride((o) => {
+        const next = { ...o };
+        delete next[lead.id];
+        return next;
+      });
+    } finally {
+      setPending((p) => {
+        const n = new Set(p);
+        n.delete(lead.id);
+        return n;
+      });
+    }
   }
 
   async function changeStatus(lead: Lead, value: string) {
@@ -219,6 +242,8 @@ export function LeadsTable({
               <SortHead col="score" label="Score" sort={sort} order={order} onSort={onSort} />
               {show("priority") && <TableHead>Priority</TableHead>}
               <TableHead>Sales status</TableHead>
+              {show("email_sent") && <TableHead>Email sent</TableHead>}
+              {show("email_owner") && <TableHead>Email sent by</TableHead>}
               {show("owner") && <TableHead>Owner</TableHead>}
               {show("follow_up") && <SortHead col="follow_up" label="Follow-up" sort={sort} order={order} onSort={onSort} />}
             </TableRow>
@@ -337,6 +362,24 @@ export function LeadsTable({
                         ))}
                       </select>
                     </TableCell>
+                    {show("email_sent") && (
+                      <TableCell>
+                        <label className="inline-flex cursor-pointer items-center gap-2">
+                          <input
+                            type="checkbox"
+                            className="size-4"
+                            aria-label={`Email sent to ${l.name}`}
+                            checked={sentOverride[l.id] ?? l.email_sent}
+                            disabled={pending.has(l.id)}
+                            onChange={(e) => changeSent(l, e.target.checked)}
+                          />
+                          {(sentOverride[l.id] ?? l.email_sent) ? "Sent" : <span className="text-muted-foreground">Not sent</span>}
+                        </label>
+                      </TableCell>
+                    )}
+                    {show("email_owner") && (
+                      <TableCell>{l.email_sent && l.email_sent_by ? <ToneBadge tone="info">{l.email_sent_by}</ToneBadge> : NONE}</TableCell>
+                    )}
                     {show("owner") && (
                       <TableCell>{l.owner ? <ToneBadge tone="warning">{l.owner}</ToneBadge> : NONE}</TableCell>
                     )}

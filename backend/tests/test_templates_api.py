@@ -28,6 +28,7 @@ def test_validation(client):
     assert make(client, body="x" * 5001).status_code == 422
     assert make(client, subject="x" * 201).status_code == 422
     assert make(client, kind="sms", subject=None).status_code == 422
+    assert make(client, name="Text", kind="message", subject=None).status_code == 201
     r = make(client, kind="call", subject="nope")
     assert r.status_code == 422 and r.json()["error"]["code"] == "validation_error"
 

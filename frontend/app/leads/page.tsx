@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ApiError, exportLeadsFile, listLeads, type LeadFilters as Filters, type LeadPage } from "@/lib/api";
 import { CRM_STATUSES, ORG_TYPES, PRIORITIES, US_STATES } from "@/lib/constants";
 
-const FILTER_KEYS = ["q", "state", "specialty", "organization_type", "priority", "min_score", "crm_status", "owner", "search_job_id", "follow_up", "has_website", "has_email"] as const;
+const FILTER_KEYS = ["q", "state", "specialty", "organization_type", "priority", "min_score", "crm_status", "owner", "search_job_id", "follow_up", "has_website", "has_email", "email_sent"] as const;
 const ALLOWED: Record<string, Set<string>> = {
   state: new Set(US_STATES.map((s) => s.code)),
   priority: new Set(PRIORITIES.map((p) => p.value)),
@@ -19,6 +19,7 @@ const ALLOWED: Record<string, Set<string>> = {
   follow_up: new Set(["due", "overdue", "none"]),
   has_website: new Set(["true"]),
   has_email: new Set(["true"]),
+  email_sent: new Set(["true", "false"]),
 };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

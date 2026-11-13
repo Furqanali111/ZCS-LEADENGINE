@@ -169,3 +169,22 @@ def test_add_activity_treats_naive_occurred_at_as_utc(db):
     act = add_activity(db, org, type="call", occurred_at=datetime(2026, 11, 1, 12), summary="x")
     assert act.occurred_at == T0 and org.last_contacted_at == T0
     add_activity(db, org, type="call", occurred_at=T0 - timedelta(days=1), summary="old")  # no naive/aware compare error
+
+
+def test_email_sent_is_separate_from_status_and_owner(client, db):
+    org = add_lead(db, "1000000071", "Mailer")
+    r = client.patch(f"/api/leads/{org.id}", json={"email_sent": True}, headers={"X-Salesperson": "Sam"}).json()
+    assert r["email_sent"] and r["email_sent_by"] == "Sam" and r["crm_status"] == "new" and r["owner"] is None
+    assert client.get("/api/leads", params={"email_sent": "true"}).json()["total"] == 1
+    assert client.get("/api/leads", params={"email_sent": "false"}).json()["total"] == 0
+    r = client.patch(f"/api/leads/{org.id}", json={"email_sent": False}).json()
+    assert not r["email_sent"] and r["email_sent_by"] is None
+    assert client.patch(f"/api/leads/{org.id}", json={"email_sent": None}).status_code == 422
+
+
+def test_logged_email_marks_sent_by_first_sender(db):
+    org = add_lead(db, "1000000072", "Mailer2")
+    add_activity(db, org, type="email", summary="intro", actor="Ann")
+    add_activity(db, org, type="email", summary="again", actor="Bob")
+    db.commit()
+    assert org.email_sent and org.email_sent_by == "Ann"

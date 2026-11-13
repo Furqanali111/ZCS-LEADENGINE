@@ -7,18 +7,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/page-header";
 import { ERROR_CLASS, PANEL_CLASS, SELECT_CLASS, TEXTAREA_CLASS } from "@/lib/ui";
+import { useCopy } from "@/lib/use-copy";
 import { ApiError, createTemplate, deleteTemplate, listTemplates, updateTemplate, type OutreachTemplate } from "@/lib/api";
 
 const SELECT = `mt-1 ${SELECT_CLASS}`;
 const TEXTAREA = `mt-1 ${TEXTAREA_CLASS}`;
 const ERROR = ERROR_CLASS;
+const KIND_LABEL = { email: "Email", call: "Call script", message: "Message" } as const;
 
 export default function TemplatesPage() {
   const [items, setItems] = useState<OutreachTemplate[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [name, setName] = useState("");
-  const [kind, setKind] = useState<"email" | "call">("email");
+  const [kind, setKind] = useState<OutreachTemplate["kind"]>("email");
+  const [openId, setOpenId] = useState<string | null>(null);
+  const { copied, failed, copy } = useCopy();
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [saving, setSaving] = useState(false);
@@ -109,9 +113,10 @@ export default function TemplatesPage() {
         </div>
         <div>
           <Label htmlFor="t-kind">Kind</Label>
-          <select id="t-kind" className={SELECT} value={kind} onChange={(e) => setKind(e.target.value as "email" | "call")}>
+          <select id="t-kind" className={SELECT} value={kind} onChange={(e) => setKind(e.target.value as OutreachTemplate["kind"])}>
             <option value="email">Email</option>
             <option value="call">Call script</option>
+            <option value="message">Message</option>
           </select>
         </div>
         {kind === "email" && (
@@ -168,9 +173,17 @@ export default function TemplatesPage() {
           {items.map((t) => (
             <li key={t.id} className={`${PANEL_CLASS} space-y-2 text-sm`}>
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="font-semibold">{t.name}</h2>
-                <Badge variant="outline">{t.kind === "email" ? "Email" : "Call script"}</Badge>
-                <span className="ml-auto flex gap-2">
+                <button
+                  type="button"
+                  aria-expanded={openId === t.id}
+                  onClick={() => setOpenId(openId === t.id ? null : t.id)}
+                  className="flex min-w-0 flex-1 items-center gap-2 rounded text-left focus-visible:outline-2 focus-visible:outline-offset-2"
+                >
+                  <h2 className="truncate font-semibold">{t.name}</h2>
+                  <Badge variant="outline">{KIND_LABEL[t.kind]}</Badge>
+                  <span aria-hidden className="ml-auto text-muted-foreground">{openId === t.id ? "Hide" : "Show"}</span>
+                </button>
+                <span className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={() => edit(t)}>
                     Edit<span className="sr-only"> {t.name}</span>
                   </Button>
@@ -179,8 +192,28 @@ export default function TemplatesPage() {
                   </Button>
                 </span>
               </div>
-              {t.subject && <p><span className="font-medium">Subject:</span> {t.subject}</p>}
-              <p className="whitespace-pre-wrap text-muted-foreground">{t.body}</p>
+              {openId === t.id ? (
+                <div className="space-y-2">
+                  {t.subject && (
+                    <p className="break-words">
+                      <span className="font-medium">Subject:</span> {t.subject}
+                    </p>
+                  )}
+                  <p className="whitespace-pre-wrap break-words text-muted-foreground">{t.body}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {t.subject && (
+                      <Button variant="outline" size="sm" onClick={() => copy(`${t.id}-s`, t.subject!)}>
+                        {copied === `${t.id}-s` ? "Copied" : failed === `${t.id}-s` ? "Could not copy" : "Copy subject"}
+                      </Button>
+                    )}
+                    <Button variant="outline" size="sm" onClick={() => copy(`${t.id}-b`, t.body)}>
+                      {copied === `${t.id}-b` ? "Copied" : failed === `${t.id}-b` ? "Could not copy" : "Copy body"}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <p className="line-clamp-2 break-words text-muted-foreground">{t.body}</p>
+              )}
             </li>
           ))}
         </ul>
