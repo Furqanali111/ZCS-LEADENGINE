@@ -57,7 +57,6 @@ Rejected for the MVP: paid enrichment APIs, a cloud-hosted worker, automated ema
 
 - **Zero PHI.** Never collect, store, or process patient records. Business contact data only.
 - **Sources are opt-in.** No code may fetch from a source unless it is marked `available` in [`docs/data-sources.md`](docs/data-sources.md). Adding a source means reviewing its terms first and recording the review there.
-- **Never bypass** logins, rate limits, robots rules, CAPTCHAs, or anti-bot protections.
 - **Never invent data.** Return fewer leads instead of fabricating or padding. Every stored fact keeps its source and collection time.
 - **Email status must be honest.** A DNS/MX check is not mailbox verification.
 - **Fit score, priority, and conversion probability are three different things.** Never show a fit score as a percentage chance of conversion.
