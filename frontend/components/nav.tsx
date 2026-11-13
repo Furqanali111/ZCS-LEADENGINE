@@ -3,6 +3,7 @@
 import { HeartPulse, KanbanSquare, LayoutDashboard, MessageSquareText, Search, ShieldBan, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { NamePrompt } from "@/components/name-prompt";
 import { WhoAmI } from "@/components/who-am-i";
 
 const ITEMS = [
@@ -46,6 +47,7 @@ export function Nav() {
           })}
         </ul>
         <WhoAmI />
+        <NamePrompt />
       </nav>
     </header>
   );

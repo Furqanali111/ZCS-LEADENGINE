@@ -26,6 +26,7 @@ import {
 import { PANEL_CLASS, SELECT_CLASS } from "@/lib/ui";
 import { CRM_STATUSES, ORG_TYPES, PRIORITIES, SCORE_FACTORS } from "@/lib/constants";
 import { formatPhone, hostOf, pagePath, safeHttpUrl } from "@/lib/format";
+import { requireName } from "@/lib/me";
 import { ContactStrip, type ShownPhone } from "@/components/contact-strip";
 import { WorkBar } from "@/components/work-bar";
 import { RelatedLeads } from "@/components/related-leads";
@@ -226,7 +227,10 @@ function LeadDetail() {
                 aria-describedby="lead-status-hint"
                 className={SELECT_CLASS}
                 value={lead.crm_status}
-                onChange={(e) => save({ crm_status: e.target.value }, "Status saved.")}
+                onChange={async (e) => {
+                  const value = e.target.value;
+                  if (await requireName()) save({ crm_status: value }, "Status saved.");
+                }}
               >
                 {CRM_STATUSES.map((s) => (
                   <option key={s.value} value={s.value} title={s.hint}>

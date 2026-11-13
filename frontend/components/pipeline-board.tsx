@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { PipelineCard } from "@/components/pipeline-card";
 import { Button } from "@/components/ui/button";
+import { requireName } from "@/lib/me";
 import { ApiError, getPipeline, getPipelineColumn, patchLead, type PipelineCard as Card, type PipelineColumn } from "@/lib/api";
 import { statusTone, TONE_DOT as DOT } from "@/components/tone-badge";
 import { CRM_STATUSES } from "@/lib/constants";
@@ -31,7 +32,7 @@ export function PipelineBoard() {
   }, []);
 
   const move = useCallback(async (card: Card, from: string, to: string) => {
-    if (from === to) return;
+    if (from === to || !(await requireName())) return;
     setError(null);
     let index = 0;
     setBusy((b) => new Set(b).add(card.id));
