@@ -32,6 +32,27 @@ def test_claim_needs_a_name(client, db):
     assert client.post(f"/api/leads/{make(db)}/claim").status_code == 400
 
 
+def test_changing_status_of_an_unowned_lead_makes_you_the_owner(client, db):
+    lid = make(db)
+    r = client.patch(f"/api/leads/{lid}", json={"crm_status": "follow_up_required"}, headers=as_("Vanya"))
+    assert r.status_code == 200 and r.json()["owner"] == "Vanya"
+    other = client.patch(f"/api/leads/{lid}", json={"crm_status": "called"}, headers=as_("Sara"))
+    assert other.status_code == 200 and other.json()["owner"] == "Vanya"  # the first owner stays
+
+
+def test_status_change_does_not_take_the_lead_without_a_name_or_back_to_new_or_when_unchanged(client, db):
+    a, b, c = make(db, "1"), make(db, "2", "called"), make(db, "3", "called")
+    assert client.patch(f"/api/leads/{a}", json={"crm_status": "called"}).json()["owner"] is None
+    assert client.patch(f"/api/leads/{b}", json={"crm_status": "new"}, headers=as_("Vanya")).json()["owner"] is None
+    assert client.patch(f"/api/leads/{c}", json={"crm_status": "called"}, headers=as_("Vanya")).json()["owner"] is None
+
+
+def test_closed_unowned_lead_can_still_be_reopened_by_status_change(client, db):
+    lid = make(db, status="converted")
+    r = client.patch(f"/api/leads/{lid}", json={"crm_status": "called"}, headers=as_("Vanya"))
+    assert r.status_code == 200 and r.json()["owner"] == "Vanya"
+
+
 def test_choosing_in_progress_in_the_dropdown_claims(client, db):
     lid = make(db)
     assert client.patch(f"/api/leads/{lid}", json={"crm_status": "in_progress"}, headers=as_("Ali")).json()["owner"] == "Ali"

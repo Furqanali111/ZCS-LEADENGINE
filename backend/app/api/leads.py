@@ -47,6 +47,13 @@ def claim(session: Session, org: Organization, name: str | None) -> None:
     if org.crm_status in OPEN_STATUSES:
         change_status(session, org, "in_progress", name)
 
+def take_if_unowned(session: Session, org: Organization, name: str) -> None:
+    """Sets the owner only while nobody has it (atomic). Unlike claim(), never refuses: someone else's lead or a closed one still changes status."""
+    session.execute(update(Organization).where(Organization.id == org.id, Organization.owner.is_(None)).values(owner=name)
+                    .execution_options(synchronize_session=False))
+    session.refresh(org, ["owner"])
+
+
 SORTS = {"score": Organization.fit_score, "name": Organization.name, "updated": Organization.updated_at,
          "follow_up": Organization.next_follow_up_at,
          "website": func.lower(Organization.website),
@@ -153,6 +160,8 @@ def patch_lead(lead_id: str, body: LeadPatch, session: Session = Depends(get_ses
             raise AppError(409, "lead_suppressed", "Remove the suppression entry before changing this lead's status")
         if body.crm_status == "in_progress":
             claim(session, org, name)  # picking In progress means "I am working this"
+        elif name and org.crm_status != body.crm_status and body.crm_status != "new":
+            take_if_unowned(session, org, name)  # moving a lead on means "I am working this" too
         change_status(session, org, body.crm_status, name)
     if "next_follow_up_at" in body.model_fields_set:
         org.next_follow_up_at = body.next_follow_up_at
