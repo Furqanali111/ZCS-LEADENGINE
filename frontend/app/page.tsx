@@ -6,7 +6,6 @@ import { CalendarClock, CheckCircle2, Handshake, RefreshCw, Sparkles, Star, User
 import { PageHeader } from "@/components/page-header";
 import { ToneBadge } from "@/components/tone-badge";
 import { BarList } from "@/components/bar-list";
-import { CallToday } from "@/components/call-today";
 import { MyDay } from "@/components/my-day";
 import { StatTile, StatTileSkeleton } from "@/components/stat-tile";
 import { Button } from "@/components/ui/button";
@@ -174,7 +173,11 @@ export default function DashboardPage() {
           </Link>
 
           <MyDay />
-          <CallToday />
+          <div className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3 text-sm shadow-xs">
+            <RefreshCw aria-hidden className="size-5 text-primary" />
+            <span className="font-medium">Leads with a status change today</span>
+            <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">{stats.status_changes_today}</span>
+          </div>
 
           <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
             <StatTile tone="blue" Icon={Users} label="Total leads" href="/leads" value={stats.total} hint="In the system" />

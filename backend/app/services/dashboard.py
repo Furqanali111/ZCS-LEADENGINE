@@ -35,13 +35,16 @@ def build_stats(session: Session, start: date, end: date, today: date) -> Dashbo
     converted = select(func.count(func.distinct(A.organization_id))).where(
         A.type == "status_change", A.to_status == "converted", *in_range, contact).scalar_subquery()
     contacted = select(func.count(func.distinct(A.organization_id))).where(A.type.in_(CONTACT_TYPES), *in_range).scalar_subquery()
+    day = datetime.combine(today, time.min, tzinfo=timezone.utc)
+    changed_today = select(func.count(func.distinct(A.organization_id))).where(
+        A.type == "status_change", A.occurred_at >= day, A.occurred_at < day + timedelta(days=1)).scalar_subquery()
     J = aliased(SearchJob)
     recent = select(J).order_by(J.created_at.desc()).limit(5).subquery("recent")
     jobs = select(func.coalesce(func.json_agg(aggregate_order_by(func.row_to_json(literal_column("recent")), recent.c.created_at.desc())),
                                 text("'[]'::json"))).select_from(recent).scalar_subquery()
     # One statement, one round trip (each costs ~150 ms to the hosted database): tiles from a single pass
     # over organizations, plus the top lists, jobs and conversion as scalar subqueries.
-    total, new, crit, due, meet, conv, by_state, by_spec, by_status, job_rows, n_conv, n_contacted = session.execute(select(
+    total, new, crit, due, meet, conv, by_state, by_spec, by_status, job_rows, n_conv, n_contacted, n_changed = session.execute(select(
         func.count(),
         func.count().filter(O.crm_status == "new"),
         func.count().filter(O.priority.in_(("critical", "high"))),
@@ -49,10 +52,10 @@ def build_stats(session: Session, start: date, end: date, today: date) -> Dashbo
         func.count().filter(O.crm_status == "meeting_scheduled"),
         func.count().filter(O.crm_status == "converted"),
         _json_list(O.state, 10), _json_list(O.primary_taxonomy_desc, 10), _json_list(O.crm_status),
-        jobs, converted, contacted,
+        jobs, converted, contacted, changed_today,
     )).one()
     return DashboardStats(
-        range=DateRange(from_=start, to=end), total=total, new_leads=new, critical_high=crit, follow_ups_due=due,
+        range=DateRange(from_=start, to=end), total=total, new_leads=new, critical_high=crit, follow_ups_due=due, status_changes_today=n_changed,
         meetings_scheduled=meet, converted=conv,
         by_state=by_state, by_specialty=by_spec, by_status=by_status,
         recent_jobs=[JobOut.model_validate(j) for j in job_rows],

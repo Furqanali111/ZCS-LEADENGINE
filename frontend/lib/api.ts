@@ -110,6 +110,8 @@ export type Lead = {
   priority: string | null;
   crm_status: string;
   owner: string | null;
+  email_sent: boolean;
+  email_sent_by: string | null;
   last_contacted_at: string | null;
   next_follow_up_at: string | null;
   suppressed: boolean;
@@ -140,6 +142,7 @@ export type LeadFilters = {
   follow_up?: "due" | "overdue" | "none";
   has_website?: "true";
   has_email?: "true";
+  email_sent?: "true" | "false";
 };
 
 export type ListLeadsParams = LeadFilters & {
@@ -223,7 +226,7 @@ export function listLeads(params: ListLeadsParams = {}) {
   return json<LeadPage>(`/api/leads?${qs}`);
 }
 
-export type LeadPatch = { crm_status?: string; next_follow_up_at?: string | null; reject_website?: true };
+export type LeadPatch = { crm_status?: string; next_follow_up_at?: string | null; reject_website?: true; email_sent?: boolean };
 
 export const patchLead = (id: string, body: LeadPatch) =>
   json<Lead>(`/api/leads/${id}`, {
@@ -311,6 +314,7 @@ export type DashboardStats = {
   new_leads: number;
   critical_high: number;
   follow_ups_due: number;
+  status_changes_today: number;
   meetings_scheduled: number;
   converted: number;
   by_state: CountItem[];
@@ -347,13 +351,13 @@ export const removeSuppression = async (id: string) => {
 export type OutreachTemplate = {
   id: string;
   name: string;
-  kind: "email" | "call";
+  kind: "email" | "call" | "message";
   subject: string | null;
   body: string;
   created_at: string;
   updated_at: string;
 };
-export type TemplateInput = { name: string; kind: "email" | "call"; subject?: string | null; body: string };
+export type TemplateInput = { name: string; kind: "email" | "call" | "message"; subject?: string | null; body: string };
 
 const send = (method: string, body: unknown): RequestInit => ({ ...post(body), method });
 

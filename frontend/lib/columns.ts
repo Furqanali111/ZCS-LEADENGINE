@@ -9,6 +9,8 @@ export const OPTIONAL_COLUMNS = [
   { key: "website", label: "Website" },
   { key: "email", label: "Email" },
   { key: "priority", label: "Priority" },
+  { key: "email_sent", label: "Email sent" },
+  { key: "email_owner", label: "Email sent by" },
   { key: "owner", label: "Owner" },
   { key: "follow_up", label: "Follow-up" },
 ] as const;

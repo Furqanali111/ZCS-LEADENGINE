@@ -105,6 +105,8 @@ def lead_query(filters: LeadFilters) -> Select:
     if filters.has_email is not None:
         has = exists().where(Contact.organization_id == o.id, Contact.email.is_not(None))
         stmt = stmt.where(has if filters.has_email else ~has)
+    if filters.email_sent is not None:
+        stmt = stmt.where(o.email_sent == filters.email_sent)
     if filters.follow_up == "none":
         stmt = stmt.where(o.next_follow_up_at.is_(None))
     elif filters.follow_up:

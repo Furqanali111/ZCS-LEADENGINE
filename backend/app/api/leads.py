@@ -120,6 +120,9 @@ def patch_lead(lead_id: str, body: LeadPatch, session: Session = Depends(get_ses
         change_status(session, org, body.crm_status, name)
     if "next_follow_up_at" in body.model_fields_set:
         org.next_follow_up_at = body.next_follow_up_at
+    if body.email_sent is not None and body.email_sent != org.email_sent:
+        org.email_sent, org.email_sent_by = body.email_sent, name if body.email_sent else None
+        add_activity(session, org, type="note", summary="Email marked as sent" if body.email_sent else "Email marked as not sent", actor=name)
     if body.reject_website and not (org.enrichment_status == "rejected_by_user" and org.website is None):
         for c in [c for c in org.contacts if c.source_key == "practice_website"]:
             session.delete(c)

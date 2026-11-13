@@ -41,6 +41,16 @@ def test_dashboard_counts_on_seeded_data(client, db):
     assert len(s["recent_jobs"]) == 1 and s["recent_jobs"][0]["specialty"] == "x"
 
 
+def test_dashboard_counts_leads_with_a_status_change_today(client, db):
+    a, b, c = org(db, 1), org(db, 2), org(db, 3)
+    act(db, a, "status_change", 0, "called")
+    act(db, a, "status_change", 0, "interested")  # same lead twice counts once
+    act(db, b, "status_change", 0, "called")
+    act(db, c, "status_change", 2, "called")  # earlier day
+    db.commit()
+    assert stats(client).json()["status_changes_today"] == 2
+
+
 def test_dashboard_conversion_numerator_denominator_range(client, db):
     a, b, c, d = (org(db, i) for i in range(4))
     act(db, a, "call", 5)

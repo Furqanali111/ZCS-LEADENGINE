@@ -68,7 +68,7 @@ export function LeadTemplates({ lead }: { lead: Lead }) {
             <option value="">Choose a template</option>
             {(items ?? []).map((x) => (
               <option key={x.id} value={x.id}>
-                {x.name} ({x.kind})
+                {x.name} ({x.kind === "call" ? "call script" : x.kind})
               </option>
             ))}
           </select>
