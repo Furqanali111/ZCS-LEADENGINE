@@ -10,10 +10,12 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 from app.constants import CLOSED_STATUSES
 from app.db import get_session
 from app.errors import AppError
-from app.models import Contact, LeadActivity, Organization, SourceRecord
+from app.models import Contact, LeadActivity, Organization, SourceConfig, SourceRecord
 from app.schemas import ActivityIn, ActivityOut, ActivityPage, LeadFilters, LeadOut, LeadPage, LeadPatch, RelatedOut
 from app.services.activities import add_activity, change_status
+from app.services.maps import enrich_maps, maps_url
 from app.services.related import related_leads
+from app.sources import gmaps
 from app.services.leads import lead_query, primary_email, rescore_org, sorted_contacts
 from app.services.suppression import suppressed_ids
 
@@ -51,9 +53,16 @@ SORTS = {"score": Organization.fit_score, "name": Organization.name, "updated": 
          # Alphabetical by the lead's first email, leads without one last.
          "email": select(func.min(func.lower(Contact.email))).where(
              Contact.organization_id == Organization.id, Contact.email.is_not(None)).scalar_subquery()}
-LOADS = (selectinload(Organization.contacts), selectinload(Organization.locations),
+LOADS = (selectinload(Organization.contacts), selectinload(Organization.locations), selectinload(Organization.phones),
          joinedload(Organization.score), selectinload(Organization.source_records).defer(SourceRecord.raw))
-PLAIN = [f for f in LeadOut.model_fields if f not in ("contact", "contacts", "primary_email", "locations", "score", "source", "suppressed")]
+PLAIN = [f for f in LeadOut.model_fields if f not in ("contact", "contacts", "primary_email", "phones", "locations", "score", "source", "suppressed")]
+
+
+def _phones(org: Organization, npi_src: SourceRecord | None) -> list[dict]:
+    """The NPI phone stays on the organization; it is listed first with its source, then every other source's phone."""
+    npi = [{"phone": org.phone, "source_key": "npi_registry", "collected_at": npi_src.collected_at if npi_src else None}] if org.phone else []
+    return npi + [{"phone": p.phone, "source_key": p.source_key, "source_url": p.source_url, "collected_at": p.collected_at,
+                   "differs_from_npi": p.differs_from_npi} for p in sorted(org.phones, key=lambda p: p.collected_at)]
 
 
 def _out(org: Organization, suppressed: bool = False) -> LeadOut:
@@ -64,6 +73,8 @@ def _out(org: Organization, suppressed: bool = False) -> LeadOut:
         "contact": by_role.get("authorized_official") or by_role.get("provider"),
         "contacts": sorted_contacts(org),
         "primary_email": primary_email(org),
+        "phones": _phones(org, src),
+        "maps_url": org.maps_url or (maps_url(org, org.locations) if org.organization_type == "hospital" else None),
         "locations": org.locations,
         "score": org.score,
         "suppressed": suppressed,
@@ -101,6 +112,31 @@ def _load(session: Session, lead_id: str, options=()) -> Organization:
 @router.get("/{lead_id}", response_model=LeadOut)
 def get_lead(lead_id: str, session: Session = Depends(get_session)):
     org = _load(session, lead_id, LOADS)
+    return _out(org, bool(suppressed_ids(session, [org.id])))
+
+
+def maps_lookup():
+    """Overridden in tests; the real one opens a headless browser for one lookup."""
+    return gmaps.lookup_once
+
+
+@router.post("/{lead_id}/maps", response_model=LeadOut)
+def lookup_maps(lead_id: str, session: Session = Depends(get_session), lookup=Depends(maps_lookup)):
+    org = _load(session, lead_id, LOADS)
+    if org.organization_type != "hospital":
+        raise AppError(422, "not_a_hospital", "The Google Maps lookup runs on hospitals only")
+    if session.scalar(select(SourceConfig.status).where(SourceConfig.key == "google_maps")) != "available":
+        raise AppError(422, "source_not_available", "Source not available: google_maps")
+    try:
+        enrich_maps(session, org, lookup=lookup)
+    except gmaps.MapsBlocked as e:
+        session.rollback()
+        raise AppError(503, "maps_blocked", str(e))
+    except Exception as e:  # noqa: BLE001 - the browser can fail many ways; keep the lead as it was
+        session.rollback()
+        raise AppError(502, "maps_failed", f"Google Maps lookup failed ({type(e).__name__}). Try again later.")
+    session.commit()
+    session.refresh(org)
     return _out(org, bool(suppressed_ids(session, [org.id])))
 
 

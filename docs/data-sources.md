@@ -35,6 +35,7 @@ If the terms forbid automated collection or commercial reuse, set `rejected` and
 | Brave Search API | `approved_not_built` | Official search API, key in backend `.env` | Slice 3 website discovery. Condition below. |
 | Official practice websites | `approved_not_built` | Page fetch, per-site robots rules | Slice 3. Main route to websites, emails, and staff names. Terms below. |
 | Yelp (Fusion API and site) | `rejected` | Official API, site | Terms forbid what we need. Reasons below. |
+| Google Maps public page (`google_maps`) | `available`, owner-accepted risk | Headless browser, hospitals only | Second phone and opening hours. Section below. |
 
 Statuses above match what migration 0005 seeds into `source_configs`. The owner moves Brave and the practice websites to `available` by hand (see the README) once the Brave condition is met.
 
@@ -52,6 +53,16 @@ Statuses above match what migration 0005 seeds into `source_configs`. The owner 
 |---|---|---|
 | Tavily Search API (`tavily_search`) | `approved_not_built`, then `available` | Terms (tavily.com/terms): internal business use is the licensed purpose, which is what this tool is. No clause bars keeping a URL we verified ourselves; the terms say nothing clear about caching results, so results stay in memory and only the verified URL is stored. Do not use Output to build a competing product. Free tier: reported 1,000 credits a month (unconfirmed). Key in `backend/.env` as `TAVILY_API_KEY`. When set, it is used instead of Brave. |
 | DuckDuckGo via the `ddgs` library (`duckduckgo_search`) | `approved_not_built`, then `available` (owner accepted the risk 2026-11-12) | No official API. `ddgs` scrapes search pages. The Terms page requires compliance with the Acceptable Use Policy (duckduckgo.com/acceptable-use, read 2026-11-12). That policy does not mention bots, scraping, crawling or rate limits. It bars hacking, interfering with or disrupting the service, selling or reselling the service, and anything against "the spirit" of the conditions, and it says its list is not exhaustive. So automated use is neither allowed nor banned in writing. Low volume (one query per lead, only after Tavily runs out) is the safest reading, and the owner accepted that risk. Used only as a fallback after Tavily reports its key or plan limit exhausted (HTTP 401, 432, 433) and only when the owner sets this row to `available`. A DuckDuckGo rate limit is reported as rate limited and backed off, never worked around. No proxies, no retries to dodge blocks. |
+
+### Google Maps (2026-11-14), owner-accepted risk
+
+The owner chose to read the public Google Maps page of each hospital, after being told this is against Google's terms. Recorded so the choice is visible, not to hide it.
+
+- **Terms (Google Maps Platform policies, read 2026-11-14):** Google Maps content may be cached or stored only where the Service Specific Terms permit it. Only place IDs are named as storable indefinitely, and latitude and longitude for up to 30 days. Phone numbers are not on that list. Scraping the Maps site is not licensed at all. A stored Maps phone and hours therefore breach the terms. I could not load the full terms text, so a lead generation or database clause is unconfirmed.
+- **What we do anyway:** open the public page in a headless browser, read name, address, phone and weekly hours of one hospital at a time, about 4 seconds apart, no account, no login. A CAPTCHA, consent wall or unusual-traffic page stops the run (`MapsBlocked`) and nothing is done to get past it. No proxies, no retries to dodge blocks.
+- **Risks the owner accepted:** Google may block this machine's IP, may change the page so the reader breaks, and could object to the stored data. Maps data can be stale, so every value keeps `source_key`, `source_url` and `collected_at`, and the card links to the same search for a manual check.
+- **Matching:** the listing is saved only when its street number and street name, city and state agree with an NPI address of the lead. The name is not compared, because NPI legal names often differ from the map name. The Maps phone is stored beside the NPI phone, never over it, and flagged when the digits differ.
+- **Live probe (12 hospitals, FL, TX, CA, AZ):** the address-only View Map link usually lands on a street pin and a directory of places, not on the hospital, and picking from that directory chose a wrong place twice (a dialysis clinic, a women's institute). Searching name plus address reached the right place most times. Of 7 hospitals where the right place was reached, 4 Maps phones equalled the NPI phone and 3 differed (for example 903-676-1000 against NPI 903-676-5580). No CAPTCHA or consent page appeared in about 40 page loads. Each lookup takes 10 to 15 seconds. Raw results: not committed, kept in the session notes.
 
 ### Candidate sources checked 2026-11-12 (no connector built)
 
@@ -145,3 +156,4 @@ Suggested review order for the remaining directories: MapQuest API, Better Busin
 | 2026-11-12 | Yelp | Claude (terms review) | `rejected`. Storage, scraping, database and marketing use all forbidden. |
 | 2026-11-12 | Brave Search API | Claude (terms review) | `approved_not_built`. Owner must confirm storage terms before `available`. |
 | 2026-11-12 | Official practice websites | Claude (terms review) | `approved_not_built`. Robots honored, about 1 request per second per domain. |
+| 2026-11-14 | Google Maps public page | Claude (policy read, live probe) | `available` by owner decision despite the terms. Hospitals only. Stops on CAPTCHA, never bypassed. |

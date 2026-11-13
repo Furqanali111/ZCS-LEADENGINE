@@ -125,6 +125,14 @@ On a lead page, the call-result buttons (No answer, Spoke call back, Interested,
 
 `python -m app.enrich_existing --limit 10 [--state TX] [--priority critical]` takes the best-scored leads that have no website yet, links them to a new job (shown in the Searches list as "Enrich existing leads") and runs the normal enrichment pass. It spends one search query per lead.
 
+## Hospital phones and hours from Google Maps
+
+Hospitals get a second phone number and opening hours from the public Google Maps page (see `docs/data-sources.md` for the terms and the accepted risk). One-time setup in the backend venv: `pip install playwright` then `playwright install chromium` (about 150 MB). Then run migration 0015 (`alembic upgrade head`).
+
+- On a hospital's lead page, **Look up on Google Maps** runs one lookup (about 15 seconds).
+- In bulk: `python -m app.enrich_maps --limit 10 --state TX` takes the best-scored hospitals not yet checked, one every few seconds, and stops at once if Google asks for a CAPTCHA.
+- The NPI phone is never replaced. The Maps phone is saved beside it with its source and date, flagged when it differs. Every phone on the lead card has a Copy button, and the card links to the same Maps search so a salesperson can check by hand.
+
 ## Tests
 
 ```powershell

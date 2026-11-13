@@ -8,7 +8,7 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.constants import (
-    ACTIVITY_TYPES, CRM_STATUSES, ENRICHMENT_STATUSES, JOB_STATUSES, ORG_TYPES, OUTCOMES, PRIORITIES, SUPPRESSION_KINDS, TEMPLATE_KINDS, US_STATES,
+    ACTIVITY_TYPES, CRM_STATUSES, ENRICHMENT_STATUSES, JOB_STATUSES, MAPS_STATUSES, ORG_TYPES, OUTCOMES, PRIORITIES, SUPPRESSION_KINDS, TEMPLATE_KINDS, US_STATES,
 )
 from app.db import Base
 
@@ -81,6 +81,7 @@ class Organization(IdMixin, Base):
         CheckConstraint(in_list("priority", PRIORITIES), name="ck_organizations_priority"),
         CheckConstraint(in_list("crm_status", CRM_STATUSES), name="ck_organizations_crm_status"),
         CheckConstraint(in_list("enrichment_status", ENRICHMENT_STATUSES), name="ck_organizations_enrichment_status"),
+        CheckConstraint(in_list("maps_status", MAPS_STATUSES), name="ck_organizations_maps_status"),
         Index("ix_organizations_state", "state"),
         Index("ix_organizations_primary_taxonomy_desc", "primary_taxonomy_desc"),
         Index("ix_organizations_priority", "priority"),
@@ -118,15 +119,35 @@ class Organization(IdMixin, Base):
     website_evidence: Mapped[dict | None] = mapped_column(JSONB)
     enrichment_status: Mapped[str] = mapped_column(Text, default="not_run", server_default="not_run")
     enriched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    hours: Mapped[dict | None] = mapped_column(JSONB)  # {"weekly": [{"day", "hours"}], "source_key", "source_url", "collected_at"}
+    maps_status: Mapped[str] = mapped_column(Text, default="not_run", server_default="not_run")
+    maps_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    maps_url: Mapped[str | None] = mapped_column(Text)  # the Google Maps search the lookup used, for checking by hand
 
     locations: Mapped[list["Location"]] = relationship(back_populates="organization", cascade="all, delete-orphan", passive_deletes=True)
     contacts: Mapped[list["Contact"]] = relationship(back_populates="organization", cascade="all, delete-orphan", passive_deletes=True)
     source_records: Mapped[list["SourceRecord"]] = relationship(back_populates="organization", cascade="all, delete-orphan", passive_deletes=True)
+    phones: Mapped[list["OrganizationPhone"]] = relationship(back_populates="organization", cascade="all, delete-orphan", passive_deletes=True)
     score: Mapped["LeadScore | None"] = relationship(back_populates="organization", cascade="all, delete-orphan", passive_deletes=True, uselist=False)
 
 
 def org_fk(**kw) -> Mapped[uuid.UUID]:
     return mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), **kw)
+
+
+class OrganizationPhone(IdMixin, Base):
+    """A phone number with where it came from. The NPI phone stays on organizations.phone; every other source lands here."""
+    __tablename__ = "organization_phones"
+    __table_args__ = (UniqueConstraint("organization_id", "source_key", "phone", name="uq_organization_phones_org_source_phone"),)
+
+    organization_id: Mapped[uuid.UUID] = org_fk(index=True)
+    phone: Mapped[str] = mapped_column(Text)
+    source_key: Mapped[str] = mapped_column(Text)
+    source_url: Mapped[str | None] = mapped_column(Text)
+    collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    differs_from_npi: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+
+    organization: Mapped[Organization] = relationship(back_populates="phones")
 
 
 class Location(IdMixin, Base):

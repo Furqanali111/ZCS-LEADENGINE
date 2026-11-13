@@ -253,6 +253,16 @@ class ContactOut(BaseModel):
     collected_at: datetime | None = None
 
 
+class PhoneOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    phone: str
+    source_key: str
+    source_url: str | None = None
+    collected_at: datetime | None = None
+    differs_from_npi: bool = False
+
+
 class LocationOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -317,6 +327,10 @@ class LeadOut(BaseModel):
     enrichment_status: str
     website_evidence: dict | None
     primary_email: str | None
+    phones: list[PhoneOut] = []
+    hours: dict | None = None
+    maps_status: str = "not_run"
+    maps_url: str | None = None
     contact: ContactOut | None
     contacts: list[ContactOut]
     locations: list[LocationOut]
