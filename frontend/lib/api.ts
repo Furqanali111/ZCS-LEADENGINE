@@ -77,6 +77,7 @@ export type Contact = {
   title: string | null;
   phone: string | null;
   role: string | null;
+  source_key?: string | null;
   email: string | null;
   email_status: string | null;
   source_url: string | null;
@@ -131,7 +132,7 @@ export type Lead = {
   source: { source_key: string; collected_at: string } | null;
 };
 
-export type LeadPhone = { phone: string; source_key: string; source_url: string | null; collected_at: string | null; differs_from_npi: boolean };
+export type LeadPhone = { phone: string; source_key: string; source_url: string | null; collected_at: string | null; differs_from_npi: boolean; listing_address?: string | null };
 
 export type LeadPage = { items: Lead[]; total: number; page: number; page_size: number };
 
@@ -242,6 +243,7 @@ export const patchLead = (id: string, body: LeadPatch) =>
   });
 
 export const lookupMaps = (id: string) => json<Lead>(`/api/leads/${id}/maps`, post());
+export const addLeadEmail = (id: string, email: string) => json<Lead>(`/api/leads/${id}/emails`, post({ email }));
 export const claimLead = (id: string) => json<Lead>(`/api/leads/${id}/claim`, post());
 export const releaseLead = (id: string) => json<Lead>(`/api/leads/${id}/release`, post());
 export const listOwners = () => json<string[]>("/api/owners");

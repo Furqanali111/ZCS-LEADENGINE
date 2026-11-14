@@ -17,7 +17,7 @@ import {
   ApiError,
   getLead,
   listActivities,
-  lookupMaps,
+  lookupMaps, addLeadEmail,
   patchLead,
   type Activity,
   type Lead,
@@ -184,13 +184,13 @@ function LeadDetail() {
   const found = lead.contacts.filter((c) => c.email || c.source_url);
   // The NPI official's own line is kept when it is not already listed, so no number the page showed before disappears.
   const digitsOf = (s: string) => s.replace(/\D/g, "").replace(/^1(?=\d{10}$)/, "");
-  const shownPhones: ShownPhone[] = lead.phones.map((p) => ({ phone: p.phone, source: p.source_key, differs: p.differs_from_npi, collected: p.collected_at }));
+  const shownPhones: ShownPhone[] = lead.phones.map((p) => ({ phone: p.phone, source: p.source_key, differs: p.differs_from_npi, listingAddress: p.listing_address ?? null, collected: p.collected_at }));
   const official = lead.contact?.phone;
   if (official && !shownPhones.some((p) => digitsOf(p.phone) === digitsOf(official))) {
     shownPhones.push({ phone: official, source: "npi_official", differs: false, collected: lead.source?.collected_at ?? null });
   }
   const contactName = [lead.contact?.first_name, lead.contact?.last_name].filter(Boolean).join(" ");
-  const primaryEmail = lead.contacts.map((c) => c.email ?? (c.role === "general" ? c.last_name : null)).find(Boolean) ?? null;
+  const emails = [...new Map(lead.contacts.flatMap((c) => { const a = c.email ?? (c.role === "general" ? c.last_name : null); return a ? [[a.toLowerCase(), { address: a, manual: c.source_key === "manual" }] as const] : []; })).values()];
 
   return (
     <div className="space-y-5">
@@ -297,7 +297,8 @@ function LeadDetail() {
         lookupError={lookupError}
         onLookup={runLookup}
         fax={lead.fax}
-        email={primaryEmail}
+        emails={emails}
+        onAddEmail={async (email) => setLead(await addLeadEmail(id, email))}
         website={lead.website}
       />
 

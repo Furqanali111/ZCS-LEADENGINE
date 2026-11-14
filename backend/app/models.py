@@ -146,6 +146,7 @@ class OrganizationPhone(IdMixin, Base):
     source_url: Mapped[str | None] = mapped_column(Text)
     collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     differs_from_npi: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    listing_address: Mapped[str | None] = mapped_column(Text)  # set only when the Maps listing is at a different address than the NPI one
 
     organization: Mapped[Organization] = relationship(back_populates="phones")
 

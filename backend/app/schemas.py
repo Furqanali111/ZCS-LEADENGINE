@@ -1,3 +1,4 @@
+import re
 import uuid
 from datetime import date, datetime, timedelta, timezone
 from typing import Literal
@@ -247,6 +248,7 @@ class ContactOut(BaseModel):
     title: str | None
     phone: str | None
     role: str | None
+    source_key: str | None = None
     email: str | None = None
     email_status: str | None = None
     source_url: str | None = None
@@ -261,6 +263,19 @@ class PhoneOut(BaseModel):
     source_url: str | None = None
     collected_at: datetime | None = None
     differs_from_npi: bool = False
+    listing_address: str | None = None
+
+
+class EmailIn(BaseModel):
+    email: str
+
+    @field_validator("email")
+    @classmethod
+    def looks_like_an_email(cls, v: str) -> str:
+        v = v.strip().lower()
+        if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s.]+", v):
+            raise ValueError("Enter a valid email address, like name@practice.com")
+        return v
 
 
 class LocationOut(BaseModel):
