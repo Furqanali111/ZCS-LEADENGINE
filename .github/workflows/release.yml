@@ -31,12 +31,24 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: backend/pyproject.toml
+          cache-dependency-path: |
+            backend/pyproject.toml
+            backend/constraints.txt
+      - name: Install backend dependencies (pinned)
+        working-directory: backend
+        shell: bash
+        run: pip install -e ".[dev]" pyinstaller -c constraints.txt
+      # Tests run on an embedded Postgres (pgserver). This URL is a placeholder, never connected to.
+      - name: Test the backend
+        working-directory: backend
+        shell: bash
+        run: python -m pytest -q
+        env:
+          DATABASE_URL: postgresql://x:y@localhost/z
       - name: Build the exe
         working-directory: backend
         shell: bash
         run: |
-          pip install -e . pyinstaller
           echo "VERSION = \"${GITHUB_REF_NAME#v}\"" > app/version.py
           pyinstaller launcher.py --name zcs-leadengine --onedir --noconfirm \
             --add-data "../frontend/out;static" \
