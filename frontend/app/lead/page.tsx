@@ -17,7 +17,7 @@ import {
   ApiError,
   getLead,
   listActivities,
-  lookupMaps,
+  lookupMaps, addLeadEmail,
   patchLead,
   type Activity,
   type Lead,
@@ -190,7 +190,7 @@ function LeadDetail() {
     shownPhones.push({ phone: official, source: "npi_official", differs: false, collected: lead.source?.collected_at ?? null });
   }
   const contactName = [lead.contact?.first_name, lead.contact?.last_name].filter(Boolean).join(" ");
-  const primaryEmail = lead.contacts.map((c) => c.email ?? (c.role === "general" ? c.last_name : null)).find(Boolean) ?? null;
+  const emails = [...new Map(lead.contacts.flatMap((c) => { const a = c.email ?? (c.role === "general" ? c.last_name : null); return a ? [[a.toLowerCase(), { address: a, manual: c.source_key === "manual" }] as const] : []; })).values()];
 
   return (
     <div className="space-y-5">
@@ -297,7 +297,8 @@ function LeadDetail() {
         lookupError={lookupError}
         onLookup={runLookup}
         fax={lead.fax}
-        email={primaryEmail}
+        emails={emails}
+        onAddEmail={async (email) => setLead(await addLeadEmail(id, email))}
         website={lead.website}
       />
 

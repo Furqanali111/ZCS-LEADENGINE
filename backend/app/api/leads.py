@@ -11,7 +11,7 @@ from app.constants import CLOSED_STATUSES
 from app.db import get_session
 from app.errors import AppError
 from app.models import Contact, LeadActivity, Organization, SourceConfig, SourceRecord
-from app.schemas import ActivityIn, ActivityOut, ActivityPage, LeadFilters, LeadOut, LeadPage, LeadPatch, RelatedOut
+from app.schemas import ActivityIn, EmailIn, ActivityOut, ActivityPage, LeadFilters, LeadOut, LeadPage, LeadPatch, RelatedOut
 from app.services.activities import add_activity, change_status
 from app.services.maps import enrich_maps, maps_url
 from app.services.related import related_leads
@@ -125,6 +125,20 @@ def get_lead(lead_id: str, session: Session = Depends(get_session)):
 def maps_lookup():
     """Overridden in tests; the real one opens a headless browser for one lookup."""
     return gmaps.lookup_once
+
+
+@router.post("/{lead_id}/emails", response_model=LeadOut)
+def add_email(lead_id: str, body: EmailIn, session: Session = Depends(get_session), name: str | None = Depends(salesperson)):
+    """An address someone gave us on a call. Source "manual" is untouched by website re-enrichment."""
+    org = _load(session, lead_id, LOADS)
+    if any((c.email or "").lower() == body.email for c in org.contacts):
+        raise AppError(409, "email_exists", "This lead already has that email")
+    session.add(Contact(organization_id=org.id, role="general", first_name="", last_name=body.email, email=body.email,
+                        source_key="manual", collected_at=datetime.now(timezone.utc)))
+    add_activity(session, org, type="note", summary=f"Email added: {body.email}", actor=name)
+    session.commit()
+    session.refresh(org)
+    return _out(org, bool(suppressed_ids(session, [org.id])))
 
 
 @router.post("/{lead_id}/maps", response_model=LeadOut)

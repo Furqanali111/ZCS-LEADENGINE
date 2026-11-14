@@ -179,3 +179,14 @@ def test_listing_at_the_mailing_address_is_flagged_as_another_address(db):
     db.refresh(o)
     assert enrich_maps(db, o, lookup=lambda url: listing(address="PO Box 9, Port Charlotte, FL 33949")) == "matched"
     assert db.scalars(select(OrganizationPhone)).one().listing_address == "PO Box 9, Port Charlotte, FL 33949"
+
+
+def test_manual_email_is_added_once_and_listed(client, db):
+    o = hospital(db)
+    r = client.post(f"/api/leads/{o.id}/emails", json={"email": " Front.Desk@Practice.com "})
+    assert r.status_code == 200, r.text
+    assert r.json()["primary_email"] == "front.desk@practice.com"
+    assert [(c["email"], c["source_key"]) for c in r.json()["contacts"] if c["email"]] == [("front.desk@practice.com", "manual")]
+    assert client.post(f"/api/leads/{o.id}/emails", json={"email": "front.desk@practice.com"}).status_code == 409
+    assert client.post(f"/api/leads/{o.id}/emails", json={"email": "not an email"}).status_code == 422
+    assert client.post(f"/api/leads/{o.id}/emails", json={"email": "owner@practice.com"}).status_code == 200

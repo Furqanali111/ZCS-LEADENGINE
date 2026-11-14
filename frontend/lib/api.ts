@@ -77,6 +77,7 @@ export type Contact = {
   title: string | null;
   phone: string | null;
   role: string | null;
+  source_key?: string | null;
   email: string | null;
   email_status: string | null;
   source_url: string | null;
@@ -242,6 +243,7 @@ export const patchLead = (id: string, body: LeadPatch) =>
   });
 
 export const lookupMaps = (id: string) => json<Lead>(`/api/leads/${id}/maps`, post());
+export const addLeadEmail = (id: string, email: string) => json<Lead>(`/api/leads/${id}/emails`, post({ email }));
 export const claimLead = (id: string) => json<Lead>(`/api/leads/${id}/claim`, post());
 export const releaseLead = (id: string) => json<Lead>(`/api/leads/${id}/release`, post());
 export const listOwners = () => json<string[]>("/api/owners");

@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Check, Clock, Copy, Globe, Mail, MapPin, Phone, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { formatPhone, hostOf, safeHttpUrl } from "@/lib/format";
 import type { Lead } from "@/lib/api";
 import { PANEL_CLASS } from "@/lib/ui";
@@ -14,7 +16,8 @@ type Props = {
   title: string | null;
   phones: ShownPhone[];
   fax: string | null;
-  email: string | null;
+  emails: { address: string; manual: boolean }[];
+  onAddEmail: (email: string) => Promise<void>;
   website: string | null;
   hours: Lead["hours"];
   mapsUrl: string | null;
@@ -40,9 +43,26 @@ const MAPS_NOTE: Record<string, string> = {
 };
 
 // The facts you need to reach someone, large and dark. Each value selects whole on a click and has a Copy button.
-export function ContactStrip({ person, title, phones, fax, email, website, hours, mapsUrl, isHospital, mapsStatus, lookingUp, lookupError, onLookup }: Props) {
+export function ContactStrip({ person, title, phones, fax, emails, onAddEmail, website, hours, mapsUrl, isHospital, mapsStatus, lookingUp, lookupError, onLookup }: Props) {
   const url = safeHttpUrl(website);
   const { copied, failed, copy } = useCopy();
+  const [newEmail, setNewEmail] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+  async function addEmail(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newEmail.trim()) return;
+    setAdding(true);
+    setAddError(null);
+    try {
+      await onAddEmail(newEmail.trim());
+      setNewEmail("");
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : "Could not add the email");
+    } finally {
+      setAdding(false);
+    }
+  }
 
   const copyButton = (label: string, text: string) => (
     <>
@@ -98,17 +118,22 @@ export function ContactStrip({ person, title, phones, fax, email, website, hours
         )}
         {fax && <span className="mt-1 block text-sm text-muted-foreground tabular-nums">Fax {formatPhone(fax)}</span>}
       </Item>
-      <Item Icon={Mail} label="Email">
-        {email ? (
-          <>
-            <Row>
-              <span className="text-2xl font-semibold break-all select-all">{email}</span>
-              {copyButton("Email", email)}
-            </Row>
-            <a href={`mailto:${email}`} className="mt-1 inline-block text-sm underline underline-offset-4">
-              Open in mail app
-            </a>
-          </>
+      <Item Icon={Mail} label={emails.length > 1 ? "Emails" : "Email"}>
+        {emails.length ? (
+          <ul className="space-y-3">
+            {emails.map((m) => (
+              <li key={m.address}>
+                <Row>
+                  <span className="text-2xl font-semibold break-all select-all">{m.address}</span>
+                  {copyButton(`Email ${m.address}`, m.address)}
+                </Row>
+                <a href={`mailto:${m.address}`} className="mt-0.5 inline-block text-sm underline underline-offset-4">
+                  Open in mail app
+                </a>
+                {m.manual && <span className="ml-3 text-sm text-muted-foreground">Added by hand</span>}
+              </li>
+            ))}
+          </ul>
         ) : (
           <>
             <span className="text-lg text-muted-foreground">No email found yet</span>
@@ -120,6 +145,16 @@ export function ContactStrip({ person, title, phones, fax, email, website, hours
             </span>
           </>
         )}
+        <form onSubmit={addEmail} className="mt-3 flex flex-wrap items-center gap-2">
+          <label htmlFor="add-email" className="sr-only">
+            Add an email
+          </label>
+          <Input id="add-email" type="email" inputMode="email" placeholder="Add an email they gave you" className="w-64" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
+          <Button type="submit" variant="outline" size="sm" disabled={adding || !newEmail.trim()}>
+            {adding ? "Adding..." : "Add email"}
+          </Button>
+        </form>
+        {addError && <span role="alert" className="mt-1 block text-sm text-destructive">{addError}</span>}
       </Item>
       <Item Icon={Globe} label="Website">
         {url && website ? (
