@@ -119,6 +119,7 @@ class LeadFilters(BaseModel):
     search_job_id: uuid.UUID | None = None
     follow_up: Literal["due", "overdue", "none"] | None = None
     has_website: bool | None = None
+    has_phone: bool | None = None
     has_email: bool | None = None
     email_sent: bool | None = None
 

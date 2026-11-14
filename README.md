@@ -103,7 +103,7 @@ Route changes:
 | Route | Change |
 |---|---|
 | `POST /api/search` | Accepts `enrich`. Returns 422 `source_not_available` or `missing_api_key` when it cannot run |
-| `GET /api/leads` | New filters `has_website` and `has_email` |
+| `GET /api/leads` | New filters `has_website`, `has_email` and `has_phone` |
 | `PATCH /api/leads/{id}` | `reject_website` clears the website and its web contacts |
 | `GET/DELETE /api/search/progress` | How many new leads a search has already fetched, and reset it (Start over). `target_count` now allows up to 50,000 |
 
