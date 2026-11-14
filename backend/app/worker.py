@@ -1,6 +1,7 @@
 """Local in-process worker: one daemon thread runs the oldest queued search job at a time."""
 import logging
 import threading
+import time
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
@@ -54,12 +55,15 @@ def start_worker(session_factory, poll_seconds: float = 2, stop: threading.Event
     stop = stop or threading.Event()
 
     def loop():
+        next_sweep = 0.0
         while not stop.is_set():
             try:
                 if run_next(session_factory):
                     continue
-                with session_factory() as session:
-                    pause_running_jobs(session)
+                if time.monotonic() >= next_sweep:  # once a minute is plenty for a 15 minute threshold
+                    with session_factory() as session:
+                        pause_running_jobs(session)
+                    next_sweep = time.monotonic() + 60
             except Exception as e:  # database unreachable: keep polling
                 logger.error("worker poll failed: %s", type(e).__name__)
             stop.wait(poll_seconds)
