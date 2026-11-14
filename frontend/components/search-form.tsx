@@ -396,6 +396,8 @@ export function SearchForm({ onCreated }: { onCreated: () => void }) {
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault(); // Enter here saves, it must not start the search
+                // keyCode 229 covers Safari, where isComposing is already false on the confirming Enter
+                if (e.nativeEvent.isComposing || e.keyCode === 229) return;
                 if (canSave) saveSearch();
               }
             }}
