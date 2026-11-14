@@ -1,4 +1,4 @@
-"""Google Maps enrichment: find the listing for a hospital, store its phone and hours with their source and the map link."""
+"""Google Maps enrichment: find the listing for a lead, store its phone and hours with their source and the map link."""
 import re
 from collections.abc import Callable
 from datetime import datetime, timezone
@@ -62,12 +62,15 @@ def enrich_maps(session: Session, org: Organization, *, lookup: Callable[[str], 
     org.maps_checked_at = stamp
     listing = lookup(url) if url else None
     session.execute(delete(OrganizationPhone).where(OrganizationPhone.organization_id == org.id, OrganizationPhone.source_key == SOURCE_KEY))
-    if listing is None or not matches([pick_location(org.locations)], listing):  # only the address that was searched
+    if listing is None:
         org.maps_status = "no_match"
         return org.maps_status
+    # A listing at another address is kept too (practices move and the NPI record lags), but it carries its own address so the card says so.
+    same_place = matches([pick_location(org.locations)], listing)
     if listing.phone:
         session.add(OrganizationPhone(organization_id=org.id, phone=listing.phone, source_key=SOURCE_KEY, source_url=listing.url,
-                                      collected_at=stamp, differs_from_npi=bool(org.phone) and digits(listing.phone) != digits(org.phone)))
+                                      collected_at=stamp, differs_from_npi=bool(org.phone) and digits(listing.phone) != digits(org.phone),
+                                      listing_address=None if same_place else listing.address))
     # no hours on the listing keeps the stored ones: an empty read must not erase a good earlier one
     if listing.hours:
         org.hours = {"weekly": listing.hours, "source_key": SOURCE_KEY, "source_url": listing.url, "collected_at": stamp.isoformat()}

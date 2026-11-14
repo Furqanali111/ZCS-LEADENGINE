@@ -111,6 +111,24 @@ export function LeadFilters({
           }}
         />
       </div>
+      <div>
+        <Label htmlFor="f-specialty">Specialty</Label>
+        <Input
+          id="f-specialty"
+          className="mt-1"
+          list="f-specialty-options"
+          value={specialty}
+          onChange={(e) => {
+            setSpecialty(e.target.value);
+            debounced("specialty", e.target.value);
+          }}
+        />
+        <datalist id="f-specialty-options">
+          {SPECIALTIES.map((s) => (
+            <option key={s} value={s} />
+          ))}
+        </datalist>
+      </div>
       {select("f-state", "State", "state", US_STATES.map((s) => ({ value: s.code, label: `${s.name} (${s.code})` })))}
       {select("f-priority", "Priority", "priority", PRIORITIES)}
       {select("f-status", "Sales status", "crm_status", CRM_STATUSES)}
@@ -137,24 +155,6 @@ export function LeadFilters({
       </div>
       {more && (
         <div id="more-filters" className="col-span-full grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] items-end gap-x-3 gap-y-2.5 border-t pt-3">
-      <div>
-        <Label htmlFor="f-specialty">Specialty</Label>
-        <Input
-          id="f-specialty"
-          className="mt-1"
-          list="f-specialty-options"
-          value={specialty}
-          onChange={(e) => {
-            setSpecialty(e.target.value);
-            debounced("specialty", e.target.value);
-          }}
-        />
-        <datalist id="f-specialty-options">
-          {SPECIALTIES.map((s) => (
-            <option key={s} value={s} />
-          ))}
-        </datalist>
-      </div>
       {select("f-org", "Organization type", "organization_type", ORG_TYPES)}
       <div>
         <Label htmlFor="f-min">Minimum score (0 to 100)</Label>

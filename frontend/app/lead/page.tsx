@@ -184,7 +184,7 @@ function LeadDetail() {
   const found = lead.contacts.filter((c) => c.email || c.source_url);
   // The NPI official's own line is kept when it is not already listed, so no number the page showed before disappears.
   const digitsOf = (s: string) => s.replace(/\D/g, "").replace(/^1(?=\d{10}$)/, "");
-  const shownPhones: ShownPhone[] = lead.phones.map((p) => ({ phone: p.phone, source: p.source_key, differs: p.differs_from_npi, collected: p.collected_at }));
+  const shownPhones: ShownPhone[] = lead.phones.map((p) => ({ phone: p.phone, source: p.source_key, differs: p.differs_from_npi, listingAddress: p.listing_address ?? null, collected: p.collected_at }));
   const official = lead.contact?.phone;
   if (official && !shownPhones.some((p) => digitsOf(p.phone) === digitsOf(official))) {
     shownPhones.push({ phone: official, source: "npi_official", differs: false, collected: lead.source?.collected_at ?? null });

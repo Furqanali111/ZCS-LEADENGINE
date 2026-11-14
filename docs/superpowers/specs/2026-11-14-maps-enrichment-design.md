@@ -21,6 +21,6 @@ Practices and other non-hospital leads, automatic re-checks, replacing the NPI p
 ## Design
 - Table `organization_phones` (phone, source_key, source_url, collected_at, differs_from_npi). The NPI phone stays on `organizations.phone` and is listed first by the API, so nothing needs a backfill.
 - Columns on `organizations`: `hours` (JSONB with source and date), `maps_status`, `maps_checked_at`, `maps_url`. Source row `google_maps` in `source_configs`.
-- Connector `app/sources/gmaps.py` (Playwright, one place page, stops on CAPTCHA). Logic in `app/services/maps.py`. Match rule: street number and name, city and state agree with an NPI address of the lead.
+- Connector `app/sources/gmaps.py` (Playwright, one place page, stops on CAPTCHA). Logic in `app/services/maps.py`. A listing at a different address is kept too and labelled with its own address (owner decision, 2026-11-14: practices move and the NPI record lags).
 - `POST /api/leads/{id}/maps` for one hospital, `python -m app.enrich_maps` for a batch.
 - Card: phones list with source labels and a "differs" note, "Open in Google Maps", today's hours with the full week, and a lookup button.

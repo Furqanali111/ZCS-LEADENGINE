@@ -131,7 +131,7 @@ export type Lead = {
   source: { source_key: string; collected_at: string } | null;
 };
 
-export type LeadPhone = { phone: string; source_key: string; source_url: string | null; collected_at: string | null; differs_from_npi: boolean };
+export type LeadPhone = { phone: string; source_key: string; source_url: string | null; collected_at: string | null; differs_from_npi: boolean; listing_address?: string | null };
 
 export type LeadPage = { items: Lead[]; total: number; page: number; page_size: number };
 

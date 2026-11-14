@@ -261,6 +261,7 @@ class PhoneOut(BaseModel):
     source_url: str | None = None
     collected_at: datetime | None = None
     differs_from_npi: bool = False
+    listing_address: str | None = None
 
 
 class LocationOut(BaseModel):

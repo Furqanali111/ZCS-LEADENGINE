@@ -8,7 +8,7 @@ import type { Lead } from "@/lib/api";
 import { PANEL_CLASS } from "@/lib/ui";
 import { useCopy } from "@/lib/use-copy";
 
-export type ShownPhone = { phone: string; source: string; differs: boolean; collected: string | null };
+export type ShownPhone = { phone: string; source: string; differs: boolean; listingAddress?: string | null; collected: string | null };
 type Props = {
   person: string;
   title: string | null;
@@ -84,6 +84,7 @@ export function ContactStrip({ person, title, phones, fax, email, website, hours
                     Source: {sourceLabel(p.source)}
                     {p.collected && `, ${p.collected.slice(0, 10)}`}
                     {p.differs && <span className="font-medium text-amber-700"> (differs from the NPI phone)</span>}
+                    {p.listingAddress && <span className="block font-medium text-amber-700">Listing is at another address: {p.listingAddress}. The practice may have moved.</span>}
                   </span>
                   <a href={`tel:${p.phone.replace(/\D/g, "")}`} className="mt-0.5 inline-block text-sm underline underline-offset-4">
                     Call from this device

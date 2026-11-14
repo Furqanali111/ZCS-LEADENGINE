@@ -82,14 +82,14 @@ def test_same_phone_is_not_flagged(db):
     assert db.scalars(select(OrganizationPhone)).one().differs_from_npi is False
 
 
-def test_wrong_place_stores_nothing_and_keeps_old_hours(db):
+def test_listing_at_another_address_keeps_the_phone_and_records_where_it_is(db):
     o = hospital(db)
-    enrich_maps(db, o, lookup=lambda url: listing())
+    assert enrich_maps(db, o, lookup=lambda url: listing()) == "matched"
     db.commit()
-    assert enrich_maps(db, o, lookup=lambda url: listing(address="1 Other St, Port Charlotte, FL")) == "no_match"
+    assert db.scalars(select(OrganizationPhone)).one().listing_address is None
+    assert enrich_maps(db, o, lookup=lambda url: listing(address="1 Other St, Lake Butler, FL")) == "matched"
     db.commit()
-    assert db.scalars(select(OrganizationPhone)).all() == []  # a stale Maps phone is not kept after a failed match
-    assert o.hours is not None and o.maps_status == "no_match"
+    assert db.scalars(select(OrganizationPhone)).one().listing_address == "1 Other St, Lake Butler, FL"  # old row replaced, not duplicated
 
 
 def test_empty_hours_do_not_erase_earlier_hours(db):
@@ -172,9 +172,10 @@ def test_batch_run_stops_on_block_and_marks_failures_retryable(session_factory, 
     assert run(session_factory, limit=10, get=lambda u: listing(), sleep=lambda s: None)["matched"] == 2  # the failed and the blocked one retry, matched stay
 
 
-def test_listing_at_the_mailing_address_is_not_a_match(db):
+def test_listing_at_the_mailing_address_is_flagged_as_another_address(db):
     o = hospital(db)
     db.add(Location(organization_id=o.id, purpose="mailing", address_1="PO BOX 9", city="PORT CHARLOTTE", state="FL", zip="33949"))
     db.commit()
     db.refresh(o)
-    assert enrich_maps(db, o, lookup=lambda url: listing(address="PO Box 9, Port Charlotte, FL 33949")) == "no_match"
+    assert enrich_maps(db, o, lookup=lambda url: listing(address="PO Box 9, Port Charlotte, FL 33949")) == "matched"
+    assert db.scalars(select(OrganizationPhone)).one().listing_address == "PO Box 9, Port Charlotte, FL 33949"

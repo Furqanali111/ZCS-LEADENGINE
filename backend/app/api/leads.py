@@ -69,7 +69,7 @@ def _phones(org: Organization, npi_src: SourceRecord | None) -> list[dict]:
     """The NPI phone stays on the organization; it is listed first with its source, then every other source's phone."""
     npi = [{"phone": org.phone, "source_key": "npi_registry", "collected_at": npi_src.collected_at if npi_src else None}] if org.phone else []
     return npi + [{"phone": p.phone, "source_key": p.source_key, "source_url": p.source_url, "collected_at": p.collected_at,
-                   "differs_from_npi": p.differs_from_npi} for p in sorted(org.phones, key=lambda p: p.collected_at)]
+                   "differs_from_npi": p.differs_from_npi, "listing_address": p.listing_address} for p in sorted(org.phones, key=lambda p: p.collected_at)]
 
 
 def _out(org: Organization, suppressed: bool = False) -> LeadOut:
