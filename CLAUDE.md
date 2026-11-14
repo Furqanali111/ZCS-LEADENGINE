@@ -17,8 +17,12 @@ Pinned context for every session in this repo. Read first.
 
 ## What this product IS and ISN'T
 
-- IS: an internal, single-user, local-first tool for ZCS to find, score, prioritize, and track U.S. healthcare practices as sales prospects, and export them to Excel.
+- IS: an internal, local-first tool for the ZCS team to find, score, prioritize, and track U.S. healthcare practices as sales prospects, and export them to Excel.
 - IS NOT: a public website, a patient system, or an outreach sender.
+- A small team uses it. Each teammate runs their own copy (the self-updating Windows desktop app built with PyInstaller, or the two dev servers from source), and every copy talks to the one shared Supabase database.
+- There are no accounts and no login. Each person types their name once in the browser, it is sent as the `X-Salesperson` header, and it records who did something without proving it.
+- Every copy runs its own worker thread and runs pending migrations at start. Anything that touches jobs, claims or migrations must be safe with several processes at once, and migrations must stay additive and backward compatible, because older copies keep running until restarted.
+- Every teammate's `.env` holds the database URL, which is full access to the data.
 - The public marketing website lives in its own repo. Never mix the two.
 
 ## Delivery slices (build in this order)
@@ -47,9 +51,9 @@ Each slice gets its own spec, plan, and build. Do not start a later slice early.
 - **Backend**: Python, FastAPI, SQLAlchemy, Alembic, Pydantic. Runs locally.
 - **Database**: Supabase-hosted PostgreSQL. The only hosted piece.
 - **Excel**: OpenPyXL
-- **Worker**: local Python, in-process to start. No Redis, no Celery, until measured load demands it.
+- **Worker**: local Python, in-process (one thread per running copy, so several run at once). No Redis, no Celery, until measured load demands it.
 - **Tests**: Pytest for backend, against an embedded Postgres (`pgserver`). Docker is not used: it cannot run on the owner's PC. One frontend test tool, chosen when the first frontend test is written.
-- **Auth**: none in the MVP (single user, localhost only).
+- **Auth**: none. No accounts or login; the typed name in `X-Salesperson` is a label, not proof. Each copy serves only on localhost.
 
 Rejected for the MVP: paid enrichment APIs, a cloud-hosted worker, automated email sending, an ML conversion model, uploading the bulk NPPES file to Supabase.
 
