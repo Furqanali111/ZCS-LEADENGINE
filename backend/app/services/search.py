@@ -21,7 +21,7 @@ from app.models import (
 from app.services.enrich import COUNTERS as ENRICH_COUNTERS, enrich_job_leads
 from app.services.leads import has_email, has_titled_staff, npis_with_email, npis_with_titled_staff, save_score
 from app.services.scoring import load_config, score
-from app.services.suppression import enforce
+from app.services.suppression import _digits, enforce
 from app.sources import ddg
 from app.sources.provider import search_provider, with_fallback
 from app.sources.npi_registry import MAX_SKIP, PAGE_SIZE, NormalizedLead, SourceError, fetch_page, normalize
@@ -63,8 +63,7 @@ def _known_org_phones(session: Session, leads: list[NormalizedLead]) -> set[str]
     phones = {l.phone for l in leads if l.phone}
     if not phones:
         return set()
-    # shortcut: regexp over every non-solo phone per page, fine for thousands of orgs; add a digits column if it gets slow
-    stored = func.regexp_replace(Organization.phone, r"\D", "", "g")
+    stored = _digits(Organization.phone)  # same expression as ix_organizations_phone_digits, so the index applies
     return set(session.scalars(select(stored).where(Organization.organization_type != "solo_provider", stored.in_(phones))))
 
 

@@ -1,5 +1,6 @@
 import copy
 import json
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
@@ -337,11 +338,16 @@ def test_zero_results_completes_empty(db, session_factory):
     assert job.status == "completed" and count(db, SearchJobLead) == 0
 
 
-def test_pause_running_jobs(db):
-    running = make_job(db, status="running")
+def test_pause_running_jobs_only_stale(db):
+    fresh = make_job(db, status="running")
+    stale = make_job(db, status="running")
     queued = make_job(db)
+    # an explicit value in a Core update overrides onupdate=now()
+    db.execute(update(SearchJob).where(SearchJob.id == stale).values(updated_at=func.now() - timedelta(minutes=20)))
+    db.commit()
     assert pause_running_jobs(db) == 1
-    assert job_of(db, running).status == "paused"
+    assert job_of(db, stale).status == "paused"
+    assert job_of(db, fresh).status == "running"
     assert job_of(db, queued).status == "queued"
 
 

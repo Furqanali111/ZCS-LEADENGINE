@@ -66,6 +66,15 @@ def test_second_page_waits_full_crawl_delay():
     assert clock.sleeps == [3]
 
 
+def test_crawl_delay_over_cap_is_not_fetched_or_waited_on():
+    f, log, clock = make({"/robots.txt": httpx.Response(200, text="User-agent: *\nCrawl-delay: 3600"),
+                          "/a": ok()})
+    assert f.get("https://a.com/a") is None
+    assert f.stats["blocked_by_robots"] == 1
+    assert "https://a.com/a" not in log
+    assert max(clock.sleeps, default=0) <= 30
+
+
 def test_different_domains_do_not_wait():
     f, _, clock = make({"/": ok()})
     f.get("https://a.com/")

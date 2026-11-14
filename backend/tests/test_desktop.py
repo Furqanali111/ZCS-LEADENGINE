@@ -41,6 +41,9 @@ def test_stage_update_checks_the_checksum(tmp_path, monkeypatch):
     assert not updater.stage_update(bad, tmp_path / "bad")
     assert not (tmp_path / "bad").exists()
     assert not updater.stage_update({"assets": []}, tmp_path / "none")
+    nodigest = {"assets": [{"name": "a.zip", "url": "https://x"}]}
+    assert not updater.stage_update(nodigest, tmp_path / "nodigest")
+    assert not (tmp_path / "nodigest").exists()
 
 
 def test_apply_script_never_touches_env(tmp_path):

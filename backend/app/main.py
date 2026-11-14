@@ -5,6 +5,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from starlette.exceptions import HTTPException
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -41,6 +42,8 @@ def create_app(testing: bool = False) -> FastAPI:
 
     app = FastAPI(title="ZCS LeadEngine", lifespan=lifespan)
     app.state.testing = testing
+    # No login, so refuse unknown Host headers: blocks DNS rebinding from a hostile web page.
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", *(["testserver"] if testing else [])])
     app.add_middleware(CORSMiddleware, allow_origins=[settings.frontend_origin], allow_methods=["*"], allow_headers=["*"], expose_headers=["Content-Disposition"])
 
     @app.exception_handler(HTTPException)

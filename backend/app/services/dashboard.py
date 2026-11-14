@@ -35,7 +35,7 @@ def build_stats(session: Session, start: date, end: date, today: date) -> Dashbo
     converted = select(func.count(func.distinct(A.organization_id))).where(
         A.type == "status_change", A.to_status == "converted", *in_range, contact).scalar_subquery()
     contacted = select(func.count(func.distinct(A.organization_id))).where(A.type.in_(CONTACT_TYPES), *in_range).scalar_subquery()
-    day = datetime.combine(today, time.min, tzinfo=timezone.utc)
+    day = datetime.combine(today, time.min).astimezone()  # local calendar day of the PC, as an aware datetime
     changed_today = select(func.count(func.distinct(A.organization_id))).where(
         A.type == "status_change", A.occurred_at >= day, A.occurred_at < day + timedelta(days=1)).scalar_subquery()
     # Per salesperson, today only. Names are typed, so group ignoring case; no name means "Unknown".

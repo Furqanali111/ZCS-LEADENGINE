@@ -102,6 +102,8 @@ def lead_query(filters: LeadFilters) -> Select:
             select(SearchJobLead.organization_id).where(SearchJobLead.search_job_id == filters.search_job_id)))
     if filters.has_website is not None:
         stmt = stmt.where(o.website.is_not(None) if filters.has_website else o.website.is_(None))
+    if filters.has_phone is not None:
+        stmt = stmt.where(o.phone.is_not(None) if filters.has_phone else o.phone.is_(None))
     if filters.has_email is not None:
         has = exists().where(Contact.organization_id == o.id, Contact.email.is_not(None))
         stmt = stmt.where(has if filters.has_email else ~has)

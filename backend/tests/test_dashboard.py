@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 
 from app.models import LeadActivity, Organization, SearchJob
 
@@ -174,3 +174,14 @@ def test_dashboard_team_activity_lists_what_each_person_moved_today(client, db):
     assert team["usman"]["changes"] == [{"from": "new", "to": "called", "count": 2}, {"from": "called", "to": "follow_up_required", "count": 1}]
     assert team["michael"]["changes"] == [{"from": "new", "to": "interested", "count": 1}]
 
+
+
+def test_dashboard_today_starts_at_local_midnight(client, db):
+    midnight = datetime.combine(date.today(), time.min).astimezone()
+    a, b = org(db, 1), org(db, 2)
+    for o, at in ((a, midnight + timedelta(minutes=30)), (b, midnight - timedelta(minutes=30))):
+        db.add(LeadActivity(organization_id=o.id, type="status_change", to_status="called", actor="Usman", occurred_at=at))
+    db.commit()
+    s = stats(client).json()
+    assert s["status_changes_today"] == 1
+    assert s["team_today"][0]["status_changes"] == 1

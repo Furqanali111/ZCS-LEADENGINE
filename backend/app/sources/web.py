@@ -10,6 +10,7 @@ import httpx
 from app.services.verify import blocked_host, is_public_host
 
 USER_AGENT = "ZCSLeadEngine/1.0 (internal prospecting tool)"
+MAX_CRAWL_DELAY = 30.0  # a site asking for a slower pace than this is skipped, not waited on
 MAX_BYTES = 1_000_000
 ROBOTS_MAX_BYTES = 512_000
 ROBOTS_5XX_TTL = 600.0  # seconds a failing robots.txt stays "block" before it is asked again
@@ -115,7 +116,11 @@ class PoliteFetcher:
             if rp is None or not rp.can_fetch(USER_AGENT, url):
                 self.stats["blocked_by_robots"] += 1
                 return None
-            delay = max(self.min_interval, float(rp.crawl_delay(USER_AGENT) or 0))
+            crawl_delay = float(rp.crawl_delay(USER_AGENT) or 0)
+            if crawl_delay > MAX_CRAWL_DELAY:
+                self.stats["blocked_by_robots"] += 1
+                return None
+            delay = max(self.min_interval, crawl_delay)
             resp, body = self._fetch_with_retries(url, delay)
             if resp.status_code in REDIRECTS and resp.headers.get("location"):
                 url = urljoin(url, resp.headers["location"])

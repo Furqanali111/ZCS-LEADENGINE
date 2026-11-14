@@ -6,7 +6,7 @@ import { Check, Clock, Copy, Globe, Mail, MapPin, Phone, User } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatPhone, hostOf, safeHttpUrl } from "@/lib/format";
-import type { Lead } from "@/lib/api";
+import { IS_DESKTOP, type Lead } from "@/lib/api";
 import { PANEL_CLASS } from "@/lib/ui";
 import { useCopy } from "@/lib/use-copy";
 
@@ -213,7 +213,8 @@ export function ContactStrip({ person, title, phones, fax, emails, onAddEmail, w
           ) : (
             isHospital && <span className="mt-3 block text-sm text-muted-foreground">No hours found yet.</span>
           )}
-          {isHospital && (
+          {/* The desktop bundle ships no browser for the lookup yet (docs/deferred-items.md), so the button would always fail there. */}
+          {isHospital && !IS_DESKTOP && (
             <div className="mt-3">
               <Button type="button" variant="outline" size="sm" disabled={lookingUp} onClick={onLookup}>
                 {lookingUp ? "Looking up, about 15 seconds..." : mapsStatus === "not_run" ? "Look up on Google Maps" : "Look up again"}

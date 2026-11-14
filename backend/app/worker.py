@@ -1,20 +1,25 @@
 """Local in-process worker: one daemon thread runs the oldest queued search job at a time."""
 import logging
 import threading
-from datetime import datetime, timezone
+import time
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 
 from app.models import SearchJob
 from app.services.search import run_job
 
 logger = logging.getLogger(__name__)
 
+STALE_MINUTES = 15  # a live job rewrites its row at least every page or enriched lead, so an older updated_at means its app died
+
 
 def pause_running_jobs(session) -> int:
-    """Startup recovery: a job still 'running' belongs to a process that is gone."""
-    count = session.execute(update(SearchJob).where(SearchJob.status == "running").values(status="paused")).rowcount
+    """Pauses 'running' jobs whose row has not moved for STALE_MINUTES: their app is gone. Live teammates' jobs stay."""
+    stale = SearchJob.updated_at < func.now() - timedelta(minutes=STALE_MINUTES)
+    count = session.execute(update(SearchJob).where(SearchJob.status == "running", stale)
+                            .values(status="paused")).rowcount
     session.commit()
     return count
 
@@ -50,10 +55,15 @@ def start_worker(session_factory, poll_seconds: float = 2, stop: threading.Event
     stop = stop or threading.Event()
 
     def loop():
+        next_sweep = 0.0
         while not stop.is_set():
             try:
                 if run_next(session_factory):
                     continue
+                if time.monotonic() >= next_sweep:  # once a minute is plenty for a 15 minute threshold
+                    with session_factory() as session:
+                        pause_running_jobs(session)
+                    next_sweep = time.monotonic() + 60
             except Exception as e:  # database unreachable: keep polling
                 logger.error("worker poll failed: %s", type(e).__name__)
             stop.wait(poll_seconds)

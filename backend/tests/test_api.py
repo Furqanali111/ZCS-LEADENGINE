@@ -570,6 +570,13 @@ def test_has_website_and_has_email_filters(client, db):
     assert names(client.get("/api/leads?has_email=true")) == ["Bravo"]
 
 
+def test_has_phone_filter(client, db):
+    add_lead(db, "1000000001", "Alpha", phone="5125550100")
+    add_lead(db, "1000000002", "Bravo")
+    assert names(client.get("/api/leads?has_phone=true")) == ["Alpha"]
+    assert names(client.get("/api/leads?has_phone=false")) == ["Bravo"]
+
+
 def test_create_search_enrich_needs_sources_and_key(client, db, monkeypatch):
     from app.config import get_settings
 

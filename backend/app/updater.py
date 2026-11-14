@@ -34,14 +34,14 @@ def latest_release(repo: str, token: str | None = None) -> dict | None:
 
 
 def stage_update(release: dict, dest: Path, token: str | None = None) -> bool:
-    """Download the release zip into dest (a fresh folder). False if there is no usable zip or the checksum fails."""
+    """Download the release zip into dest (a fresh folder). False if there is no usable zip, no checksum, or the checksum fails."""
     asset = next((a for a in release.get("assets", []) if a["name"].endswith(".zip")), None)
     if not asset:
         return False
     r = httpx.get(asset["url"], headers=_headers(token, "application/octet-stream"), timeout=120, follow_redirects=True)
     r.raise_for_status()
     digest = (asset.get("digest") or "").removeprefix("sha256:")
-    if digest and hashlib.sha256(r.content).hexdigest() != digest:
+    if not digest or hashlib.sha256(r.content).hexdigest() != digest:
         return False
     dest.mkdir(parents=True, exist_ok=True)
     zpath = dest / "update.zip"
