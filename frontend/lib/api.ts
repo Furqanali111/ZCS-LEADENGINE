@@ -2,7 +2,8 @@ import { getName } from "@/lib/me";
 
 // "same-origin" (desktop bundle) means relative URLs: the API is served from the same port as the UI.
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
-const BASE = API_URL === "same-origin" ? "" : API_URL;
+export const IS_DESKTOP = API_URL === "same-origin";
+const BASE = IS_DESKTOP ? "" : API_URL;
 
 export class ApiError extends Error {
   code: string;
@@ -149,6 +150,7 @@ export type LeadFilters = {
   follow_up?: "due" | "overdue" | "none";
   has_website?: "true";
   has_email?: "true";
+  has_phone?: "true";
   email_sent?: "true" | "false";
 };
 

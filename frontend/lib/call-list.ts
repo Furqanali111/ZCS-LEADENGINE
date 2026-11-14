@@ -2,12 +2,12 @@ import { ApiError, claimLead, listLeads, type Lead } from "@/lib/api";
 
 export type CallItem = { lead: Lead; due: boolean };
 
-// The list endpoint has no "has phone" filter, so fetch a wider page of top-scored new leads and filter here.
+// Due follow-ups first, then top-scored new leads that have a phone. Extra rows cover suppressed leads and duplicates.
 export async function getCallList(max = 8): Promise<CallItem[]> {
   // allSettled: if one list fails the other still shows; only fail when both do.
   const [dueR, freshR] = await Promise.allSettled([
     listLeads({ follow_up: "due", sort: "follow_up", order: "asc", page_size: max }),
-    listLeads({ crm_status: "new", sort: "score", order: "desc", page_size: 50 }),
+    listLeads({ crm_status: "new", has_phone: "true", sort: "score", order: "desc", page_size: 50 }),
   ]);
   if (dueR.status === "rejected" && freshR.status === "rejected") throw dueR.reason;
   const due = dueR.status === "fulfilled" ? dueR.value : { items: [] as Lead[] };
@@ -31,7 +31,7 @@ export async function claimNext(name: string, excludeId?: string): Promise<Lead 
   const mine = await listLeads({ owner: name, follow_up: "due", sort: "follow_up", order: "asc", page_size: 10 });
   const due = mine.items.find(ok);
   if (due) return due;
-  const fresh = await listLeads({ owner: "none", crm_status: "new", sort: "score", order: "desc", page_size: 30 });
+  const fresh = await listLeads({ owner: "none", crm_status: "new", has_phone: "true", sort: "score", order: "desc", page_size: 30 });
   for (const l of fresh.items.filter(ok).slice(0, 8)) {
     try {
       return await claimLead(l.id);
