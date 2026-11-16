@@ -675,3 +675,16 @@ def test_find_emails_for_a_search(client, db, monkeypatch):
     done = client.post(f"/api/search/{src.id}/enrich-emails")
     assert done.status_code == 409 and done.json()["error"]["code"] == "nothing_to_enrich"
     assert client.post("/api/search/00000000-0000-0000-0000-000000000000/enrich-emails").status_code == 404
+
+
+def test_jobs_run_on_the_computer_that_started_or_resumed_them(client, db):
+    from app.models import SearchJob
+    from app.worker import HOST
+
+    add_source(db)
+    made = client.post("/api/search", json=BODY).json()
+    assert made["host"] == HOST
+    job = db.get(SearchJob, made["id"])
+    job.status, job.host = "paused", "SOME-OTHER-PC"  # its computer was closed
+    db.commit()
+    assert client.post(f"/api/search/{made['id']}/resume").json()["host"] == HOST

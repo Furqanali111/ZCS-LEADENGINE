@@ -61,6 +61,7 @@ class SearchJob(IdMixin, Base):
     status: Mapped[str] = mapped_column(Text, default="queued", server_default="queued")
     enrich: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     cancel_requested: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    host: Mapped[str | None] = mapped_column(Text)  # computer whose worker runs this job; null (older jobs, CLI) means any worker
     checkpoint: Mapped[dict] = mapped_column(
         JSONB, default=lambda: {"phase": None, "skip": 0}, server_default=text('\'{"phase": null, "skip": 0}\'::jsonb')
     )

@@ -361,6 +361,17 @@ def test_claim_takes_oldest_queued_job_once(db, session_factory):
     assert job_of(db, first).status == "running"
 
 
+def test_worker_only_claims_jobs_of_its_own_computer(db, session_factory):
+    mine = make_job(db, host="MY-PC")
+    theirs = make_job(db, host="SALES-LAPTOP")
+    anyone = make_job(db)  # no host: older jobs and the command line
+    assert claim_next(session_factory, host="MY-PC") == mine
+    assert claim_next(session_factory, host="MY-PC") == anyone
+    assert claim_next(session_factory, host="MY-PC") is None  # the laptop's job is left for the laptop
+    assert job_of(db, theirs).status == "queued"
+    assert claim_next(session_factory, host="SALES-LAPTOP") == theirs
+
+
 def test_worker_marks_crashed_job_failed(db, session_factory, monkeypatch):
     job_id = make_job(db)
 

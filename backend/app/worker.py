@@ -1,17 +1,19 @@
 """Local in-process worker: one daemon thread runs the oldest queued search job at a time."""
 import logging
+import socket
 import threading
 import time
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, update
 
 from app.models import SearchJob
 from app.services.search import run_job
 
 logger = logging.getLogger(__name__)
 
+HOST = socket.gethostname()  # jobs started on this computer run on this computer
 STALE_MINUTES = 15  # a live job rewrites its row at least every page or enriched lead, so an older updated_at means its app died
 
 
@@ -24,9 +26,10 @@ def pause_running_jobs(session) -> int:
     return count
 
 
-def claim_next(session_factory) -> UUID | None:
-    """Atomically moves the oldest queued job to running, so two workers never take the same one."""
-    oldest = (select(SearchJob.id).where(SearchJob.status == "queued")
+def claim_next(session_factory, host: str | None = None) -> UUID | None:
+    """Atomically moves the oldest queued job of this computer (or with no host) to running, so two workers never take the same one."""
+    host = host or HOST
+    oldest = (select(SearchJob.id).where(SearchJob.status == "queued", or_(SearchJob.host.is_(None), SearchJob.host == host))
               .order_by(SearchJob.created_at, SearchJob.id).limit(1).with_for_update(skip_locked=True).scalar_subquery())
     with session_factory() as session:
         job_id = session.scalar(update(SearchJob).where(SearchJob.id == oldest).values(status="running")
