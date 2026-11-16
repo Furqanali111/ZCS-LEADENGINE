@@ -57,7 +57,9 @@ def build_stats(session: Session, start: date, end: date, today: date) -> Dashbo
            .group_by(pairs.c.w).subquery("chg"))
     team = (select(func.max(func.coalesce(A.actor, "Unknown")).label("name"),
                    # Distinct leads, not log rows: three calls to one lead is one lead called.
-                   func.count(func.distinct(A.organization_id)).filter(A.type == "call").label("calls"),
+                   # Called = a logged call, or the lead was moved to "Called" / "Called, no answer" (salespeople often only change the status).
+                   func.count(func.distinct(A.organization_id)).filter(
+                       (A.type == "call") | ((A.type == "status_change") & A.to_status.in_(("called", "called_no_answer")))).label("calls"),
                    # Emailed = a logged email, the "Email sent" checkbox ticked (a note, see api/leads.py), or a move to the "Email sent" status.
                    func.count(func.distinct(A.organization_id)).filter(
                        (A.type == "email") | ((A.type == "note") & (A.summary == "Email marked as sent"))

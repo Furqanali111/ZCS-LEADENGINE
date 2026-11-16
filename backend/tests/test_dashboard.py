@@ -193,3 +193,14 @@ def test_dashboard_today_starts_at_local_midnight(client, db):
     s = stats(client).json()
     assert s["status_changes_today"] == 1
     assert s["team_today"][0]["status_changes"] == 1
+
+
+def test_dashboard_status_moved_to_called_counts_as_called(client, db):
+    a, b, c = org(db, 1), org(db, 2), org(db, 3)
+    now = datetime.now(timezone.utc)
+    for o, to in ((a, "called"), (b, "called_no_answer"), (c, "follow_up_required")):
+        db.add(LeadActivity(organization_id=o.id, type="status_change", from_status="new", to_status=to, actor="Vanya", occurred_at=now))
+    db.add(LeadActivity(organization_id=a.id, type="call", summary="x", actor="Vanya", occurred_at=now))  # same lead as the status move
+    db.commit()
+    row = stats(client).json()["team_today"][0]
+    assert (row["calls"], row["status_changes"]) == (2, 3)
