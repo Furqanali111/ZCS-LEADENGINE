@@ -2,6 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import make_url
 
 
 class Settings(BaseSettings):
@@ -19,6 +20,14 @@ class Settings(BaseSettings):
     enrich_page_delay_seconds: float = 1
     max_source_retries: int = 3
     log_level: str = "INFO"
+
+    @property
+    def session_database_url(self) -> str:
+        """For migrations and the advisory lock: they need a session, so 6543 (transaction mode) becomes 5432."""
+        url = make_url(self.database_url)
+        if url.port == 6543:
+            url = url.set(port=5432)
+        return url.render_as_string(hide_password=False)
 
 
 @lru_cache

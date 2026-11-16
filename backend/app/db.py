@@ -9,7 +9,16 @@ class Base(DeclarativeBase):
 
 
 # Importing this module needs DATABASE_URL set; the engine only connects on first use.
-engine = create_engine(get_settings().database_url, pool_pre_ping=True)
+# Small pool: every teammate's copy shares the free Supabase pooler (15 real connections).
+# prepare_threshold=None: the pooler's transaction mode (port 6543) cannot keep prepared statements.
+engine = create_engine(
+    get_settings().database_url,
+    pool_pre_ping=True,
+    pool_size=2,
+    max_overflow=2,
+    pool_recycle=300,
+    connect_args={"prepare_threshold": None},
+)
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 
 
