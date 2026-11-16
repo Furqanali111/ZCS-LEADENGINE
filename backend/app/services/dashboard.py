@@ -58,7 +58,9 @@ def build_stats(session: Session, start: date, end: date, today: date) -> Dashbo
     team = (select(func.max(func.coalesce(A.actor, "Unknown")).label("name"),
                    # Distinct leads, not log rows: three calls to one lead is one lead called.
                    func.count(func.distinct(A.organization_id)).filter(A.type == "call").label("calls"),
-                   func.count(func.distinct(A.organization_id)).filter(A.type == "email").label("emails"),
+                   # An email counts when it was logged, or when the lead was moved to "Email sent" (a status change is not a log entry).
+                   func.count(func.distinct(A.organization_id)).filter(
+                       (A.type == "email") | ((A.type == "status_change") & (A.to_status == "email_sent"))).label("emails"),
                    func.count(func.distinct(A.organization_id)).filter(A.type == "status_change").label("status_changes"),
                    func.coalesce(chg.c.changes, text("'[]'::jsonb")).label("changes"))
             .select_from(A.__table__.outerjoin(chg, chg.c.w == who))
