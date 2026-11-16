@@ -57,6 +57,7 @@ export type Job = {
   created_at: string;
   started_at: string | null;
   finished_at: string | null;
+  to_enrich: number;
 };
 
 export type SearchInput = {
@@ -226,6 +227,7 @@ export const resetSearchProgress = async (k: ProgressKey) => {
 export const listJobs = () => json<Job[]>("/api/search");
 export const cancelJob = (id: string) => json<Job>(`/api/search/${id}/cancel`, post());
 export const resumeJob = (id: string) => json<Job>(`/api/search/${id}/resume`, post());
+export const findEmails = (id: string) => json<Job>(`/api/search/${id}/enrich-emails`, post());
 
 export function listLeads(params: ListLeadsParams = {}) {
   const qs = new URLSearchParams();

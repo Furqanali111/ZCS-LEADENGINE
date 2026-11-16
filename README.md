@@ -118,6 +118,8 @@ On a lead page, the call-result buttons (No answer, Spoke call back, Interested,
 | `POST /api/leads/{id}/claim`, `POST /api/leads/{id}/release` | Take or give back a lead |
 | `POST /api/leads/{id}/emails` | Add an email someone gave on a call (source `manual`, kept when websites are re-enriched) |
 | `GET /api/owners` | Names that currently own a lead |
+| `POST /api/search/{id}/enrich-emails` | Find websites and emails for the leads of a finished search that were not enriched yet (new job in the Searches list). `GET /api/search` now returns `to_enrich`, the leads left per search |
+| Search provider | With no `TAVILY_API_KEY` or `BRAVE_API_KEY` set, enrichment uses DuckDuckGo (no key). Its source `duckduckgo_search` must be `available` |
 | `GET /api/leads/{id}/related` | Up to 20 other leads sharing a phone, normalized name, parent organization, authorized official or website domain, with a `reasons` list each (computed live, no table) |
 | `GET /api/leads` | New filter `owner` (a name, or `none` for unclaimed) |
 | Activities | Each new activity stores `actor`, the salesperson name |

@@ -525,7 +525,7 @@ def test_job_fails_when_source_not_available(db, session_factory):
 
 @pytest.fixture
 def enrich_sources(db):
-    db.add_all([SourceConfig(key=k, name=k, status="available") for k in ("brave_search", "practice_websites")])
+    db.add_all([SourceConfig(key=k, name=k, status="available") for k in ("duckduckgo_search", "brave_search", "practice_websites")])
     db.commit()
 
 
@@ -598,12 +598,12 @@ def test_cancel_during_enrichment_ends_cancelled(db, session_factory, enrich_sou
 
 
 def test_enrich_job_fails_when_enrich_source_not_available(db, session_factory, enrich_sources):
-    db.execute(update(SourceConfig).where(SourceConfig.key == "brave_search").values(status="not_reviewed"))
+    db.execute(update(SourceConfig).where(SourceConfig.key == "duckduckgo_search").values(status="not_reviewed"))
     db.commit()
     job_id = make_job(db, enrich=True)
     run_enrich(session_factory, job_id, fake({"NPI-2": [NPI2]}), deps())
     job = job_of(db, job_id)
-    assert job.status == "failed" and "brave_search" in job.error
+    assert job.status == "failed" and "duckduckgo_search" in job.error
     assert count(db, Organization) == 0
 
 

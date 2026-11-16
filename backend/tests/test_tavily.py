@@ -54,7 +54,7 @@ def test_provider_prefers_tavily_then_brave():
     base = {"database_url": "postgresql://x", "_env_file": None}
     assert search_provider(Settings(**base, tavily_api_key="t", brave_api_key="b"))[::2] == ("tavily_search", "t")
     assert search_provider(Settings(**base, brave_api_key="b"))[::2] == ("brave_search", "b")
-    assert search_provider(Settings(**base))[::2] == ("brave_search", None)
+    assert search_provider(Settings(**base))[::2] == ("duckduckgo_search", "")
 
 
 def test_fallback_switches_after_auth_error_and_stays_switched():

@@ -6,7 +6,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ToneBadge, type Tone } from "@/components/tone-badge";
 import { PANEL_CLASS } from "@/lib/ui";
-import { ApiError, cancelJob, listJobs, resumeJob, type Job } from "@/lib/api";
+import { ApiError, cancelJob, findEmails, listJobs, resumeJob, type Job } from "@/lib/api";
 import { JOB_STATUS_LABELS } from "@/lib/constants";
 
 const ACTIVE = ["queued", "running"];
@@ -82,6 +82,12 @@ export function JobList({ refreshKey }: { refreshKey: number }) {
     load();
   }
 
+  async function startFindEmails(j: Job) {
+    const n = j.to_enrich.toLocaleString();
+    if (!window.confirm(`Find websites and emails for ${n} leads of "${summary(j)}"? It runs one web search per lead and can take a long time. You can cancel and resume it from the list.`)) return;
+    await act(findEmails, j.id);
+  }
+
   if (jobs === null && !error) return <p className="text-sm text-muted-foreground">Loading searches...</p>;
 
   return (
@@ -115,6 +121,11 @@ export function JobList({ refreshKey }: { refreshKey: number }) {
                     <Link href={`/leads?search_job_id=${j.id}`} className={buttonVariants({ size: "sm" })}>
                       View leads
                     </Link>
+                  )}
+                  {(j.include_practices || j.include_solo) && j.to_enrich > 0 && !ACTIVE.includes(j.status) && (
+                    <Button variant="outline" size="sm" onClick={() => startFindEmails(j)}>
+                      Find emails ({j.to_enrich.toLocaleString()})
+                    </Button>
                   )}
                   {(j.status === "paused" || j.status === "failed") && (
                     <Button variant="outline" size="sm" onClick={() => act(resumeJob, j.id)}>
