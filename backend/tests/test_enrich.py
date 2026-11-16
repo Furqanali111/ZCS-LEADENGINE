@@ -337,13 +337,29 @@ def test_address_not_stored_twice_across_pages(db):
     assert emails.count("jane@lonestar.example") == 1
 
 
-def test_name_city_site_rejects_free_and_foreign_mail(db):
+def test_name_city_site_keeps_free_and_foreign_mail(db):  # owner decision: an extra address beats a missed one
     org = lead(db)
     home = "<p>Lone Star Family Care in Austin. info@lonestar.example other@gmail.com x@elsewhere.org</p>"
     enrich(db, org, pages={"https://lonestar.example/": home})
     db.refresh(org)
     assert org.website_evidence["check"] == "name_city"
-    assert {c.email for c in web_contacts(db, org)} == {"info@lonestar.example"}
+    assert {c.email for c in web_contacts(db, org)} == {"info@lonestar.example", "other@gmail.com", "x@elsewhere.org"}
+
+
+def test_email_naming_the_authorized_official_becomes_a_decision_maker(db):
+    org = lead(db)  # the lead's authorized official is Ann Boss, Admin
+    home = "<p>Lone Star Family Care in Austin. info@lonestar.example annboss@lonestar.example</p>"
+    enrich(db, org, pages={"https://lonestar.example/": home})
+    rows = {(c.role, c.first_name, c.title, c.email) for c in web_contacts(db, org)}
+    assert ("staff", "Ann", "Admin", "annboss@lonestar.example") in rows
+    assert ("general", "", None, "info@lonestar.example") in rows
+
+
+def test_contact_page_is_tried_when_home_has_no_links(db):
+    org = lead(db)
+    home = "<p>Lone Star Family Care in Austin.</p>"
+    enrich(db, org, pages={"https://lonestar.example/": home, "https://lonestar.example/contact": "<p>hi@lonestar.example</p>"})
+    assert {c.email for c in web_contacts(db, org)} == {"hi@lonestar.example"}
 
 
 def test_mid_lead_extra_page_failure_keeps_the_lead(db, session_factory):
