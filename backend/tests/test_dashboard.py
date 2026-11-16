@@ -133,45 +133,53 @@ def test_dashboard_recent_jobs_newest_first_max_5_and_empty(client, db):
     assert jobs[0]["sources"] == ["nppes"] and jobs[0]["status"] == "queued" and jobs[0]["counters"] == {}
 
 
-def test_dashboard_team_activity_today_per_person(client, db):
-    o = org(db, 1)
+def test_dashboard_team_activity_today_counts_each_lead_once(client, db):
+    a, b, c = org(db, 1), org(db, 2), org(db, 3)
     now = datetime.now(timezone.utc)
 
-    def add(type, actor, days_ago=0):
+    def add(o, type, actor, days_ago=0):
         db.add(LeadActivity(organization_id=o.id, type=type, summary=None if type == "status_change" else "x",
                             to_status="called" if type == "status_change" else None, actor=actor,
                             occurred_at=now - timedelta(days=days_ago)))
 
     for _ in range(3):
-        add("call", "Usman")
-    add("call", "usman")  # same person, other casing
-    add("email", "Usman")
-    add("call", "Michael")
-    add("status_change", "Michael")
-    add("call", "Michael", days_ago=2)  # not today
-    add("note", "Michael")  # not counted
+        add(a, "call", "Usman")  # three calls to one lead: one lead called
+    add(b, "call", "usman")  # same person, other casing
+    add(a, "email", "Usman")
+    add(a, "email", "Usman")
+    add(c, "call", "Michael")
+    add(c, "status_change", "Michael")
+    add(c, "status_change", "Michael")  # same lead moved again: still one
+    add(a, "call", "Michael", days_ago=2)  # not today
+    add(a, "note", "Michael")  # not counted
+    db.add(LeadActivity(organization_id=b.id, type="status_change", from_status="new", to_status="email_sent", actor="Usman", occurred_at=now))
+    db.add(LeadActivity(organization_id=c.id, type="note", summary="Email marked as sent", actor="Usman", occurred_at=now))  # the checkbox
     db.commit()
     team = {r["name"].lower(): r for r in stats(client).json()["team_today"]}
-    assert (team["usman"]["calls"], team["usman"]["emails"]) == (4, 1)
+    assert (team["usman"]["calls"], team["usman"]["emails"]) == (2, 3)  # logged email on a, status on b, checkbox on c
     assert (team["michael"]["calls"], team["michael"]["status_changes"]) == (1, 1) and len(team) == 2
 
 
 def test_dashboard_team_activity_lists_what_each_person_moved_today(client, db):
-    o = org(db, 1)
+    a, b, c, d = org(db, 1), org(db, 2), org(db, 3), org(db, 4)
     now = datetime.now(timezone.utc)
 
-    def move(actor, frm, to, days_ago=0):
+    def move(o, actor, frm, to, minutes=0, days_ago=0):
         db.add(LeadActivity(organization_id=o.id, type="status_change", from_status=frm, to_status=to, actor=actor,
-                            occurred_at=now - timedelta(days=days_ago)))
+                            occurred_at=now - timedelta(days=days_ago, minutes=minutes)))
 
-    move("Usman", "new", "called")
-    move("usman", "new", "called")  # same person, other casing
-    move("Usman", "called", "follow_up_required")
-    move("Michael", "new", "interested")
-    move("Michael", "new", "called", days_ago=2)  # not today
+    move(a, "Usman", "new", "called")
+    move(b, "usman", "new", "called")  # same person, other casing
+    # One lead moved three times today counts once, as where it started and where it ended.
+    move(c, "Usman", "new", "follow_up_required", minutes=30)
+    move(c, "Usman", "follow_up_required", "called", minutes=20)
+    move(c, "Usman", "called", "not_interested", minutes=10)
+    move(d, "Michael", "new", "interested")
+    move(d, "Michael", "new", "called", days_ago=2)  # not today
     db.commit()
     team = {r["name"].lower(): r for r in stats(client).json()["team_today"]}
-    assert team["usman"]["changes"] == [{"from": "new", "to": "called", "count": 2}, {"from": "called", "to": "follow_up_required", "count": 1}]
+    assert team["usman"]["status_changes"] == 3
+    assert team["usman"]["changes"] == [{"from": "new", "to": "called", "count": 2}, {"from": "new", "to": "not_interested", "count": 1}]
     assert team["michael"]["changes"] == [{"from": "new", "to": "interested", "count": 1}]
 
 
