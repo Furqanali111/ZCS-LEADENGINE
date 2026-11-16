@@ -3,7 +3,7 @@ import logging
 import re
 from collections.abc import Callable
 from datetime import datetime, timezone
-from urllib.parse import urlsplit
+from urllib.parse import urljoin, urlsplit
 from uuid import UUID
 
 from sqlalchemy import delete, select
@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.models import Contact, Location, Organization, SearchJob, SearchJobLead
 from app.services.leads import rescore_org
 from app.services.suppression import suppressed_emails
-from app.services.verify import (blocked_host, candidate_roots, extract_emails, extract_people, page_links,
+from app.services.verify import (FALLBACK_PATHS, blocked_host, candidate_roots, extract_emails, extract_people, page_links,
                                  page_text, registrable_domain, relevant_links, verify_website)
 from app.sources.brave import SearchError
 from app.sources.web import FetchFailed, Page
@@ -70,8 +70,9 @@ def enrich_lead(session: Session, org: Organization, *, search: Callable[[str], 
         home, text, check = accepted
         parts = urlsplit(home.url)
         site = registrable_domain(parts.hostname or "")
-        pages = [(home, text, check == "phone")]
-        for url in relevant_links(page_links(home.html, home.url), site):
+        pages = [(home, text)]
+        links = relevant_links(page_links(home.html, home.url), site) or [urljoin(home.url, p) for p in FALLBACK_PATHS]
+        for url in links:
             if url == home.url:
                 continue
             try:
@@ -80,28 +81,31 @@ def enrich_lead(session: Session, org: Organization, *, search: Callable[[str], 
                 continue
             if extra is not None:
                 t = page_text(extra.html)
-                pages.append((extra, t, verify_website(t, phones=phones, name=org.name, city=org.city) == "phone"))
+                pages.append((extra, t))
         org.website = f"{parts.scheme}://{parts.netloc}/"
         org.website_evidence = {"page_url": home.url, "check": check, "checked_at": stamp.isoformat()}
         org.enrichment_status = "enriched"
         counters["websites_found"] += 1
-        _store_contacts(session, org, pages, site, stamp, counters)
+        _store_contacts(session, org, pages, stamp, counters)
     org.enriched_at = stamp
     rescore_org(session, org)
     return org.enrichment_status
 
 
 def _token_match(email: str, first: str, last: str) -> bool:
-    tokens = set(re.split(r"[._\-+\d]+", email.partition("@")[0].lower()))
-    return any(len(w) >= 3 and w.lower() in tokens for w in (first, last))
+    local = email.partition("@")[0].lower()
+    tokens = set(re.split(r"[._\-+\d]+", local))
+    if any(len(w) >= 3 and w.lower() in tokens for w in (first, last)):
+        return True
+    f, l = first.lower(), last.lower()  # joined forms: annboss, jsmith, johns
+    return bool(f and l) and re.sub(r"[._\-+\d]", "", local) in {f + l, l + f, f[0] + l, f + l[0], l + f[0]}
 
 
-def _store_contacts(session: Session, org: Organization, pages: list[tuple[Page, str, bool]], site: str,
-                    stamp: datetime, counters: dict) -> None:
+def _store_contacts(session: Session, org: Organization, pages: list[tuple[Page, str]], stamp: datetime, counters: dict) -> None:
     people: dict[tuple[str, str], dict] = {}  # first page wins
     found: dict[str, dict] = {}  # one row per address per lead, first page wins
-    for page, text, verified in pages:
-        hits = extract_emails(page.html, text, site_domain=site, phone_verified=verified)
+    for page, text in pages:
+        hits = extract_emails(page.html, text)
         blocked = suppressed_emails(session, {h.email for h in hits})
         base = {"organization_id": org.id, "source_key": SOURCE_KEY, "source_url": page.url, "collected_at": stamp}
         for p in extract_people(text):
@@ -111,12 +115,20 @@ def _store_contacts(session: Session, org: Organization, pages: list[tuple[Page,
             if h.email not in blocked:
                 found.setdefault(h.email, base)
     rows = list(people.values())
+    # The NPI authorized official is often the owner or administrator: an address that names them is a decision-maker's.
+    officials = [o for o in session.execute(select(Contact.first_name, Contact.last_name, Contact.title).where(
+        Contact.organization_id == org.id, Contact.role == "authorized_official")) if (o.first_name, o.last_name) not in people]
     for email, base in found.items():
         # an address is attached only when its local part names the person; otherwise it is a general contact
         owner = next((r for r in rows if r["role"] == "staff" and "email" not in r
                       and _token_match(email, r["first_name"], r["last_name"])), None)
+        official = None if owner else next((o for o in officials if _token_match(email, o.first_name or "", o.last_name or "")), None)
         if owner:
             owner.update(email=email, email_status="found_on_page")
+        elif official:
+            officials.remove(official)
+            rows.append({**base, "role": "staff", "first_name": official.first_name, "last_name": official.last_name,
+                         "title": official.title, "email": email, "email_status": "found_on_page"})
         else:
             rows.append({**base, "role": "general", "first_name": "", "last_name": email, "title": None,
                          "email": email, "email_status": "found_on_page"})

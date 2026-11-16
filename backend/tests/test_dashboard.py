@@ -164,16 +164,16 @@ def test_dashboard_team_activity_lists_what_each_person_moved_today(client, db):
     a, b, c, d = org(db, 1), org(db, 2), org(db, 3), org(db, 4)
     now = datetime.now(timezone.utc)
 
-    def move(o, actor, frm, to, minutes=0, days_ago=0):
+    def move(o, actor, frm, to, seconds=0, days_ago=0):
         db.add(LeadActivity(organization_id=o.id, type="status_change", from_status=frm, to_status=to, actor=actor,
-                            occurred_at=now - timedelta(days=days_ago, minutes=minutes)))
+                            occurred_at=now - timedelta(days=days_ago, seconds=seconds)))
 
     move(a, "Usman", "new", "called")
     move(b, "usman", "new", "called")  # same person, other casing
     # One lead moved three times today counts once, as where it started and where it ended.
-    move(c, "Usman", "new", "follow_up_required", minutes=30)
-    move(c, "Usman", "follow_up_required", "called", minutes=20)
-    move(c, "Usman", "called", "not_interested", minutes=10)
+    move(c, "Usman", "new", "follow_up_required", seconds=3)
+    move(c, "Usman", "follow_up_required", "called", seconds=2)
+    move(c, "Usman", "called", "not_interested", seconds=1)
     move(d, "Michael", "new", "interested")
     move(d, "Michael", "new", "called", days_ago=2)  # not today
     db.commit()

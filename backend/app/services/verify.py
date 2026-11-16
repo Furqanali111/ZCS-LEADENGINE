@@ -3,6 +3,7 @@
 import ipaddress
 import re
 from dataclasses import dataclass
+from html import unescape
 from html.parser import HTMLParser
 from urllib.parse import urljoin, urlsplit
 
@@ -17,7 +18,8 @@ BLOCKED_DOMAINS = frozenset(
 )  # any .gov host is blocked separately
 
 MAX_CHARS = 2_000_000  # shortcut: longer inputs are truncated, not a real practice page
-LINK_WORDS = ("contact", "about", "team", "staff", "provider", "doctor", "physician", "our-team", "leadership")
+LINK_WORDS = ("contact", "about", "team", "staff", "provider", "doctor", "physician", "leadership", "meet", "location", "management", "who-we-are")
+FALLBACK_PATHS = ("contact", "contact-us", "about", "about-us")  # tried when the home page links to none of the above
 BAD_EMAIL_ENDINGS = (".png", ".jpg", ".gif", ".svg", ".webp", ".pdf")
 NAME_SUFFIXES = {"pllc", "llc", "inc", "pc", "dds"}
 SKIP_TAGS = {"script", "style", "noscript", "template", "head"}
@@ -160,7 +162,8 @@ def page_links(html: str, base_url: str) -> list[tuple[str, str]]:
     return out
 
 
-def relevant_links(links: list[tuple[str, str]], site_domain: str, limit: int = 4) -> list[str]:
+def relevant_links(links: list[tuple[str, str]], site_domain: str, limit: int = 6) -> list[str]:
+    """Contact pages first (the emails live there), then about, team and staff pages, in page order."""
     out: list[str] = []
     for url, text in links:
         try:
@@ -172,9 +175,7 @@ def relevant_links(links: list[tuple[str, str]], site_domain: str, limit: int = 
         hay = f"{text} {parts.path}".lower()
         if any(w in hay for w in LINK_WORDS) and url not in out:
             out.append(url)
-            if len(out) >= limit:
-                break
-    return out
+    return sorted(out, key=lambda u: "contact" not in u.lower())[:limit]
 
 
 # 10 digits, optionally with a leading 1, never touching other digits.
@@ -214,6 +215,22 @@ class EmailHit:
     email: str
 
 
+_CF = re.compile(r'data-cfemail="([0-9a-fA-F]{4,})"|email-protection#([0-9a-fA-F]{4,})')
+_AT = re.compile(r"\s*[\[({]\s*at\s*[\])}]\s*", re.I)
+_DOT = re.compile(r"\s*[\[({]\s*dot\s*[\])}]\s*", re.I)
+JUNK_LOCALS = frozenset({"noreply", "no-reply", "donotreply", "do-not-reply"})
+JUNK_DOMAINS = frozenset({"example.com", "domain.com", "yourdomain.com", "email.com", "sentry.io", "wixpress.com", "sentry-next.wixpress.com"})
+
+
+def _cf_decode(h: str) -> str:
+    """Cloudflare "email protection": the first hex byte is an XOR key for the rest."""
+    try:
+        key = int(h[:2], 16)
+        return "".join(chr(int(h[i:i + 2], 16) ^ key) for i in range(2, len(h) - 1, 2))
+    except ValueError:
+        return ""
+
+
 EMAIL_SCAN_CHARS = 200_000
 _LOCAL_CHARS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._%+-")
 _DOMAIN = re.compile(r"[A-Za-z0-9\-]+(?:\.[A-Za-z0-9\-]+)+")
@@ -239,9 +256,13 @@ _GLUED_DIGITS = re.compile(r"\d{7,}[a-z]")
 _MAILTO = re.compile(r"mailto:([^\"'<>\s]*)", re.I)
 
 
-def extract_emails(html: str, text: str, *, site_domain: str, phone_verified: bool) -> list[EmailHit]:
-    html, text = (html or "")[:EMAIL_SCAN_CHARS], (text or "")[:EMAIL_SCAN_CHARS]
+def extract_emails(html: str, text: str) -> list[EmailHit]:
+    """Every well-formed address on a page of a verified practice site, on any domain: the owner prefers an extra
+    address to a missed one. Also decodes Cloudflare-protected, "[at]/[dot]" and entity-encoded addresses."""
+    html, text = unescape((html or "")[:EMAIL_SCAN_CHARS]), (text or "")[:EMAIL_SCAN_CHARS]
+    text = _DOT.sub(".", _AT.sub("@", text))
     found = [m for h in _MAILTO.findall(html) for m in _find_emails(h.split("?")[0])]
+    found += [m for a, b in _CF.findall(html) for m in _find_emails(_cf_decode(a or b))]
     found += _find_emails(text)
     out: list[EmailHit] = []
     seen: set[str] = set()
@@ -250,9 +271,7 @@ def extract_emails(html: str, text: str, *, site_domain: str, phone_verified: bo
         local, _, domain = email.partition("@")
         if not _EMAIL_OK.fullmatch(email) or _GLUED_DIGITS.match(local):
             continue
-        if email in seen or email.endswith(BAD_EMAIL_ENDINGS):
-            continue
-        if not (phone_verified or registrable_domain(domain) == site_domain):
+        if email in seen or email.endswith(BAD_EMAIL_ENDINGS) or local in JUNK_LOCALS or domain in JUNK_DOMAINS:
             continue
         seen.add(email)
         out.append(EmailHit(email))

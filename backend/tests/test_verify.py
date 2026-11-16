@@ -71,22 +71,24 @@ def test_page_links_and_relevant_links():
     links = v.page_links(fx("practice_home.html"), "https://www.sunrisefm.com/")
     assert ("https://www.sunrisefm.com/contact-us", "Contact") in links
     rel = v.relevant_links(links, "sunrisefm.com")
-    assert rel == [
-        "https://www.sunrisefm.com/about",
+    assert rel == [  # contact first, the rest in page order
         "https://www.sunrisefm.com/contact-us",
+        "https://www.sunrisefm.com/about",
         "https://www.sunrisefm.com/our-team",
     ]
     other = [("https://evil.com/contact", "Contact")]
     assert v.relevant_links(other, "sunrisefm.com") == []
     many = [(f"https://s.com/team{i}", "") for i in range(9)]
-    assert len(v.relevant_links(many, "s.com")) == 4
+    assert len(v.relevant_links(many, "s.com")) == 6
+    late = [(f"https://s.com/team{i}", "") for i in range(8)] + [("https://s.com/contact", "Contact")]
+    assert v.relevant_links(late, "s.com")[0] == "https://s.com/contact"
 
 
 def test_malformed_html_does_not_raise():
     h = fx("malformed.html")
     assert isinstance(v.page_text(h), str)
     assert isinstance(v.page_links(h, "https://a.com/"), list)
-    assert isinstance(v.extract_emails(h, v.page_text(h), site_domain="y.com", phone_verified=False), list)
+    assert isinstance(v.extract_emails(h, v.page_text(h)), list)
     for s in ["", "<", "<a href=", "<<<>>>", "&#99999999999;"]:
         v.page_text(s), v.page_links(s, "https://a.com"), v.extract_people(s)
 
@@ -95,42 +97,45 @@ def test_bytes_garbage_text():
     garbage = bytes(range(256)).decode("latin-1") * 50 + "\x00�"
     v.page_text(garbage)
     assert v.verify_website(garbage, phones=["8135550142"], name="X Y Z", city="A") is None
-    assert v.extract_emails(garbage, garbage, site_domain="a.com", phone_verified=True) == []
+    assert v.extract_emails(garbage, garbage) == []
     assert v.extract_people(garbage) == []
     v.extract_people("A " * 200000)
 
 
 def test_email_lookalikes():
     html = fx("practice_contact.html")
-    hits = v.extract_emails(html, v.page_text(html), site_domain="sunrisefm.com", phone_verified=False)
-    assert [h.email for h in hits] == ["info@sunrisefm.com", "billing@sunrisefm.com"]
-    assert v.extract_emails("", "logo@2x.png A@B.com.", site_domain="b.com", phone_verified=False)[0].email == "a@b.com"
-    hits = v.extract_emails('<a href="mailto:a@b.com?subject=x">x</a>', "", site_domain="b.com", phone_verified=False)
+    hits = v.extract_emails(html, v.page_text(html))
+    assert [h.email for h in hits] == ["info@sunrisefm.com", "billing@sunrisefm.com", "someone@otherdomain.org"]
+    assert v.extract_emails("", "logo@2x.png A@B.com.")[0].email == "a@b.com"
+    hits = v.extract_emails('<a href="mailto:a@b.com?subject=x">x</a>', "")
     assert [h.email for h in hits] == ["a@b.com"]
-    assert v.extract_emails("", "x@b.com.png y@b.com.pdf", site_domain="b.com", phone_verified=True) == []
+    assert v.extract_emails("", "x@b.com.png y@b.com.pdf") == []
 
 
-def test_email_foreign_domain_needs_phone_verified():
+def test_email_foreign_domain_is_kept():
     html = fx("practice_contact.html")
-    text = v.page_text(html)
-    off = [h.email for h in v.extract_emails(html, text, site_domain="sunrisefm.com", phone_verified=False)]
-    on = [h.email for h in v.extract_emails(html, text, site_domain="sunrisefm.com", phone_verified=True)]
-    assert "someone@otherdomain.org" not in off and "someone@otherdomain.org" in on
+    assert "someone@otherdomain.org" in [h.email for h in v.extract_emails(html, v.page_text(html))]
 
 
-def test_email_not_decoded_or_built():
-    assert v.extract_emails("", "info [at] a.com john(at)a.com", site_domain="a.com", phone_verified=True) == []
+def test_email_decoded_but_never_built():
+    assert [h.email for h in v.extract_emails("", "info [at] a [dot] com john(at)a.com")] == ["info@a.com", "john@a.com"]
+    assert [h.email for h in v.extract_emails("<a href=\"mailto:x&#64;a.com\">x</a>", "")] == ["x@a.com"]
+    key = 0x2A  # Cloudflare email protection: first byte is the XOR key
+    hexed = f"{key:02x}" + "".join(f"{ord(c) ^ key:02x}" for c in "jane@a.com")
+    assert [h.email for h in v.extract_emails(f'<a class="__cf_email__" data-cfemail="{hexed}">[email protected]</a>', "")] == ["jane@a.com"]
+    assert v.extract_emails("", "noreply@a.com you@domain.com") == []  # system and placeholder addresses
+    assert v.extract_emails("", "info a.com") == []  # nothing is guessed
 
 
 def test_long_run_without_at_is_linear():
     import time
     t0 = time.perf_counter()
-    assert v.extract_emails("", "a" * 1_000_000, site_domain="a.com", phone_verified=True) == []
+    assert v.extract_emails("", "a" * 1_000_000) == []
     assert time.perf_counter() - t0 < 1
 
 
 def test_email_found_after_junk():
-    hits = v.extract_emails("", "x" * 5000 + " jane@a.com", site_domain="a.com", phone_verified=False)
+    hits = v.extract_emails("", "x" * 5000 + " jane@a.com")
     assert [h.email for h in hits] == ["jane@a.com"]
 
 
@@ -190,8 +195,8 @@ def test_title_must_be_adjacent_to_the_name():
 
 def test_email_rejects_instead_of_repairing():
     for bad in ["_a@b.com", "8135550142info@b.com", ".a@b.com", "a@b.c", "a@b.c1", "a@-b.com"]:
-        assert v.extract_emails("", f"mail {bad} now", site_domain="b.com", phone_verified=True) == [], bad
-    assert [h.email for h in v.extract_emails("", "(info@b.com)", site_domain="b.com", phone_verified=False)] == ["info@b.com"]
+        assert v.extract_emails("", f"mail {bad} now") == [], bad
+    assert [h.email for h in v.extract_emails("", "(info@b.com)")] == ["info@b.com"]
 
 
 def test_non_string_items_are_skipped():
