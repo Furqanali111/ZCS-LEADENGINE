@@ -204,3 +204,25 @@ def test_dashboard_status_moved_to_called_counts_as_called(client, db):
     db.commit()
     row = stats(client).json()["team_today"][0]
     assert (row["calls"], row["status_changes"]) == (2, 3)
+
+
+def test_dashboard_team_ranges(client, db):
+    a, b, c, d = org(db, 1), org(db, 2), org(db, 3), org(db, 4)
+    now = datetime.now(timezone.utc)
+
+    def call(o, hours_ago):
+        db.add(LeadActivity(organization_id=o.id, type="call", summary="x", actor="Vanya", occurred_at=now - timedelta(hours=hours_ago)))
+
+    call(a, 1)    # inside every window
+    call(b, 30)   # 24h no, 48h yes
+    call(c, 100)  # 7d yes, 48h no
+    call(d, 24 * 20)  # 30d only
+    db.commit()
+
+    def calls(r):
+        rows = client.get("/api/dashboard/team", params={"range": r}).json()
+        return rows[0]["calls"] if rows else 0
+
+    assert [calls(r) for r in ("24h", "48h", "7d", "30d")] == [1, 2, 3, 4]
+    assert client.get("/api/dashboard/team", params={"range": "year"}).status_code == 422
+    assert client.get("/api/dashboard/team").json() == client.get("/api/dashboard/team", params={"range": "today"}).json()

@@ -328,7 +328,7 @@ export type DashboardStats = {
   critical_high: number;
   follow_ups_due: number;
   status_changes_today: number;
-  team_today: { name: string; calls: number; emails: number; status_changes: number; changes: { from: string | null; to: string | null; count: number }[] }[];
+  team_today: TeamRow[];
   meetings_scheduled: number;
   converted: number;
   by_state: CountItem[];
@@ -337,6 +337,10 @@ export type DashboardStats = {
   recent_jobs: Job[];
   conversion: { converted: number; contacted: number; rate: number | null };
 };
+
+export type TeamRow = { name: string; calls: number; emails: number; status_changes: number; changes: { from: string | null; to: string | null; count: number }[] };
+export type TeamRange = "today" | "yesterday" | "24h" | "48h" | "7d" | "30d";
+export const getTeam = (range: TeamRange) => json<TeamRow[]>(`/api/dashboard/team?range=${range}`);
 
 export function getDashboard(range: { from?: string; to?: string } = {}) {
   const qs = new URLSearchParams();
