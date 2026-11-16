@@ -105,6 +105,7 @@ class JobOut(BaseModel):
     created_at: datetime
     started_at: datetime | None
     finished_at: datetime | None
+    to_enrich: int = 0  # leads of this search not yet searched for websites and emails (set by the list route)
 
 
 class LeadFilters(BaseModel):

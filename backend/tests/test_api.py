@@ -591,8 +591,10 @@ def test_create_search_enrich_needs_sources_and_key(client, db, monkeypatch):
     db.execute(__import__("sqlalchemy").text("UPDATE source_configs SET status='available' WHERE key='practice_websites'"))
     db.commit()
     monkeypatch.setattr(get_settings(), "brave_api_key", None)
-    r = client.post("/api/search", json=body)
-    assert r.status_code == 422 and r.json()["error"]["code"] == "missing_api_key"
+    r = client.post("/api/search", json=body)  # no key: DuckDuckGo is the provider, and its source is not available
+    assert r.status_code == 422 and "duckduckgo_search" in r.json()["error"]["message"]
+    add_source(db, "duckduckgo_search", "DDG")
+    assert client.post("/api/search", json=body).status_code == 201
     monkeypatch.setattr(get_settings(), "brave_api_key", "k")
     r = client.post("/api/search", json=body)
     assert r.status_code == 201 and r.json()["enrich"] is True
@@ -633,3 +635,34 @@ def test_leads_sort_by_email_and_website(client, db):
     names = lambda q: [i["name"] for i in client.get(f"/api/leads?{q}").json()["items"]]
     assert names("sort=email&order=asc") == ["B", "A", "C"]
     assert names("sort=website&order=desc") == ["A", "B", "C"]
+
+
+def test_find_emails_for_a_search(client, db, monkeypatch):
+    from app.config import get_settings
+    from app.models import SearchJob, SearchJobLead
+
+    monkeypatch.setattr(get_settings(), "tavily_api_key", None)
+    monkeypatch.setattr(get_settings(), "brave_api_key", None)  # no keys: DuckDuckGo
+    src = add_job(db, "completed")
+    a, b, c = add_lead(db, "1000000001", "A"), add_lead(db, "1000000002", "B"), add_lead(db, "1000000003", "C")
+    b.enrichment_status, c.enrichment_status = "enriched", "failed"  # B is done, C failed last time
+    db.add_all(SearchJobLead(search_job_id=src.id, organization_id=o.id, was_new=True) for o in (a, b, c))
+    db.commit()
+    listed = {j["id"]: j for j in client.get("/api/search").json()}
+    assert listed[str(src.id)]["to_enrich"] == 2
+    assert client.post(f"/api/search/{src.id}/enrich-emails").json()["error"]["code"] == "source_not_available"
+    add_source(db, "duckduckgo_search", "DDG")
+    add_source(db, "practice_websites", "Sites")
+    r = client.post(f"/api/search/{src.id}/enrich-emails")
+    assert r.status_code == 201 and r.json()["enrich"] and r.json()["target_count"] == 2
+    job = db.get(SearchJob, r.json()["id"])
+    linked = {l.organization_id for l in db.query(SearchJobLead).filter_by(search_job_id=job.id)}
+    assert linked == {a.id, c.id} and not job.include_practices and not job.include_solo
+    again = client.post(f"/api/search/{src.id}/enrich-emails")  # same leads, job still queued
+    assert again.status_code == 409 and again.json()["error"]["code"] == "already_running"
+    job.status = "completed"
+    a.enrichment_status = c.enrichment_status = "enriched"
+    db.commit()
+    done = client.post(f"/api/search/{src.id}/enrich-emails")
+    assert done.status_code == 409 and done.json()["error"]["code"] == "nothing_to_enrich"
+    assert client.post("/api/search/00000000-0000-0000-0000-000000000000/enrich-emails").status_code == 404

@@ -314,12 +314,10 @@ def run_job(session_factory, job_id: UUID, *, fetch=fetch_page, sleep=time.sleep
         if source != "available":
             return _finish(session, job, "failed", "Source npi_registry is not available")
         if job.enrich:
-            search_key, _, api_key = search_provider(settings)
+            search_key = search_provider(settings)[0]
             off = [k for k in (search_key, "practice_websites") if session.scalar(select(SourceConfig.status).where(SourceConfig.key == k)) != "available"]
             if off:
                 return _finish(session, job, "failed", f"Source {', '.join(off)} is not available")
-            if enrich_deps is None and not api_key:
-                return _finish(session, job, "failed", "TAVILY_API_KEY or BRAVE_API_KEY is not set")
         if job.cancel_requested:
             return _finish(session, job, "cancelled")
         job.status, job.error, job.finished_at = "running", None, None

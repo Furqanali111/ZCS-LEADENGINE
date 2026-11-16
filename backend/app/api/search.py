@@ -2,13 +2,13 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from sqlalchemy import exists, func, insert, literal, select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.db import get_session
 from app.errors import AppError
-from app.models import SearchJob, SearchProgress, SourceConfig
+from app.models import Organization, SearchJob, SearchJobLead, SearchProgress, SourceConfig
 from app.schemas import JobOut, ProgressOut, SearchCreate
 from app.services.search import progress_key
 from app.sources.provider import search_provider
@@ -35,20 +35,57 @@ def _save(session: Session, job: SearchJob) -> SearchJob:
 @router.post("", response_model=JobOut, status_code=201)
 def create_search(body: SearchCreate, session: Session = Depends(get_session)):
     available = set(session.scalars(select(SourceConfig.key).where(SourceConfig.status == "available")))
-    search_key, _, api_key = search_provider(get_settings())
+    search_key = search_provider(get_settings())[0]
     bad = [k for k in [*body.sources, *((search_key, "practice_websites") if body.enrich else ())] if k not in available]
     if bad:
         raise AppError(422, "source_not_available", f"Source not available: {', '.join(bad)}")
-    if body.enrich and not api_key:
-        raise AppError(422, "missing_api_key", "TAVILY_API_KEY or BRAVE_API_KEY is not set in the backend .env")
     job = SearchJob(**body.model_dump())
     session.add(job)
     return _save(session, job)
 
 
+@router.post("/{job_id}/enrich-emails", response_model=JobOut, status_code=201)
+def find_emails(job_id: str, session: Session = Depends(get_session)):
+    """Find websites and emails for the leads of a finished search that were not enriched yet, as a new job."""
+    src = _get_job(session, job_id)
+    search_key, _, _ = search_provider(get_settings())
+    available = set(session.scalars(select(SourceConfig.key).where(SourceConfig.status == "available")))
+    off = [k for k in (search_key, "practice_websites") if k not in available]
+    if off:
+        raise AppError(422, "source_not_available", f"Source not available: {', '.join(off)}")
+    todo = _to_enrich(src.id).subquery()
+    n = session.scalar(select(func.count()).select_from(todo))
+    if not n:
+        raise AppError(409, "nothing_to_enrich", "Every lead of this search already has its emails searched")
+    active = select(SearchJobLead.organization_id).join(SearchJob, SearchJob.id == SearchJobLead.search_job_id).where(
+        SearchJob.enrich.is_(True), SearchJob.include_practices.is_(False), SearchJob.include_solo.is_(False),
+        SearchJob.status.in_(("queued", "running")))
+    if session.scalar(select(exists().where(todo.c.organization_id.in_(active)))):
+        raise AppError(409, "already_running", "A Find emails job is already running for some of these leads")
+    job = SearchJob(specialty=f"Find emails: {src.specialty}", state=src.state, city=src.city, target_count=n, include_practices=False,
+                    include_solo=False, sources=["npi_registry"], enrich=True)
+    session.add(job)
+    session.flush()
+    session.execute(insert(SearchJobLead).from_select(
+        ["id", "search_job_id", "organization_id", "was_new"],  # id explicit: the Python-side default would repeat one uuid for every row
+        select(func.gen_random_uuid(), literal(job.id), todo.c.organization_id, literal(False))))
+    return _save(session, job)
+
+
+def _to_enrich(job_id):
+    """Leads of a search that enrichment has not covered yet (same rule as enrich_job_leads)."""
+    return select(SearchJobLead.organization_id).join(Organization, Organization.id == SearchJobLead.organization_id).where(
+        SearchJobLead.search_job_id == job_id, Organization.enrichment_status.in_(("not_run", "failed")))
+
+
 @router.get("", response_model=list[JobOut])
 def list_searches(session: Session = Depends(get_session)):
-    return session.scalars(select(SearchJob).order_by(SearchJob.created_at.desc()).limit(50)).all()
+    jobs = session.scalars(select(SearchJob).order_by(SearchJob.created_at.desc()).limit(50)).all()
+    left = dict(session.execute(
+        select(SearchJobLead.search_job_id, func.count()).join(Organization, Organization.id == SearchJobLead.organization_id)
+        .where(SearchJobLead.search_job_id.in_([j.id for j in jobs]), Organization.enrichment_status.in_(("not_run", "failed")))
+        .group_by(SearchJobLead.search_job_id)).all())
+    return [JobOut.model_validate(j).model_copy(update={"to_enrich": left.get(j.id, 0)}) for j in jobs]
 
 
 def _progress(session: Session, specialty: str, state: str, city: str | None, include_subparts: bool, include_hospitals: bool):
