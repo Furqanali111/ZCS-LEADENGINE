@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/page-header";
 import { ToneBadge } from "@/components/tone-badge";
 import { BarList } from "@/components/bar-list";
 import { MyDay } from "@/components/my-day";
+import { TeamActivity } from "@/components/team-activity";
 import { StatTile, StatTileSkeleton } from "@/components/stat-tile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -179,49 +180,7 @@ export default function DashboardPage() {
             <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">{stats.status_changes_today}</span>
           </div>
 
-          <section aria-labelledby="team-today" className={`${PANEL_CLASS} space-y-3`}>
-            <h2 id="team-today" className="text-sm font-semibold">
-              Team activity today
-            </h2>
-            {stats.team_today.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No calls, emails or status changes logged today yet.</p>
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-muted-foreground">
-                    <th scope="col" className="py-1 font-medium">Person</th>
-                    <th scope="col" className="py-1 text-right font-medium">Leads called</th>
-                    <th scope="col" className="py-1 text-right font-medium">Leads emailed</th>
-                    <th scope="col" className="py-1 text-right font-medium">Leads moved</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stats.team_today.map((r) => (
-                    <tr key={r.name} className="border-t">
-                      <th scope="row" className="py-1.5 text-left font-medium">
-                        {r.name}
-                        {r.changes.length > 0 && (
-                          <span className="mt-1 flex flex-wrap gap-1 font-normal">
-                            {r.changes.map((c) => (
-                              <span key={`${c.from}-${c.to}`} className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                                {c.from ? `${STATUS_LABELS[c.from] ?? c.from} to ` : "Set to "}
-                                {c.to ? (STATUS_LABELS[c.to] ?? c.to) : "none"}
-                                {c.count > 1 && ` x${c.count}`}
-                              </span>
-                            ))}
-                          </span>
-                        )}
-                      </th>
-                      <td className="py-1.5 text-right tabular-nums">{r.calls}</td>
-                      <td className="py-1.5 text-right tabular-nums">{r.emails}</td>
-                      <td className="py-1.5 text-right tabular-nums">{r.status_changes}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-            <p className="text-xs text-muted-foreground">Each lead counts once per person per day, however many times it was called or moved.</p>
-          </section>
+          <TeamActivity today={stats.team_today} />
 
           <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
             <StatTile tone="blue" Icon={Users} label="Total leads" href="/leads" value={stats.total} hint="In the system" />

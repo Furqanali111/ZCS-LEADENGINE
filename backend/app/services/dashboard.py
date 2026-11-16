@@ -22,23 +22,24 @@ def _json_list(col, limit: int | None = None):
     return select(func.coalesce(func.json_agg(aggregate_order_by(obj, t.c.count.desc(), t.c.key)), text("'[]'::json"))).scalar_subquery()
 
 
-def build_stats(session: Session, start: date, end: date, today: date) -> DashboardStats:
+TEAM_RANGES = {"today": None, "yesterday": None, "24h": 24, "48h": 48, "7d": 24 * 7, "30d": 24 * 30}
+
+
+def team_window(key: str, today: date) -> tuple[datetime, datetime]:
+    """Calendar days are local midnight to midnight; the rest roll back from now."""
+    day = datetime.combine(today, time.min).astimezone()
+    if key == "today":
+        return day, day + timedelta(days=1)
+    if key == "yesterday":
+        return day - timedelta(days=1), day
+    now = datetime.now(timezone.utc)
+    return now - timedelta(hours=TEAM_RANGES[key]), now + timedelta(minutes=1)
+
+
+def team_query(lo: datetime, hi: datetime):
+    """Scalar subquery: one row per salesperson with their activity between lo and hi."""
     O, A = Organization, LeadActivity
-    # The range covers whole days, both ends included (UTC).
-    lo = datetime.combine(start, time.min, tzinfo=timezone.utc)
-    hi = datetime.combine(end + timedelta(days=1), time.min, tzinfo=timezone.utc)
-    C = aliased(LeadActivity)
-    # Numerator is a subset of the denominator: converted in range AND contacted in range.
-    contact = exists().where(C.organization_id == A.organization_id, C.type.in_(CONTACT_TYPES),
-                             C.occurred_at >= lo, C.occurred_at < hi)
-    in_range = (A.occurred_at >= lo, A.occurred_at < hi)
-    converted = select(func.count(func.distinct(A.organization_id))).where(
-        A.type == "status_change", A.to_status == "converted", *in_range, contact).scalar_subquery()
-    contacted = select(func.count(func.distinct(A.organization_id))).where(A.type.in_(CONTACT_TYPES), *in_range).scalar_subquery()
-    day = datetime.combine(today, time.min).astimezone()  # local calendar day of the PC, as an aware datetime
-    changed_today = select(func.count(func.distinct(A.organization_id))).where(
-        A.type == "status_change", A.occurred_at >= day, A.occurred_at < day + timedelta(days=1)).scalar_subquery()
-    # Per salesperson, today only. Names are typed, so group ignoring case; no name means "Unknown".
+    # Per salesperson in the window. Names are typed, so group ignoring case; no name means "Unknown".
     who = func.lower(func.coalesce(A.actor, "Unknown"))
     # What each person moved today, as "from to" pairs with counts (jsonb so it can sit in the GROUP BY).
     # One lead counts once per person per day, however often its status changed: the pair is where it
@@ -48,7 +49,7 @@ def build_stats(session: Session, start: date, end: date, today: date) -> Dashbo
     per_lead = (select(bwho.label("w"),
                        func.array_agg(aggregate_order_by(B.from_status, B.occurred_at, B.id))[1].label("frm"),
                        func.array_agg(aggregate_order_by(B.to_status, B.occurred_at.desc(), B.id.desc()))[1].label("to"))
-                .where(B.type == "status_change", B.occurred_at >= day, B.occurred_at < day + timedelta(days=1))
+                .where(B.type == "status_change", B.occurred_at >= lo, B.occurred_at < hi)
                 .group_by(bwho, B.organization_id).subquery("per_lead"))
     pairs = (select(per_lead.c.w, per_lead.c.frm, per_lead.c.to, func.count().label("n"))
              .group_by(per_lead.c.w, per_lead.c.frm, per_lead.c.to).subquery("pairs"))
@@ -67,10 +68,30 @@ def build_stats(session: Session, start: date, end: date, today: date) -> Dashbo
                    func.count(func.distinct(A.organization_id)).filter(A.type == "status_change").label("status_changes"),
                    func.coalesce(chg.c.changes, text("'[]'::jsonb")).label("changes"))
             .select_from(A.__table__.outerjoin(chg, chg.c.w == who))
-            .where(A.type.in_(("call", "email", "status_change")) | ((A.type == "note") & (A.summary == "Email marked as sent")), A.occurred_at >= day, A.occurred_at < day + timedelta(days=1))
+            .where(A.type.in_(("call", "email", "status_change")) | ((A.type == "note") & (A.summary == "Email marked as sent")), A.occurred_at >= lo, A.occurred_at < hi)
             .group_by(who, chg.c.changes).subquery("team"))
     team_rows = select(func.coalesce(func.json_agg(aggregate_order_by(func.row_to_json(literal_column("team")), team.c.calls.desc(), team.c.name)),
                                      text("'[]'::json"))).select_from(team).scalar_subquery()
+    return team_rows
+
+
+def build_stats(session: Session, start: date, end: date, today: date) -> DashboardStats:
+    O, A = Organization, LeadActivity
+    # The range covers whole days, both ends included (UTC).
+    lo = datetime.combine(start, time.min, tzinfo=timezone.utc)
+    hi = datetime.combine(end + timedelta(days=1), time.min, tzinfo=timezone.utc)
+    C = aliased(LeadActivity)
+    # Numerator is a subset of the denominator: converted in range AND contacted in range.
+    contact = exists().where(C.organization_id == A.organization_id, C.type.in_(CONTACT_TYPES),
+                             C.occurred_at >= lo, C.occurred_at < hi)
+    in_range = (A.occurred_at >= lo, A.occurred_at < hi)
+    converted = select(func.count(func.distinct(A.organization_id))).where(
+        A.type == "status_change", A.to_status == "converted", *in_range, contact).scalar_subquery()
+    contacted = select(func.count(func.distinct(A.organization_id))).where(A.type.in_(CONTACT_TYPES), *in_range).scalar_subquery()
+    day = datetime.combine(today, time.min).astimezone()  # local calendar day of the PC, as an aware datetime
+    changed_today = select(func.count(func.distinct(A.organization_id))).where(
+        A.type == "status_change", A.occurred_at >= day, A.occurred_at < day + timedelta(days=1)).scalar_subquery()
+    team_rows = team_query(day, day + timedelta(days=1))
     J = aliased(SearchJob)
     recent = select(J).order_by(J.created_at.desc()).limit(5).subquery("recent")
     jobs = select(func.coalesce(func.json_agg(aggregate_order_by(func.row_to_json(literal_column("recent")), recent.c.created_at.desc())),
