@@ -41,18 +41,25 @@ def build_stats(session: Session, start: date, end: date, today: date) -> Dashbo
     # Per salesperson, today only. Names are typed, so group ignoring case; no name means "Unknown".
     who = func.lower(func.coalesce(A.actor, "Unknown"))
     # What each person moved today, as "from to" pairs with counts (jsonb so it can sit in the GROUP BY).
+    # One lead counts once per person per day, however often its status changed: the pair is where it
+    # started today and where it ended up.
     B = aliased(LeadActivity)
     bwho = func.lower(func.coalesce(B.actor, "Unknown"))  # one object, so SELECT and GROUP BY render the same expression
-    pairs = (select(bwho.label("w"), B.from_status.label("frm"), B.to_status.label("to"), func.count().label("n"))
-             .where(B.type == "status_change", B.occurred_at >= day, B.occurred_at < day + timedelta(days=1))
-             .group_by(bwho, B.from_status, B.to_status).subquery("pairs"))
+    per_lead = (select(bwho.label("w"),
+                       func.array_agg(aggregate_order_by(B.from_status, B.occurred_at, B.id))[1].label("frm"),
+                       func.array_agg(aggregate_order_by(B.to_status, B.occurred_at.desc(), B.id.desc()))[1].label("to"))
+                .where(B.type == "status_change", B.occurred_at >= day, B.occurred_at < day + timedelta(days=1))
+                .group_by(bwho, B.organization_id).subquery("per_lead"))
+    pairs = (select(per_lead.c.w, per_lead.c.frm, per_lead.c.to, func.count().label("n"))
+             .group_by(per_lead.c.w, per_lead.c.frm, per_lead.c.to).subquery("pairs"))
     chg = (select(pairs.c.w, func.jsonb_agg(aggregate_order_by(func.jsonb_build_object("from", pairs.c.frm, "to", pairs.c.to, "count", pairs.c.n),
                                                               pairs.c.n.desc(), pairs.c.to)).label("changes"))
            .group_by(pairs.c.w).subquery("chg"))
     team = (select(func.max(func.coalesce(A.actor, "Unknown")).label("name"),
-                   func.count().filter(A.type == "call").label("calls"),
-                   func.count().filter(A.type == "email").label("emails"),
-                   func.count().filter(A.type == "status_change").label("status_changes"),
+                   # Distinct leads, not log rows: three calls to one lead is one lead called.
+                   func.count(func.distinct(A.organization_id)).filter(A.type == "call").label("calls"),
+                   func.count(func.distinct(A.organization_id)).filter(A.type == "email").label("emails"),
+                   func.count(func.distinct(A.organization_id)).filter(A.type == "status_change").label("status_changes"),
                    func.coalesce(chg.c.changes, text("'[]'::jsonb")).label("changes"))
             .select_from(A.__table__.outerjoin(chg, chg.c.w == who))
             .where(A.type.in_(("call", "email", "status_change")), A.occurred_at >= day, A.occurred_at < day + timedelta(days=1))

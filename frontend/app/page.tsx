@@ -190,9 +190,9 @@ export default function DashboardPage() {
                 <thead>
                   <tr className="text-left text-muted-foreground">
                     <th scope="col" className="py-1 font-medium">Person</th>
-                    <th scope="col" className="py-1 text-right font-medium">Calls</th>
-                    <th scope="col" className="py-1 text-right font-medium">Emails</th>
-                    <th scope="col" className="py-1 text-right font-medium">Status changes</th>
+                    <th scope="col" className="py-1 text-right font-medium">Leads called</th>
+                    <th scope="col" className="py-1 text-right font-medium">Leads emailed</th>
+                    <th scope="col" className="py-1 text-right font-medium">Leads moved</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -220,7 +220,7 @@ export default function DashboardPage() {
                 </tbody>
               </table>
             )}
-            <p className="text-xs text-muted-foreground">Logged activity only, counted per UTC day.</p>
+            <p className="text-xs text-muted-foreground">Each lead counts once per person per day, however many times it was called or moved.</p>
           </section>
 
           <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
