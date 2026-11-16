@@ -153,9 +153,10 @@ def test_dashboard_team_activity_today_counts_each_lead_once(client, db):
     add(a, "call", "Michael", days_ago=2)  # not today
     add(a, "note", "Michael")  # not counted
     db.add(LeadActivity(organization_id=b.id, type="status_change", from_status="new", to_status="email_sent", actor="Usman", occurred_at=now))
+    db.add(LeadActivity(organization_id=c.id, type="note", summary="Email marked as sent", actor="Usman", occurred_at=now))  # the checkbox
     db.commit()
     team = {r["name"].lower(): r for r in stats(client).json()["team_today"]}
-    assert (team["usman"]["calls"], team["usman"]["emails"]) == (2, 2)  # a logged email on a, "Email sent" status on b
+    assert (team["usman"]["calls"], team["usman"]["emails"]) == (2, 3)  # logged email on a, status on b, checkbox on c
     assert (team["michael"]["calls"], team["michael"]["status_changes"]) == (1, 1) and len(team) == 2
 
 

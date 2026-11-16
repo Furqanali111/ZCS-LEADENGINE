@@ -58,13 +58,14 @@ def build_stats(session: Session, start: date, end: date, today: date) -> Dashbo
     team = (select(func.max(func.coalesce(A.actor, "Unknown")).label("name"),
                    # Distinct leads, not log rows: three calls to one lead is one lead called.
                    func.count(func.distinct(A.organization_id)).filter(A.type == "call").label("calls"),
-                   # An email counts when it was logged, or when the lead was moved to "Email sent" (a status change is not a log entry).
+                   # Emailed = a logged email, the "Email sent" checkbox ticked (a note, see api/leads.py), or a move to the "Email sent" status.
                    func.count(func.distinct(A.organization_id)).filter(
-                       (A.type == "email") | ((A.type == "status_change") & (A.to_status == "email_sent"))).label("emails"),
+                       (A.type == "email") | ((A.type == "note") & (A.summary == "Email marked as sent"))
+                       | ((A.type == "status_change") & (A.to_status == "email_sent"))).label("emails"),
                    func.count(func.distinct(A.organization_id)).filter(A.type == "status_change").label("status_changes"),
                    func.coalesce(chg.c.changes, text("'[]'::jsonb")).label("changes"))
             .select_from(A.__table__.outerjoin(chg, chg.c.w == who))
-            .where(A.type.in_(("call", "email", "status_change")), A.occurred_at >= day, A.occurred_at < day + timedelta(days=1))
+            .where(A.type.in_(("call", "email", "status_change")) | ((A.type == "note") & (A.summary == "Email marked as sent")), A.occurred_at >= day, A.occurred_at < day + timedelta(days=1))
             .group_by(who, chg.c.changes).subquery("team"))
     team_rows = select(func.coalesce(func.json_agg(aggregate_order_by(func.row_to_json(literal_column("team")), team.c.calls.desc(), team.c.name)),
                                      text("'[]'::json"))).select_from(team).scalar_subquery()
