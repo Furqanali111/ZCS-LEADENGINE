@@ -49,6 +49,15 @@ def test_same_database_guard_ignores_driver_and_query():
     assert not same_database(a, "postgresql://u:p@h:5432/other")
 
 
+def test_session_url_moves_transaction_port_to_session_port():
+    from app.config import Settings
+
+    s = Settings(database_url="postgresql+psycopg://u:p%40x@h:6543/postgres", _env_file=None)
+    assert s.session_database_url == "postgresql+psycopg://u:p%40x@h:5432/postgres"
+    s = Settings(database_url="postgresql+psycopg://u:p@h:5432/postgres", _env_file=None)
+    assert s.session_database_url == "postgresql+psycopg://u:p@h:5432/postgres"
+
+
 # ---- sources and search API ----
 
 BODY = {"specialty": "Internal Medicine", "state": "TX", "target_count": 50, "sources": ["npi_registry"]}

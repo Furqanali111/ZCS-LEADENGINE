@@ -58,7 +58,7 @@ def migrate() -> None:
 
     cfg = Config(str(BUNDLE / "alembic.ini"))
     cfg.set_main_option("script_location", str(BUNDLE / "migrations"))
-    engine = create_engine(get_settings().database_url)
+    engine = create_engine(get_settings().session_database_url)
     with engine.connect() as lock:
         lock.execute(text("SELECT pg_advisory_lock(:k)"), {"k": MIGRATION_LOCK})
         try:

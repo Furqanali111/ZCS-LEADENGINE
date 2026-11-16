@@ -10,7 +10,7 @@ target_metadata = Base.metadata
 
 def get_url() -> str:
     # `-x db_url=...` lets tests and dry runs target another database; never printed.
-    return context.get_x_argument(as_dictionary=True).get("db_url") or get_settings().database_url
+    return context.get_x_argument(as_dictionary=True).get("db_url") or get_settings().session_database_url
 
 
 def run_migrations_online() -> None:
