@@ -11,6 +11,7 @@ from app.errors import AppError
 from app.models import Organization, SearchJob, SearchJobLead, SearchProgress, SourceConfig
 from app.schemas import JobOut, ProgressOut, SearchCreate
 from app.services.search import progress_key
+from app.worker import HOST
 from app.sources.provider import search_provider
 
 router = APIRouter(prefix="/api/search")
@@ -39,7 +40,7 @@ def create_search(body: SearchCreate, session: Session = Depends(get_session)):
     bad = [k for k in [*body.sources, *((search_key, "practice_websites") if body.enrich else ())] if k not in available]
     if bad:
         raise AppError(422, "source_not_available", f"Source not available: {', '.join(bad)}")
-    job = SearchJob(**body.model_dump())
+    job = SearchJob(**body.model_dump(), host=HOST)
     session.add(job)
     return _save(session, job)
 
@@ -63,7 +64,7 @@ def find_emails(job_id: str, session: Session = Depends(get_session)):
     if session.scalar(select(exists().where(todo.c.organization_id.in_(active)))):
         raise AppError(409, "already_running", "A Find emails job is already running for some of these leads")
     job = SearchJob(specialty=f"Find emails: {src.specialty}", state=src.state, city=src.city, target_count=n, include_practices=False,
-                    include_solo=False, sources=["npi_registry"], enrich=True)
+                    include_solo=False, sources=["npi_registry"], enrich=True, host=HOST)
     session.add(job)
     session.flush()
     session.execute(insert(SearchJobLead).from_select(
@@ -134,4 +135,5 @@ def resume_search(job_id: str, session: Session = Depends(get_session)):
     if job.status not in ("paused", "failed"):
         raise AppError(409, "invalid_job_state", f"Cannot resume a {job.status} job")
     job.status, job.error, job.cancel_requested = "queued", None, False
+    job.host = HOST  # resuming from this computer moves the job here: the one it ran on may be closed
     return _save(session, job)

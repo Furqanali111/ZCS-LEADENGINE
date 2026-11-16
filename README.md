@@ -120,6 +120,7 @@ On a lead page, the call-result buttons (No answer, Spoke call back, Interested,
 | `GET /api/owners` | Names that currently own a lead |
 | `GET /api/dashboard/team?range=` | Team activity per person for `today`, `yesterday`, `24h`, `48h`, `7d` or `30d` (one lead counts once per person). `today` is also in `GET /api/dashboard/stats` as `team_today` |
 | `POST /api/search/{id}/enrich-emails` | Find websites and emails for the leads of a finished search that were not enriched yet (new job in the Searches list). `GET /api/search` now returns `to_enrich`, the leads left per search |
+| Job host | Each search job stores the computer that started it (`host`) and only that computer's worker runs it, so a teammate's open app never takes your job. Resuming a paused job moves it to the computer that resumed it. Older jobs have no host and any worker may run them |
 | Search provider | With no `TAVILY_API_KEY` or `BRAVE_API_KEY` set, enrichment uses DuckDuckGo (no key). Its source `duckduckgo_search` must be `available` |
 | `GET /api/leads/{id}/related` | Up to 20 other leads sharing a phone, normalized name, parent organization, authorized official or website domain, with a `reasons` list each (computed live, no table) |
 | `GET /api/leads` | New filter `owner` (a name, or `none` for unclaimed) |

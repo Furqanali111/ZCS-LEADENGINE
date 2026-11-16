@@ -140,6 +140,7 @@ export function JobList({ refreshKey }: { refreshKey: number }) {
                   ? `${found} new ${found === 1 ? "lead" : "leads"} found (target ${j.target_count})`
                   : `${j.counters.websites_found ?? 0} websites and ${j.counters.emails_found ?? 0} emails found for ${j.counters.enrich_attempted ?? 0} leads`}
               </p>
+              {j.host && ACTIVE.includes(j.status) && <p className="text-xs text-muted-foreground">Runs on {j.host}. That computer must stay on.</p>}
               <details className="text-xs text-muted-foreground">
                 <summary className="cursor-pointer">Details</summary>
               <dl className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1">

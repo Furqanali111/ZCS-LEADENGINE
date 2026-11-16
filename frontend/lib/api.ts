@@ -57,6 +57,7 @@ export type Job = {
   created_at: string;
   started_at: string | null;
   finished_at: string | null;
+  host: string | null;
   to_enrich: number;
 };
 
