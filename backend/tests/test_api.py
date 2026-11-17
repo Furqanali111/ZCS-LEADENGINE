@@ -301,6 +301,22 @@ def test_leads_q_matches_name_city_npi(client, db):
     assert client.get("/api/leads?q=_").json()["total"] == 0
 
 
+def test_leads_q_matches_any_column_and_phone_digits(client, db):
+    from datetime import datetime, timezone
+
+    from app.models import Contact, OrganizationPhone
+
+    seed_leads(db)
+    org = add_lead(db, "1000000009", "Golf Practice", phone="6025550100", website="https://golfdocs.example", owner="Sam")
+    db.add(Contact(organization_id=org.id, first_name="", last_name="x", role="general", source_key="manual", email="front@golf.example",
+                   phone="4805550199"))
+    db.add(OrganizationPhone(organization_id=org.id, phone="(713) 555-0142", source_key="google_maps", collected_at=datetime.now(timezone.utc)))
+    db.commit()
+    for q in ("6025550100", "(602) 555-0100", "555-0100", "golfdocs", "front@golf", "4805550199", "713-555-0142", "sam"):
+        assert names(client.get("/api/leads", params={"q": q})) == ["Golf Practice"], q
+    assert client.get("/api/leads", params={"q": "9999999"}).json()["total"] == 0
+
+
 def _follow_ups(db):
     from datetime import date, timedelta
 
@@ -365,7 +381,9 @@ def test_leads_pagination_total(client, db):
 
 def test_lead_includes_contact_score_source(client, db):
     seed_leads(db)
-    lead = client.get("/api/leads?q=alpha").json()["items"][0]
+    row = client.get("/api/leads?q=alpha").json()["items"][0]
+    assert row["locations"] == [] and row["score"] is None and row["source"] is None  # the list row is light
+    lead = client.get(f"/api/leads/{row['id']}").json()
     assert lead["contact"]["role"] == "authorized_official" and lead["contact"]["last_name"] == "Boss"
     assert lead["score"]["config_version"] == "1" and "specialty" in lead["score"]["components"]
     assert lead["source"]["source_key"] == "npi_registry" and lead["source"]["collected_at"]

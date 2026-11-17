@@ -1,3 +1,4 @@
+import re
 from datetime import date
 
 from sqlalchemy import Select, exists, func, or_, select
@@ -5,7 +6,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.constants import CLOSED_STATUSES
-from app.models import Contact, LeadScore, Organization, SearchJobLead, SourceRecord
+from app.models import Contact, LeadScore, Location, Organization, OrganizationPhone, SearchJobLead, SourceRecord
 from app.schemas import LeadFilters
 from app.services.scoring import ScoreResult, load_config, score
 from app.sources.npi_registry import normalize
@@ -77,16 +78,39 @@ def _contains(column, text: str):
     return column.ilike(f"%{escaped}%", escape="\\")
 
 
+def _search(q: str):
+    """One box over every text column of the lead, its contacts, extra phones and locations.
+    Phone columns also match on digits only, so "(602) 555-0100" finds 6025550100."""
+    o = Organization
+    qd = re.sub(r"\D", "", q)
+    phone_like = len(qd) >= 3 and not re.search(r"[A-Za-z]", q)  # digits and punctuation only
+
+    def text_or_phone(col, phone: bool = False):
+        hit = _contains(col, q)
+        return or_(hit, _contains(func.regexp_replace(col, r"\D", "", "g"), qd)) if phone and phone_like else hit
+
+    def child(model, *cols, phones=()):
+        conds = [text_or_phone(c) for c in cols] + [text_or_phone(c, True) for c in phones]
+        return exists().where(model.organization_id == o.id, or_(*conds))
+
+    org_cols = (o.name, o.dba_name, o.parent_organization_name, o.npi, o.primary_taxonomy_code, o.primary_taxonomy_desc,
+                o.city, o.owner, o.website)
+    return or_(
+        *(text_or_phone(c) for c in org_cols), *(text_or_phone(c, True) for c in (o.phone, o.fax)),
+        o.state == q.upper(),  # a state code matches exactly: "ca" must not match every "care"
+        child(Contact, Contact.first_name, Contact.last_name, Contact.first_name + " " + Contact.last_name,
+              Contact.title, Contact.email, phones=(Contact.phone,)),
+        child(OrganizationPhone, phones=(OrganizationPhone.phone,)),
+        child(Location, Location.address_1, Location.address_2, Location.city, Location.zip, phones=(Location.phone,)),
+    )
+
+
 def lead_query(filters: LeadFilters) -> Select:
     """Organizations matching the filters. No ordering or paging: the caller adds those."""
     o = Organization
     stmt = select(o)
     if filters.q and filters.q.strip():
-        q = filters.q.strip()
-        by_contact = exists().where(Contact.organization_id == o.id,
-                                    or_(_contains(Contact.first_name, q), _contains(Contact.last_name, q),
-                                           _contains(Contact.first_name + " " + Contact.last_name, q)))
-        stmt = stmt.where(or_(*(_contains(c, q) for c in (o.name, o.dba_name, o.city, o.npi)), by_contact))
+        stmt = stmt.where(_search(filters.q.strip()))
     if filters.specialty and filters.specialty.strip():
         stmt = stmt.where(_contains(o.primary_taxonomy_desc, filters.specialty.strip()))
     for col, val in ((o.state, filters.state), (o.organization_type, filters.organization_type),

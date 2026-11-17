@@ -62,28 +62,31 @@ SORTS = {"score": Organization.fit_score, "name": Organization.name, "updated": 
              Contact.organization_id == Organization.id, Contact.email.is_not(None)).scalar_subquery()}
 LOADS = (selectinload(Organization.contacts), selectinload(Organization.locations), selectinload(Organization.phones),
          joinedload(Organization.score), selectinload(Organization.source_records).defer(SourceRecord.raw))
+# The table needs only contacts and phones; locations, score and source feed the expanded row, which fetches GET /{id}.
+LIST_LOADS = (selectinload(Organization.contacts), selectinload(Organization.phones))
 PLAIN = [f for f in LeadOut.model_fields if f not in ("contact", "contacts", "primary_email", "phones", "locations", "score", "source", "suppressed")]
 
 
-def _phones(org: Organization, npi_src: SourceRecord | None) -> list[dict]:
+def _phones(org: Organization, npi_src: SourceRecord | None = None) -> list[dict]:
     """The NPI phone stays on the organization; it is listed first with its source, then every other source's phone."""
     npi = [{"phone": org.phone, "source_key": "npi_registry", "collected_at": npi_src.collected_at if npi_src else None}] if org.phone else []
     return npi + [{"phone": p.phone, "source_key": p.source_key, "source_url": p.source_url, "collected_at": p.collected_at,
                    "differs_from_npi": p.differs_from_npi, "listing_address": p.listing_address} for p in sorted(org.phones, key=lambda p: p.collected_at)]
 
 
-def _out(org: Organization, suppressed: bool = False) -> LeadOut:
+def _out(org: Organization, suppressed: bool = False, light: bool = False) -> LeadOut:
+    """light: the list row, built without locations, score and source (not loaded, so touching them would query per row)."""
     by_role = {c.role: c for c in org.contacts}
-    src = max(org.source_records, key=lambda s: s.collected_at, default=None)
+    src = None if light else max(org.source_records, key=lambda s: s.collected_at, default=None)
     return LeadOut.model_validate({
         **{f: getattr(org, f) for f in PLAIN},
         "contact": by_role.get("authorized_official") or by_role.get("provider"),
         "contacts": sorted_contacts(org),
         "primary_email": primary_email(org),
         "phones": _phones(org, src),
-        "maps_url": org.maps_url or (maps_url(org, org.locations) if org.organization_type == "hospital" else None),
-        "locations": org.locations,
-        "score": org.score,
+        "maps_url": org.maps_url or (maps_url(org, org.locations) if org.organization_type == "hospital" and not light else None),
+        "locations": [] if light else org.locations,
+        "score": None if light else org.score,
         "suppressed": suppressed,
         "source": {"source_key": src.source_key, "collected_at": src.collected_at} if src else None,
     }, from_attributes=True)
@@ -97,13 +100,13 @@ def list_leads(filters: Annotated[LeadFilters, Query()], session: Session = Depe
     col = SORTS[sort]
     col = col.asc().nulls_last() if order == "asc" else col.desc().nulls_last()
     # The total rides along as a window count (one round trip fewer); only an empty page needs a separate count.
-    stmt = (base.add_columns(func.count().over()).options(*LOADS).order_by(col, Organization.id)
+    stmt = (base.add_columns(func.count().over()).options(*LIST_LOADS).order_by(col, Organization.id)
             .limit(page_size).offset((page - 1) * page_size))
     rows = session.execute(stmt).all()
     orgs = [r[0] for r in rows]
     total = rows[0][1] if rows else session.scalar(select(func.count()).select_from(base.subquery()))
     hit = suppressed_ids(session, [o.id for o in orgs])
-    return LeadPage(items=[_out(o, o.id in hit) for o in orgs], total=total, page=page, page_size=page_size)
+    return LeadPage(items=[_out(o, o.id in hit, light=True) for o in orgs], total=total, page=page, page_size=page_size)
 
 
 def _load(session: Session, lead_id: str, options=()) -> Organization:

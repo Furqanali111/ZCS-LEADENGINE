@@ -1,4 +1,7 @@
-import type { Lead } from "@/lib/api";
+"use client";
+
+import { useEffect, useState } from "react";
+import { getLead, type Lead } from "@/lib/api";
 import { SCORE_FACTORS } from "@/lib/constants";
 import { formatPhone } from "@/lib/format";
 
@@ -10,7 +13,22 @@ function address(l: Lead["locations"][number]) {
   return [street, place].filter(Boolean).join(", ") || "No address";
 }
 
-export function LeadRowDetail({ lead }: { lead: Lead }) {
+// The list rows come without locations, score and source (to keep the page fast), so the full lead is fetched when a row opens.
+export function LeadRowDetail({ lead: row }: { lead: Lead }) {
+  const [full, setFull] = useState<{ id: string; lead?: Lead; failed?: boolean } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    getLead(row.id)
+      .then((lead) => !cancelled && setFull({ id: row.id, lead }))
+      .catch(() => !cancelled && setFull({ id: row.id, failed: true }));
+    return () => {
+      cancelled = true;
+    };
+  }, [row.id]);
+  const done = full?.id === row.id ? full : null;
+  if (!done) return <p className="px-6 py-4 text-sm text-muted-foreground">Loading details...</p>;
+  if (!done.lead) return <p role="alert" className="px-6 py-4 text-sm text-destructive">Could not load details.</p>;
+  const lead = done.lead;
   const comps = (lead.score?.components ?? {}) as Record<string, Factor>;
   return (
     <div className="grid gap-6 px-6 py-4 lg:grid-cols-3">
