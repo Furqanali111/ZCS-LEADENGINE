@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import pytest
 from sqlalchemy import select
 
-from app.models import Contact, LeadScore, Organization, SearchJob, SearchJobLead, SourceRecord, SuppressionEntry
+from app.models import Contact, LeadScore, Location, Organization, SearchJob, SearchJobLead, SourceRecord, SuppressionEntry
 from app.services.enrich import enrich_job_leads, enrich_lead
 from app.sources.brave import SearchError
 from app.sources.web import FetchFailed, Page
@@ -485,3 +485,45 @@ def test_skipped_counter_is_summed_into_job(db, session_factory):
         return site(GOOD)(url)
     run(session_factory, jid, lambda q: ["https://lonestar.example/"], fetch, stats=stats)
     assert job(db, jid).counters["skipped"] == 3
+
+
+def test_maps_website_is_used_and_web_search_is_skipped(db):
+    from app.sources.gmaps import Listing
+
+    org = lead(db)
+    db.add(Location(organization_id=org.id, purpose="practice", address_1="1 Main St", city="Austin", state="TX", zip="78701"))
+    db.commit()
+    queries = []
+    status = enrich_lead(db, org, search=lambda q: queries.append(q) or ["https://wrong.example/"], fetch=site(GOOD), counters={},
+                         maps=lambda url: Listing(name="Lone Star", address=None, phone=None, website="https://www.lonestar.example/?utm=maps"),
+                         now=lambda: NOW)
+    assert (status, queries, org.website) == ("enriched", [], "https://lonestar.example/")
+
+
+def test_no_maps_listing_falls_back_to_web_search_and_a_listing_without_website_does_not(db):
+    from app.sources.gmaps import Listing
+
+    org = lead(db)
+    db.add(Location(organization_id=org.id, purpose="practice", address_1="1 Main St", city="Austin", state="TX", zip="78701"))
+    db.commit()
+    queries = []
+    search = lambda q: queries.append(q) or ["https://lonestar.example/"]  # noqa: E731
+    assert enrich_lead(db, org, search=search, fetch=site(GOOD), counters={}, maps=lambda url: None, now=lambda: NOW) == "enriched"
+    assert len(queries) == 1
+    org.enrichment_status = "not_run"
+    assert enrich_lead(db, org, search=search, fetch=site(GOOD), counters={},
+                       maps=lambda url: Listing(name="Lone Star Family Care", address=None, phone=None), now=lambda: NOW) == "no_website_found"
+    assert len(queries) == 1
+
+
+def test_practice_listing_with_another_name_counts_as_no_listing(db):
+    from app.sources.gmaps import Listing
+
+    org = lead(db)
+    db.add(Location(organization_id=org.id, purpose="practice", address_1="1 Main St", city="Austin", state="TX", zip="78701"))
+    db.commit()
+    queries = []
+    status = enrich_lead(db, org, search=lambda q: queries.append(q) or ["https://lonestar.example/"], fetch=site(GOOD), counters={},
+                         maps=lambda url: Listing(name="Seaside Cove Village", address=None, phone=None, website="https://wrong.example/"),
+                         now=lambda: NOW)
+    assert (status, len(queries), org.website) == ("enriched", 1, "https://lonestar.example/")

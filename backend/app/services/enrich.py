@@ -11,10 +11,12 @@ from sqlalchemy.orm import Session
 
 from app.models import Contact, Location, Organization, SearchJob, SearchJobLead
 from app.services.leads import rescore_org
+from app.services.maps import enrich_maps, maps_url, same_name
 from app.services.suppression import suppressed_emails
 from app.services.verify import (FALLBACK_PATHS, blocked_host, candidate_roots, extract_emails, extract_people, page_links,
                                  page_text, registrable_domain, relevant_links, verify_website)
 from app.sources.brave import SearchError
+from app.sources.gmaps import Listing
 from app.sources.web import FetchFailed, Page
 
 logger = logging.getLogger(__name__)
@@ -30,8 +32,26 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _maps_listing(session: Session, org: Organization, maps: Callable[[str], Listing | None]) -> Listing | None:
+    """The lead's Google Maps listing, or None (no address, no match, blocked, browser trouble): the caller then searches the web."""
+    url = maps_url(org, org.locations)
+    if not url:
+        return None
+    try:
+        listing = maps(url)
+    except Exception:  # noqa: BLE001 - MapsBlocked or a browser failure must not fail the lead
+        return None
+    if listing and org.organization_type != "hospital" and not same_name(org, listing):
+        return None  # a neighbouring tenant's listing: no website there says nothing about this practice
+    # Only hospitals keep the Maps phone and hours: a medical building holds many practices, so a practice's listing may be a neighbour's.
+    if listing and org.organization_type == "hospital" and org.maps_status != "matched":
+        enrich_maps(session, org, lookup=lambda _: listing)
+    return listing
+
+
 def enrich_lead(session: Session, org: Organization, *, search: Callable[[str], list[str]],
-                fetch: Callable[[str], Page | None], counters: dict, now: Callable[[], datetime] = _now) -> str:
+                fetch: Callable[[str], Page | None], counters: dict, maps: Callable[[str], Listing | None] | None = None,
+                now: Callable[[], datetime] = _now) -> str:
     if org.enrichment_status in SKIP:
         return org.enrichment_status
     for k in COUNTERS:
@@ -42,7 +62,10 @@ def enrich_lead(session: Session, org: Organization, *, search: Callable[[str], 
     query = " ".join(p for p in (org.name, org.city, org.state) if p)
     phones = [p for p in [org.phone, *session.scalars(select(Location.phone).where(Location.organization_id == org.id))] if p]
 
-    roots = candidate_roots(search(query))
+    listing = _maps_listing(session, org, maps) if maps else None
+    # A Maps listing is the business's own entry: its website, or none. Only without a listing do we guess with a web search.
+    urls = ([listing.website] if listing.website else []) if listing else search(query)
+    roots = candidate_roots(urls)
     accepted: tuple[Page, str, str] | None = None  # page, its text, which check passed
     reachable = 0
     for root in roots:
@@ -138,12 +161,12 @@ def _store_contacts(session: Session, org: Organization, pages: list[tuple[Page,
     counters["people_found"] += len(people)
 
 
-def _try_lead(session: Session, org: Organization, search, fetch, sleep) -> tuple[dict, str | None]:
+def _try_lead(session: Session, org: Organization, search, fetch, sleep, maps=None) -> tuple[dict, str | None]:
     """Returns (counters, failure kind). Raises only SearchError(auth)."""
     for retry in (False, True):
         attempt: dict = {}
         try:
-            if enrich_lead(session, org, search=search, fetch=fetch, counters=attempt) == "failed":
+            if enrich_lead(session, org, search=search, fetch=fetch, counters=attempt, maps=maps) == "failed":
                 return {}, "fetch"
             return attempt, None
         except SearchError as e:
@@ -176,7 +199,7 @@ def _save_counters(session: Session, job_id: UUID, attempt: dict, fetch_stats: d
 
 
 def enrich_job_leads(session_factory, job_id: UUID, *, search: Callable[[str], list[str]],
-                     fetch: Callable[[str], Page | None], fetch_stats: dict, sleep: Callable[[float], None]) -> str:
+                     fetch: Callable[[str], Page | None], fetch_stats: dict, sleep: Callable[[float], None], maps=None) -> str:
     with session_factory() as session:
         ids = list(session.scalars(
             select(SearchJobLead.organization_id).join(Organization, Organization.id == SearchJobLead.organization_id)
@@ -188,7 +211,7 @@ def enrich_job_leads(session_factory, job_id: UUID, *, search: Callable[[str], l
                 return "cancelled"
             org = session.get(Organization, org_id, populate_existing=True)
             try:
-                attempt, failure = _try_lead(session, org, search, fetch, sleep)
+                attempt, failure = _try_lead(session, org, search, fetch, sleep, maps)
             except SearchError:
                 session.get(SearchJob, job_id, populate_existing=True).error = AUTH_MESSAGE
                 _save_counters(session, job_id, {}, fetch_stats, seen)
