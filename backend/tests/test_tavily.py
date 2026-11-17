@@ -103,6 +103,11 @@ def test_ddg_returns_hrefs_and_maps_errors(monkeypatch):
 
     monkeypatch.setattr(ddg, "DDGS", Fake)
     assert ddg.search(None, None, "q") == ["https://a.com"]
+    Fake.outcome = [{"href": "https://www.bestbuy.com/", "title": "Best Buy", "body": "electronics"},
+                    {"href": "https://acdpediatrics.com/", "title": "ACD Pediatric Group Hialeah", "body": ""},
+                    {"href": "https://xvideos.com/", "title": "x", "body": "x"}]
+    assert ddg.search(None, None, "ACD PEDIATRIC GROUP PA HIALEAH FL") == ["https://acdpediatrics.com/"]
+    assert ddg.search(None, None, "BEST QUALITY PRACTICE, INC MIAMI FL") == []
     for exc, kind in ((RatelimitException("x"), "rate_limited"), (DDGSException("No results found"), "failed"), (OSError("x"), "failed")):
         Fake.outcome = exc
         with pytest.raises(SearchError) as e:

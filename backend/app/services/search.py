@@ -23,6 +23,7 @@ from app.services.leads import has_email, has_titled_staff, npis_with_email, npi
 from app.services.scoring import load_config, score
 from app.services.suppression import _digits, enforce
 from app.sources import ddg
+from app.sources.gmaps import MapsBlocked, MapsBrowser
 from app.sources.provider import search_provider, with_fallback
 from app.sources.npi_registry import MAX_SKIP, PAGE_SIZE, NormalizedLead, SourceError, fetch_page, normalize
 from app.sources.web import Page, PoliteFetcher
@@ -281,6 +282,36 @@ class EnrichDeps:
     search: Callable[[str], list[str]]
     fetch: Callable[[str], Page | None]
     fetch_stats: dict
+    maps: Callable | None = None  # Google Maps listing lookup, None when off or unavailable
+
+
+MAPS_PAUSE_SECONDS = 4
+
+
+def _maps_lookup(session: Session, stack: ExitStack, sleep) -> Callable | None:
+    """A paced Maps lookup, or None (source off, Playwright or Chromium missing, as in the desktop build): the job then searches the web."""
+    if session.scalar(select(SourceConfig.status).where(SourceConfig.key == "google_maps")) != "available":
+        return None
+    try:
+        get = stack.enter_context(MapsBrowser()).get
+    except Exception:  # noqa: BLE001
+        logger.warning("google maps lookup unavailable, using web search only")
+        return None
+    state = {"used": False, "blocked": False}
+
+    def lookup(url: str):
+        if state["blocked"]:
+            raise MapsBlocked("stopped earlier in this job")
+        if state["used"]:
+            sleep(MAPS_PAUSE_SECONDS)
+        state["used"] = True
+        try:
+            return get(url)
+        except MapsBlocked:  # nothing is done to get past it; the rest of the job uses web search
+            state["blocked"] = True
+            logger.warning("google maps asked for a CAPTCHA or consent, using web search for the rest of this job")
+            raise
+    return lookup
 
 
 def _complete(session: Session, job: SearchJob, counters: dict, session_factory, enrich_deps, sleep, settings) -> None:
@@ -297,9 +328,10 @@ def _complete(session: Session, job: SearchJob, counters: dict, session_factory,
                 web_search = with_fallback(web_search, ddg.search)  # owner opted in: used only once Tavily credits run out
             search_client, page_client = stack.enter_context(make_client()), stack.enter_context(make_client())
             fetcher = PoliteFetcher(page_client, min_interval=settings.enrich_page_delay_seconds)
-            deps = EnrichDeps(lambda q: web_search(search_client, api_key, q), fetcher.get, fetcher.stats)
+            deps = EnrichDeps(lambda q: web_search(search_client, api_key, q), fetcher.get, fetcher.stats,
+                              _maps_lookup(session, stack, sleep))
         status = enrich_job_leads(session_factory, job.id, search=deps.search, fetch=deps.fetch,
-                                  fetch_stats=deps.fetch_stats, sleep=sleep)
+                                  fetch_stats=deps.fetch_stats, sleep=sleep, maps=deps.maps)
     session.refresh(job)  # enrichment wrote counters and any pause message from its own sessions
     _finish(session, job, ENRICH_STATUS[status], job.error if status == "paused" else None)
 

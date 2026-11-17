@@ -8,6 +8,7 @@ from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from app.models import Location, Organization, OrganizationPhone
+from app.services.related import norm_name
 from app.sources.gmaps import Listing
 
 SOURCE_KEY = "google_maps"
@@ -49,6 +50,26 @@ def matches(locations: list[Location], listing: Listing) -> bool:
         want = street_tokens(loc.address_1)
         if (len(want) >= 2 and want[0].isdigit() and got[: len(want)] == want and loc.city and loc.city.lower() in addr
                 and loc.state and re.search(rf"\b{loc.state.lower()}\b", addr)):
+            return True
+    return False
+
+
+GENERIC = {"inc", "llc", "pc", "pllc", "pa", "corp", "md", "dr", "the", "of", "and", "group", "associates"}
+
+
+def _tokens(name: str | None) -> set[str]:
+    return set(norm_name(name).split()) - GENERIC
+
+
+def same_name(org: Organization, listing: Listing) -> bool:
+    """Both names share most of their words, or one name is fully inside the other (two or more words).
+    A medical building holds many practices at one street address, so a practice needs this on top of the address."""
+    theirs = _tokens(listing.name)
+    for ours in (_tokens(org.name), _tokens(org.dba_name)):
+        if not ours or not theirs:
+            continue
+        both = ours & theirs
+        if len(both) / len(ours | theirs) >= 0.6 or (len(both) >= 2 and (both == ours or both == theirs)):
             return True
     return False
 

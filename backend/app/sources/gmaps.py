@@ -25,6 +25,7 @@ class Listing:
     phone: str | None
     hours: list[dict] = field(default_factory=list)
     url: str | None = None
+    website: str | None = None
 
 
 def clean_phone(label: str | None) -> str | None:
@@ -48,13 +49,15 @@ def read_listing(page) -> Listing | None:
     """None unless the page is one place with a name (a list of results or a bare address is not a match)."""
     if not page.locator('[data-item-id="address"], [data-item-id^="phone"]').count():
         return None
-    names = [n for n in page.locator("h1").all_inner_texts() if n.strip() and n.strip() != "Results"]
+    names = [n for n in page.locator("h1").all_inner_texts() if n.strip() and n.strip() != "Results" and not n.strip().startswith("Sponsored")]  # an ad panel is not the listing
     if not names:
         return None
     address = page.locator('[data-item-id="address"]').evaluate_all(LABELS_JS)
     phone = page.locator('[data-item-id^="phone"]').evaluate_all(LABELS_JS)
+    site = page.locator('a[data-item-id="authority"]').evaluate_all("e => e.map(x => x.href)")  # the business's own site button
     return Listing(name=names[0].strip(), address=re.sub(r"^Address:\s*", "", address[0]).strip() if address else None,
-                   phone=clean_phone(phone[0]) if phone else None, hours=parse_hours(page.locator("tr").evaluate_all(ROWS_JS)), url=page.url)
+                   phone=clean_phone(phone[0]) if phone else None, hours=parse_hours(page.locator("tr").evaluate_all(ROWS_JS)), url=page.url,
+                   website=site[0] if site and site[0].startswith("http") else None)
 
 
 def _check_blocked(page) -> None:

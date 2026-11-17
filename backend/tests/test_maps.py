@@ -190,3 +190,61 @@ def test_manual_email_is_added_once_and_listed(client, db):
     assert client.post(f"/api/leads/{o.id}/emails", json={"email": "front.desk@practice.com"}).status_code == 409
     assert client.post(f"/api/leads/{o.id}/emails", json={"email": "not an email"}).status_code == 422
     assert client.post(f"/api/leads/{o.id}/emails", json={"email": "owner@practice.com"}).status_code == 200
+
+
+class _Loc:
+    def __init__(self, items): self.items = items
+    def count(self): return len(self.items)
+    def all_inner_texts(self): return self.items
+    def evaluate_all(self, js): return self.items
+
+
+class _Page:
+    url = "https://www.google.com/maps/place/x"
+
+    def __init__(self, **by_selector): self.by = by_selector
+
+    def locator(self, sel): return _Loc(self.by.get(sel, []))
+
+
+def test_read_listing_takes_the_website_and_ignores_an_ad_panel():
+    from app.sources.gmaps import read_listing
+
+    page = _Page(**{'[data-item-id="address"], [data-item-id^="phone"]': ["x"], "h1": ["Sponsored\n"], 'a[data-item-id="authority"]': ["http://a.example/"]})
+    assert read_listing(page) is None  # only an ad panel: not the listing
+    page.by["h1"] = ["Sponsored\n", "Lone Star Care"]
+    for k in ('[data-item-id="address"]', '[data-item-id^="phone"]', "tr"):
+        page.by[k] = []
+    assert read_listing(page).website == "http://a.example/"
+    page.by['a[data-item-id="authority"]'] = ["javascript:void(0)"]
+    assert read_listing(page).website is None
+
+
+def test_job_maps_lookup_pauses_between_lookups_and_stops_after_a_block(db, monkeypatch):
+    from contextlib import ExitStack
+
+    from app.services import search as svc
+    from app.sources.gmaps import MapsBlocked
+
+    maps_source(db)
+    results = iter(["listing", MapsBlocked("captcha")])
+
+    class FakeBrowser:
+        def __enter__(self): return self
+        def __exit__(self, *a): pass
+        def get(self, url):
+            r = next(results)
+            if isinstance(r, Exception):
+                raise r
+            return r
+
+    monkeypatch.setattr(svc, "MapsBrowser", FakeBrowser)
+    pauses = []
+    with ExitStack() as stack:
+        lookup = svc._maps_lookup(db, stack, pauses.append)
+        assert lookup("u1") == "listing" and pauses == []
+        with pytest.raises(MapsBlocked):
+            lookup("u2")
+        assert pauses == [svc.MAPS_PAUSE_SECONDS]
+        with pytest.raises(MapsBlocked):
+            lookup("u3")  # no browser call: the iterator is exhausted
