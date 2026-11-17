@@ -99,7 +99,7 @@ export function LeadFilters({
   return (
     <form role="search" aria-label="Filter leads" onSubmit={(e) => e.preventDefault()} className="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] items-end gap-x-3 gap-y-2.5 rounded-xl border bg-card p-3 shadow-xs [&_label]:text-xs [&_label]:text-muted-foreground">
       <div className="col-span-full sm:col-span-2">
-        <Label htmlFor="f-q">Search name or city</Label>
+        <Label htmlFor="f-q">Search name, phone, email, any field</Label>
         <Input
           id="f-q"
           type="search"
