@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { CalendarClock, CheckCircle2, Handshake, RefreshCw, Sparkles, Star, Users } from "lucide-react";
+import { CalendarClock, CheckCircle2, Handshake, PhoneCall, RefreshCw, Sparkles, Star, Users } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ToneBadge } from "@/components/tone-badge";
 import { BarList } from "@/components/bar-list";
@@ -39,7 +39,7 @@ function presetRange(p: Exclude<Preset, "custom">): { from: string; to: string }
 
 // Last stats per range, so the page paints at once and refreshes behind it. Read through useSyncExternalStore:
 // the server snapshot is null, so prerender and hydration never see storage.
-const cacheKey = (r: { from?: string; to?: string }) => `zcs-dashboard:${r.from ?? ""}:${r.to ?? ""}`;
+const cacheKey = (r: { from?: string; to?: string }) => `zcs-dashboard2:${r.from ?? ""}:${r.to ?? ""}`;
 const cacheListeners = new Set<() => void>();
 const readCache = (key: string): string | null => {
   try {
@@ -182,9 +182,10 @@ export default function DashboardPage() {
 
           <TeamActivity today={stats.team_today} />
 
-          <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
             <StatTile tone="blue" Icon={Users} label="Total leads" href="/leads" value={stats.total} hint="In the system" />
             <StatTile tone="green" Icon={Sparkles} label="New" href="/leads?crm_status=new" value={stats.new_leads} hint="Not contacted yet" />
+            <StatTile tone="teal" Icon={PhoneCall} label="Already worked" value={stats.worked_leads} hint="Moved past New" />
             <StatTile tone="orange" Icon={Star} label="Critical and high priority" href="/leads?priority=critical" value={stats.critical_high} hint="Best fit first" />
             <StatTile tone="purple" Icon={Handshake} label="Meetings scheduled" href="/leads?crm_status=meeting_scheduled" value={stats.meetings_scheduled} hint="Booked" />
             <StatTile tone="teal" Icon={CheckCircle2} label="Converted" href="/leads?crm_status=converted" value={stats.converted} hint="Won" />

@@ -21,7 +21,9 @@ const ALLOWED: Record<string, Set<string>> = {
   has_email: new Set(["true"]),
   email_sent: new Set(["true", "false"]),
 };
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const REMEMBER_KEY = "zcs-leads-query";
+const REMEMBER_MS = 8 * 60 * 60 * 1000;
+const UUID =/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function LeadsView() {
   const router = useRouter();
@@ -63,6 +65,27 @@ function LeadsView() {
     },
     [pathname, router],
   );
+
+  // Remember the last search per browser, so going into a lead and back (a bare /leads link) brings it back.
+  // Saved while any filter, sort or page is in the URL; restored only when it is bare; dropped by Clear or after 8 h.
+  const qs = params.toString();
+  const opened = useRef(false);
+  useEffect(() => {
+    try {
+      if (qs) {
+        localStorage.setItem(REMEMBER_KEY, JSON.stringify({ qs, at: Date.now() }));
+        opened.current = true;
+        return;
+      }
+      // Bare URL: restore only when the page is first opened. Later, bare means the user cleared the last filter.
+      const saved = opened.current ? null : JSON.parse(localStorage.getItem(REMEMBER_KEY) ?? "null");
+      opened.current = true;
+      if (saved?.qs && Date.now() - saved.at < REMEMBER_MS) router.replace(`${pathname}?${saved.qs}`, { scroll: false });
+      else localStorage.removeItem(REMEMBER_KEY);
+    } catch {
+      /* storage blocked: filters just are not remembered */
+    }
+  }, [qs, pathname, router]);
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const filterSig = JSON.stringify(filters);
@@ -136,6 +159,11 @@ function LeadsView() {
         filters={filters}
         onChange={update}
         onClear={() => {
+          try {
+            localStorage.removeItem(REMEMBER_KEY);
+          } catch {
+            /* nothing to forget */
+          }
           router.replace(pathname, { scroll: false });
         }}
       />
