@@ -326,6 +326,7 @@ export type DashboardStats = {
   range: { from: string; to: string };
   total: number;
   new_leads: number;
+  worked_leads: number;
   critical_high: number;
   follow_ups_due: number;
   status_changes_today: number;

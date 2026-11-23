@@ -435,6 +435,7 @@ class DashboardStats(BaseModel):
     range: DateRange
     total: int
     new_leads: int
+    worked_leads: int
     critical_high: int
     follow_ups_due: int
     status_changes_today: int

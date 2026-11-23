@@ -32,7 +32,7 @@ def test_dashboard_counts_on_seeded_data(client, db):
     db.add(SearchJob(specialty="x", state="FL", target_count=5, sources=["nppes"]))
     db.commit()
     s = stats(client).json()
-    assert s["total"] == 7 and s["new_leads"] == 2 and s["critical_high"] == 2
+    assert s["total"] == 7 and s["new_leads"] == 2 and s["worked_leads"] == 5 and s["critical_high"] == 2
     assert s["follow_ups_due"] == 1 and s["meetings_scheduled"] == 1 and s["converted"] == 1
     assert s["range"] == {"from": str(today - timedelta(days=90)), "to": str(today)}
     assert {"key": "FL", "count": 6} in s["by_state"] and {"key": "TX", "count": 1} in s["by_state"]

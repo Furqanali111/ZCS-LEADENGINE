@@ -98,9 +98,10 @@ def build_stats(session: Session, start: date, end: date, today: date) -> Dashbo
                                 text("'[]'::json"))).select_from(recent).scalar_subquery()
     # One statement, one round trip (each costs ~150 ms to the hosted database): tiles from a single pass
     # over organizations, plus the top lists, jobs and conversion as scalar subqueries.
-    total, new, crit, due, meet, conv, by_state, by_spec, by_status, job_rows, n_conv, n_contacted, n_changed, team_today = session.execute(select(
+    total, new, worked, crit, due, meet, conv, by_state, by_spec, by_status, job_rows, n_conv, n_contacted, n_changed, team_today = session.execute(select(
         func.count(),
         func.count().filter(O.crm_status == "new"),
+        func.count().filter(O.crm_status != "new"),  # worked: anything moved past "new"
         func.count().filter(O.priority.in_(("critical", "high"))),
         func.count().filter(O.next_follow_up_at <= today, O.crm_status.not_in(CLOSED_STATUSES)),
         func.count().filter(O.crm_status == "meeting_scheduled"),
@@ -109,7 +110,7 @@ def build_stats(session: Session, start: date, end: date, today: date) -> Dashbo
         jobs, converted, contacted, changed_today, team_rows,
     )).one()
     return DashboardStats(
-        range=DateRange(from_=start, to=end), total=total, new_leads=new, critical_high=crit, follow_ups_due=due, status_changes_today=n_changed, team_today=[TeamRow.model_validate(r) for r in team_today],
+        range=DateRange(from_=start, to=end), total=total, new_leads=new, worked_leads=worked, critical_high=crit, follow_ups_due=due, status_changes_today=n_changed, team_today=[TeamRow.model_validate(r) for r in team_today],
         meetings_scheduled=meet, converted=conv,
         by_state=by_state, by_specialty=by_spec, by_status=by_status,
         recent_jobs=[JobOut.model_validate(j) for j in job_rows],
